@@ -1,0 +1,263 @@
+import { Request, Response } from 'express';
+import { db } from '../config/database';
+import { logger } from '../config/logger';
+
+// ── Grupos ────────────────────────────────────────────────────────────────────
+
+export async function listGrupos(_req: Request, res: Response): Promise<void> {
+  const rows = await db('dim_grupo_despesa').orderBy('nome');
+  res.json(rows);
+}
+
+export async function createGrupo(req: Request, res: Response): Promise<void> {
+  const { nome, descricao } = req.body;
+  if (!nome?.trim()) { res.status(400).json({ error: 'Nome obrigatório' }); return; }
+
+  const exists = await db('dim_grupo_despesa').where('nome', nome.trim()).first();
+  if (exists) { res.status(409).json({ error: 'Grupo já existe', id: exists.id }); return; }
+
+  const [id] = await db('dim_grupo_despesa').insert({ nome: nome.trim(), descricao: descricao?.trim() || null });
+  res.status(201).json({ id, nome: nome.trim(), descricao: descricao?.trim() || null });
+}
+
+export async function updateGrupo(req: Request, res: Response): Promise<void> {
+  const { id } = req.params;
+  const { nome, descricao } = req.body;
+  if (!nome?.trim()) { res.status(400).json({ error: 'Nome obrigatório' }); return; }
+
+  await db('dim_grupo_despesa').where({ id }).update({ nome: nome.trim(), descricao: descricao?.trim() || null });
+  res.json({ message: 'Grupo atualizado' });
+}
+
+const GRUPOS_PROTEGIDOS = ['RESTOS A PAGAR', 'DESPESAS DO EXERCÍCIO ANTERIOR', 'DESPESAS DO EXERCICIO ANTERIOR'];
+
+export async function deleteGrupo(req: Request, res: Response): Promise<void> {
+  const { id } = req.params;
+  const grupo = await db('dim_grupo_despesa').where({ id }).first();
+  if (grupo && GRUPOS_PROTEGIDOS.some((p: string) => grupo.nome.toUpperCase().includes(p))) {
+    res.status(403).json({ error: `O grupo "${grupo.nome}" é protegido pelo sistema e não pode ser excluído.` });
+    return;
+  }
+  const credores = await db('dim_credor').where('fk_grupo', id).count('id as n').first();
+  if (Number((credores as any)?.n) > 0) {
+    res.status(409).json({ error: 'Grupo possui credores vinculados. Desvincule-os antes de excluir.' });
+    return;
+  }
+  await db('dim_grupo_despesa').where({ id }).delete();
+  res.json({ message: 'Grupo excluído' });
+}
+
+// ── Subgrupos ─────────────────────────────────────────────────────────────────
+
+export async function listSubgrupos(req: Request, res: Response): Promise<void> {
+  let q = db('dim_subgrupo_despesa as s')
+    .join('dim_grupo_despesa as g', 's.fk_grupo', 'g.id')
+    .select('s.*', 'g.nome as grupo_nome')
+    .orderBy('g.nome').orderBy('s.nome');
+  if (req.query.grupoId) q = q.where('s.fk_grupo', req.query.grupoId);
+  res.json(await q);
+}
+
+export async function createSubgrupo(req: Request, res: Response): Promise<void> {
+  const { nome, fk_grupo } = req.body;
+  if (!nome?.trim() || !fk_grupo) { res.status(400).json({ error: 'Nome e grupo obrigatórios' }); return; }
+
+  const exists = await db('dim_subgrupo_despesa').where({ nome: nome.trim(), fk_grupo }).first();
+  if (exists) { res.status(409).json({ error: 'Subgrupo já existe neste grupo', id: exists.id }); return; }
+
+  const [id] = await db('dim_subgrupo_despesa').insert({ nome: nome.trim(), fk_grupo });
+  res.status(201).json({ id, nome: nome.trim(), fk_grupo });
+}
+
+export async function updateSubgrupo(req: Request, res: Response): Promise<void> {
+  const { id } = req.params;
+  const { nome, fk_grupo } = req.body;
+  if (!nome?.trim()) { res.status(400).json({ error: 'Nome obrigatório' }); return; }
+  await db('dim_subgrupo_despesa').where({ id }).update({ nome: nome.trim(), fk_grupo: fk_grupo || undefined });
+  res.json({ message: 'Subgrupo atualizado' });
+}
+
+export async function deleteSubgrupo(req: Request, res: Response): Promise<void> {
+  const { id } = req.params;
+  await db('dim_subgrupo_despesa').where({ id }).delete();
+  res.json({ message: 'Subgrupo excluído' });
+}
+
+// ── Credores ──────────────────────────────────────────────────────────────────
+
+export async function listCredores(req: Request, res: Response): Promise<void> {
+  const { search, grupoId, semGrupo, semSubgrupo, page = '1', limit = '50' } = req.query as Record<string, string>;
+  const pg = Math.max(1, parseInt(page));
+  const lim = Math.min(200, parseInt(limit));
+  const offset = (pg - 1) * lim;
+
+  const base = () =>
+    db('dim_credor as c')
+      .leftJoin('dim_grupo_despesa as g', 'c.fk_grupo', 'g.id')
+      .leftJoin('dim_subgrupo_despesa as s', 'c.fk_subgrupo', 's.id')
+      .modify((q) => {
+        if (search) q.where((w) => w.where('c.nome', 'like', `%${search}%`).orWhere('c.cnpj_cpf', 'like', `%${search}%`));
+        if (grupoId) q.where('c.fk_grupo', grupoId);
+        if (semGrupo === '1') q.whereNull('c.fk_grupo');
+        if (semSubgrupo === '1') q.whereNotNull('c.fk_grupo').whereNull('c.fk_subgrupo');
+      });
+
+  const [rows, [{ total }]] = await Promise.all([
+    base()
+      .select(
+        'c.id', 'c.nome', 'c.cnpj_cpf', 'c.cnpj_cpf_norm', 'c.tipo_doc',
+        'c.fk_grupo', 'g.nome as grupo_nome',
+        'c.fk_subgrupo', 's.nome as subgrupo_nome',
+        'c.historico', 'c.precisa_reclassificacao', 'c.detalhar_no_pagamento',
+      )
+      .orderBy('c.nome')
+      .limit(lim).offset(offset),
+    base().count('c.id as total'),
+  ]);
+
+  res.json({ rows, total: Number(total), page: pg, limit: lim });
+}
+
+export async function autoClassificarCredoresDiarias(_req: Request, res: Response): Promise<void> {
+  // Credores sem grupo que:
+  // (a) têm pelo menos um pagamento com elemento 3.3.90.14, OU
+  // (b) têm histórico de pagamento que menciona diária
+  const credores = await db('dim_credor as c')
+    .whereNull('c.fk_grupo')
+    .where((w) => {
+      w.whereExists(
+        db('fact_ordem_pagamento as f')
+          .join('dim_elemento_despesa as el', 'f.fk_elemento_despesa', 'el.id')
+          .where('f.fk_credor', db.raw('c.id'))
+          .where('el.codigo', 'like', '3.3.90.14%')
+          .select(db.raw('1'))
+      )
+      .orWhere('c.historico', 'like', '%DIÁRI%')
+      .orWhere('c.historico', 'like', '%DIARIA%');
+    })
+    .select('c.id');
+
+  if (credores.length === 0) {
+    res.json({ updated: 0 });
+    return;
+  }
+
+  const ids = credores.map((c: any) => c.id);
+  await db('dim_credor').whereIn('id', ids).update({ fk_grupo: 8, precisa_reclassificacao: false });
+
+  res.json({ updated: ids.length });
+}
+
+// Grupos especiais que geram subgrupo prefixado automaticamente
+const GRUPOS_COM_PREFIXO: Record<number, string> = {
+  23: 'DEA',
+  22: 'RP',
+};
+
+export async function updateCredor(req: Request, res: Response): Promise<void> {
+  const { id } = req.params;
+  const { fk_grupo, fk_subgrupo, historico, detalhar_no_pagamento } = req.body;
+
+  const update: Record<string, any> = {
+    fk_grupo: fk_grupo || null,
+    fk_subgrupo: fk_subgrupo || null,
+  };
+  if (historico !== undefined) update.historico = historico || null;
+  if (detalhar_no_pagamento !== undefined) update.detalhar_no_pagamento = detalhar_no_pagamento;
+  if (fk_grupo) update.precisa_reclassificacao = false;
+
+  await db('dim_credor').where({ id }).update(update);
+
+  // Se o credor recebeu um novo subgrupo, atualiza os pagamentos DEA/RP
+  // desse credor que já foram classificados nesses grupos especiais
+  if (fk_subgrupo) {
+    const subgrupo = await db('dim_subgrupo_despesa').where({ id: fk_subgrupo }).first();
+    if (subgrupo) {
+      for (const [grupoId, prefixo] of Object.entries(GRUPOS_COM_PREFIXO)) {
+        const nomeComPrefixo = `${prefixo} - ${subgrupo.nome}`;
+
+        // Find-or-create subgrupo prefixado dentro do grupo DEA/RP
+        let subgrupoPrefixado = await db('dim_subgrupo_despesa')
+          .where({ nome: nomeComPrefixo, fk_grupo: grupoId })
+          .first();
+
+        if (!subgrupoPrefixado) {
+          const [novoId] = await db('dim_subgrupo_despesa').insert({
+            nome: nomeComPrefixo,
+            fk_grupo: grupoId,
+          });
+          subgrupoPrefixado = { id: novoId };
+        }
+
+        // Atualiza todos os pagamentos desse credor classificados nesse grupo especial
+        await db('fact_ordem_pagamento')
+          .where({ fk_credor: id, fk_grupo_pag: grupoId })
+          .update({ fk_subgrupo_pag: subgrupoPrefixado.id });
+      }
+    }
+  }
+
+  res.json({ message: 'Credor atualizado' });
+}
+
+export async function deleteAllCredores(_req: Request, res: Response): Promise<void> {
+  try {
+    await db.raw('SET FOREIGN_KEY_CHECKS = 0');
+    await db.raw('DELETE FROM dim_credor');
+    await db.raw('SET FOREIGN_KEY_CHECKS = 1');
+    res.json({ message: 'Todos os credores foram excluídos' });
+  } catch (err: any) {
+    logger.error({ err: err?.message, stack: err?.stack }, 'deleteAllCredores failed');
+    await db.raw('SET FOREIGN_KEY_CHECKS = 1').catch(() => {});
+    res.status(500).json({ error: err?.message ?? 'Erro desconhecido ao excluir credores' });
+  }
+}
+
+export async function getCredorClassificacao(req: Request, res: Response): Promise<void> {
+  const { id } = req.params;
+
+  const rows = await db('fact_ordem_pagamento as f')
+    .where('f.fk_credor', id)
+    .join('dim_elemento_despesa as el', 'f.fk_elemento_despesa', 'el.id')
+    .join('dim_fonte_recurso as fr', 'f.fk_fonte_recurso', 'fr.id')
+    .join('dim_tipo_empenho as te', 'f.fk_tipo_empenho', 'te.id')
+    .join('dim_entidade as e', 'f.fk_entidade', 'e.id')
+    .leftJoin('dim_setor as st', 'f.fk_setor_pag', 'st.id')
+    .select(
+      'el.codigo as elemento',
+      'fr.codigo as fonte',
+      'te.descricao as tipo_empenho',
+      'e.nome as entidade',
+      db.raw('YEAR(f.data_pagamento) as ano'),
+      db.raw('COUNT(*) as qtd'),
+      db.raw('SUM(f.valor_bruto) as total'),
+      db.raw('MAX(f.data_pagamento) as ultimo_pagamento'),
+    )
+    .groupByRaw('el.codigo, fr.codigo, te.descricao, e.nome, YEAR(f.data_pagamento)')
+    .orderByRaw('YEAR(f.data_pagamento) DESC, SUM(f.valor_bruto) DESC')
+    .limit(30);
+
+  res.json(rows.map((r: any) => ({
+    elemento: r.elemento,
+    fonte: r.fonte,
+    tipo_empenho: r.tipo_empenho,
+    entidade: r.entidade,
+    ano: Number(r.ano),
+    qtd: Number(r.qtd),
+    total: Number(r.total),
+    ultimo_pagamento: r.ultimo_pagamento,
+  })));
+}
+
+export async function getCredorStats(_req: Request, res: Response): Promise<void> {
+  const [total, semGrupo, semSubgrupo] = await Promise.all([
+    db('dim_credor').count('id as n').first(),
+    db('dim_credor').whereNull('fk_grupo').count('id as n').first(),
+    db('dim_credor').whereNotNull('fk_grupo').whereNull('fk_subgrupo').count('id as n').first(),
+  ]);
+  res.json({
+    total: Number((total as any)?.n || 0),
+    semGrupo: Number((semGrupo as any)?.n || 0),
+    semSubgrupo: Number((semSubgrupo as any)?.n || 0),
+  });
+}

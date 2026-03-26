@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(mysql -u root public_auditor -e \"SELECT id, num_processo, num_empenho, rateio_itens FROM fact_ordem_pagamento WHERE num_processo LIKE ''%202601300032%'' OR num_empenho LIKE ''%0032%'' LIMIT 5;\")"
+    ]
+  }
+}
