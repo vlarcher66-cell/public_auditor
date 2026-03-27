@@ -58,13 +58,13 @@ export async function listPagamentos(req: Request, res: Response): Promise<void>
         if (numEmpenho) q.where('f.num_empenho', 'like', `%${numEmpenho}%`);
         if (numProcesso) q.where('f.num_processo', 'like', `%${numProcesso}%`);
         // Filtro de grupo: usa classificação por pagamento quando disponível, senão usa do credor
-        if (grupoId) q.where(db.raw('COALESCE(f.fk_grupo_pag, c.fk_grupo)'), grupoId);
-        if (subgrupoId) q.where(db.raw('COALESCE(f.fk_subgrupo_pag, c.fk_subgrupo)'), subgrupoId);
+        if (grupoId) q.where(db.raw('COALESCE(f.fk_grupo_pag, c.fk_grupo)') as any, grupoId);
+        if (subgrupoId) q.where(db.raw('COALESCE(f.fk_subgrupo_pag, c.fk_subgrupo)') as any, subgrupoId);
         if (tipoRelatorio) q.where('f.tipo_relatorio', tipoRelatorio);
         if (setorId) q.where('f.fk_setor_pag', setorId);
         if (semSetor === '1') q.whereNull('f.fk_setor_pag');
-        if (semGrupo === '1') q.whereNull(db.raw('COALESCE(f.fk_grupo_pag, c.fk_grupo)'));
-        if (semSubgrupo === '1') q.whereNull(db.raw('COALESCE(f.fk_subgrupo_pag, c.fk_subgrupo)'));
+        if (semGrupo === '1') q.whereNull(db.raw('COALESCE(f.fk_grupo_pag, c.fk_grupo)') as any);
+        if (semSubgrupo === '1') q.whereNull(db.raw('COALESCE(f.fk_subgrupo_pag, c.fk_subgrupo)') as any);
         if (valorBrutoMin) q.where('f.valor_bruto', '>=', parseFloat(valorBrutoMin));
         if (valorBrutoMax) q.where('f.valor_bruto', '<=', parseFloat(valorBrutoMax));
         if (valorRetidoMin) q.where('f.valor_retido', '>=', parseFloat(valorRetidoMin));
@@ -236,7 +236,7 @@ export async function classificarPagamento(req: Request, res: Response): Promise
   if ('fk_subgrupo_pag' in req.body && fk_subgrupo_pag) {
     update.fk_subgrupo_pag = fk_subgrupo_pag;
   } else if (fk_grupo_pag && GRUPOS_COM_PREFIXO[Number(fk_grupo_pag)]) {
-    update.fk_subgrupo_pag = await resolverSubgrupoPrefixado(Number(fk_grupo_pag), id);
+    update.fk_subgrupo_pag = await resolverSubgrupoPrefixado(Number(fk_grupo_pag), String(id));
   } else if ('fk_subgrupo_pag' in req.body) {
     update.fk_subgrupo_pag = fk_subgrupo_pag || null;
   }
@@ -455,7 +455,7 @@ export async function getSinteticaMensal(req: Request, res: Response): Promise<v
     baseJoins(db('fact_ordem_pagamento as f'))
       .modify((q: any) => applyFiltrosSintetica(q, filtros))
       .whereNull('f.rateio_itens')
-      .whereNotNull(db.raw('COALESCE(f.fk_grupo_pag, c.fk_grupo)'))
+      .whereNotNull(db.raw('COALESCE(f.fk_grupo_pag, c.fk_grupo)') as any)
       .select(
         db.raw('COALESCE(f.fk_grupo_pag, c.fk_grupo) as grupo_id'),
         db.raw('MONTH(f.data_pagamento) as mes'),
@@ -547,7 +547,7 @@ export async function getAnaliticaMensal(req: Request, res: Response): Promise<v
     baseJoins(db('fact_ordem_pagamento as f'))
       .modify((q: any) => applyFiltrosSintetica(q, filtros))
       .whereNull('f.rateio_itens')
-      .whereNotNull(db.raw('COALESCE(f.fk_grupo_pag, c.fk_grupo)'))
+      .whereNotNull(db.raw('COALESCE(f.fk_grupo_pag, c.fk_grupo)') as any)
       .select(
         db.raw('COALESCE(f.fk_grupo_pag, c.fk_grupo) as grupo_id'),
         db.raw('COALESCE(f.fk_subgrupo_pag, c.fk_subgrupo) as subgrupo_id'),
@@ -632,7 +632,7 @@ export async function getOutrosExercicios(req: Request, res: Response): Promise<
     baseJoins(db('fact_ordem_pagamento as f'))
       .modify((q: any) => applyFiltrosSintetica(q, filtros))
       .whereNull('f.rateio_itens')
-      .whereIn(db.raw('COALESCE(f.fk_grupo_pag, c.fk_grupo)'), GRUPOS_EX_ANT)
+      .whereIn(db.raw('COALESCE(f.fk_grupo_pag, c.fk_grupo)') as any, GRUPOS_EX_ANT)
       .select(
         db.raw('COALESCE(f.fk_grupo_pag, c.fk_grupo) as grupo_id'),
         db.raw('MONTH(f.data_pagamento) as mes'),
@@ -644,7 +644,7 @@ export async function getOutrosExercicios(req: Request, res: Response): Promise<
     baseJoins(db('fact_ordem_pagamento as f'))
       .modify((q: any) => applyFiltrosSintetica(q, filtros))
       .whereNull('f.rateio_itens')
-      .whereIn(db.raw('COALESCE(f.fk_grupo_pag, c.fk_grupo)'), GRUPOS_EX_ANT)
+      .whereIn(db.raw('COALESCE(f.fk_grupo_pag, c.fk_grupo)') as any, GRUPOS_EX_ANT)
       .select(
         db.raw('COALESCE(f.fk_grupo_pag, c.fk_grupo) as grupo_id'),
         db.raw('COALESCE(f.fk_subgrupo_pag, c.fk_subgrupo) as subgrupo_id'),
@@ -657,7 +657,7 @@ export async function getOutrosExercicios(req: Request, res: Response): Promise<
     baseJoins(db('fact_ordem_pagamento as f'))
       .modify((q: any) => applyFiltrosSintetica(q, filtros))
       .whereNull('f.rateio_itens')
-      .whereIn(db.raw('COALESCE(f.fk_grupo_pag, c.fk_grupo)'), GRUPOS_EX_ANT)
+      .whereIn(db.raw('COALESCE(f.fk_grupo_pag, c.fk_grupo)') as any, GRUPOS_EX_ANT)
       .select(
         db.raw('COALESCE(c.nome, "Sem credor") as credor'),
         db.raw('COALESCE(f.fk_grupo_pag, c.fk_grupo) as grupo_id'),
@@ -671,7 +671,7 @@ export async function getOutrosExercicios(req: Request, res: Response): Promise<
     baseJoins(db('fact_ordem_pagamento as f'))
       .modify((q: any) => applyFiltrosSintetica(q, filtros))
       .whereNull('f.rateio_itens')
-      .whereIn(db.raw('COALESCE(f.fk_grupo_pag, c.fk_grupo)'), GRUPOS_EX_ANT)
+      .whereIn(db.raw('COALESCE(f.fk_grupo_pag, c.fk_grupo)') as any, GRUPOS_EX_ANT)
       .select(
         db.raw('COALESCE(st.descricao, "Sem setor") as setor'),
         db.raw('COALESCE(f.fk_grupo_pag, c.fk_grupo) as grupo_id'),
@@ -746,12 +746,12 @@ export async function getOutrosExerciciosProcessos(req: Request, res: Response):
       .leftJoin('dim_setor as st', 'f.fk_setor_pag', 'st.id')
       .join('dim_fonte_recurso as fr', 'f.fk_fonte_recurso', 'fr.id')
       .join('dim_elemento_despesa as el', 'f.fk_elemento_despesa', 'el.id')
-      .leftJoin('dim_grupo_despesa as gp', db.raw('COALESCE(f.fk_grupo_pag, c.fk_grupo)'), 'gp.id')
-      .leftJoin('dim_subgrupo_despesa as sp', db.raw('COALESCE(f.fk_subgrupo_pag, c.fk_subgrupo)'), 'sp.id')
+      .leftJoin('dim_grupo_despesa as gp', db.raw('COALESCE(f.fk_grupo_pag, c.fk_grupo)') as any, 'gp.id')
+      .leftJoin('dim_subgrupo_despesa as sp', db.raw('COALESCE(f.fk_subgrupo_pag, c.fk_subgrupo)') as any, 'sp.id')
       .join('dim_entidade as e', 'f.fk_entidade', 'e.id')
       .modify((q: any) => applyFiltrosSintetica(q, filtros))
       .whereNull('f.rateio_itens')
-      .whereIn(db.raw('COALESCE(f.fk_grupo_pag, c.fk_grupo)'), GRUPOS_EX_ANT);
+      .whereIn(db.raw('COALESCE(f.fk_grupo_pag, c.fk_grupo)') as any, GRUPOS_EX_ANT);
 
   const [rows, [{ total }]] = await Promise.all([
     baseQ()
@@ -799,7 +799,7 @@ export async function getDiarias(req: Request, res: Response): Promise<void> {
     baseJoins(db('fact_ordem_pagamento as f'))
       .modify((q: any) => applyFiltrosSintetica(q, filtros))
       .whereNull('f.rateio_itens')
-      .where(db.raw('COALESCE(f.fk_grupo_pag, c.fk_grupo)'), GRUPO_DIARIAS_ID)
+      .where(db.raw('COALESCE(f.fk_grupo_pag, c.fk_grupo)') as any, GRUPO_DIARIAS_ID)
       .select(
         db.raw('COALESCE(f.fk_subgrupo_pag, c.fk_subgrupo) as subgrupo_id'),
         db.raw('MONTH(f.data_pagamento) as mes'),
@@ -811,7 +811,7 @@ export async function getDiarias(req: Request, res: Response): Promise<void> {
       .leftJoin('dim_entidade as e', 'f.fk_entidade', 'e.id')
       .modify((q: any) => applyFiltrosSintetica(q, filtros))
       .whereNull('f.rateio_itens')
-      .where(db.raw('COALESCE(f.fk_grupo_pag, c.fk_grupo)'), GRUPO_DIARIAS_ID)
+      .where(db.raw('COALESCE(f.fk_grupo_pag, c.fk_grupo)') as any, GRUPO_DIARIAS_ID)
       .select(
         db.raw('COALESCE(st.descricao, "Sem setor") as setor'),
         db.raw('SUM(f.valor_bruto) as total'),
@@ -823,7 +823,7 @@ export async function getDiarias(req: Request, res: Response): Promise<void> {
     baseJoins(db('fact_ordem_pagamento as f'))
       .modify((q: any) => applyFiltrosSintetica(q, filtros))
       .whereNull('f.rateio_itens')
-      .where(db.raw('COALESCE(f.fk_grupo_pag, c.fk_grupo)'), GRUPO_DIARIAS_ID)
+      .where(db.raw('COALESCE(f.fk_grupo_pag, c.fk_grupo)') as any, GRUPO_DIARIAS_ID)
       .select(
         db.raw('COALESCE(c.nome, "Sem credor") as credor'),
         db.raw('MONTH(f.data_pagamento) as mes'),
@@ -927,8 +927,8 @@ export async function getCardStats(req: Request, res: Response): Promise<void> {
       if (dataFim)    q.where('f.data_pagamento', '<=', dataFim);
       if (entidadeId) q.where('f.fk_entidade', entidadeId);
       if (tipoRelatorio) q.where('f.tipo_relatorio', tipoRelatorio);
-      if (grupoId)    q.where(db.raw('COALESCE(f.fk_grupo_pag, c.fk_grupo)'), grupoId);
-      if (subgrupoId) q.where(db.raw('COALESCE(f.fk_subgrupo_pag, c.fk_subgrupo)'), subgrupoId);
+      if (grupoId)    q.where(db.raw('COALESCE(f.fk_grupo_pag, c.fk_grupo)') as any, grupoId);
+      if (subgrupoId) q.where(db.raw('COALESCE(f.fk_subgrupo_pag, c.fk_subgrupo)') as any, subgrupoId);
       if (credorSearch) q.where((w: any) => w
         .where('c.nome', 'like', `%${credorSearch}%`)
         .orWhere('f.credor_nome', 'like', `%${credorSearch}%`));
