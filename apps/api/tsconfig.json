@@ -9,10 +9,7 @@
     "esModuleInterop": true,
     "skipLibCheck": true,
     "resolveJsonModule": true,
-    "declaration": true,
-    "paths": {
-      "@public-auditor/shared": ["../../packages/shared/src/index.ts"]
-    }
+    "declaration": false
   },
   "include": ["src", "migrations", "seeds", "knexfile.ts"],
   "exclude": ["node_modules", "dist"]

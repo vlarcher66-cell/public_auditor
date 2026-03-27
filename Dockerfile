@@ -10,6 +10,8 @@ COPY apps/api/ ./apps/api/
 
 RUN pnpm install --frozen-lockfile
 
+RUN pnpm --filter @public-auditor/shared build
+
 RUN pnpm --filter @public-auditor/api build
 
 WORKDIR /app/apps/api
