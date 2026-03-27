@@ -1916,7 +1916,7 @@ export default function PagamentosPage() {
                       {/* Credor */}
                       <td style={{ padding: '9px 14px', borderRight: '1px solid #f0f4fb' }}>
                         <div style={{ display: 'flex', alignItems: 'flex-start', gap: '4px' }}>
-                          {detalhar && <Layers size={10} style={{ color: '#818cf8', flexShrink: 0, marginTop: '2px' }} title="Classificação por pagamento" />}
+                          {detalhar && <Layers size={10} style={{ color: '#818cf8', flexShrink: 0, marginTop: '2px' }} aria-label="Classificação por pagamento" />}
                           <span style={{ fontWeight: 500, color: '#0f172a', lineHeight: 1.35 }}>{r.credor_nome}</span>
                         </div>
                       </td>
