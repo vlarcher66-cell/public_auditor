@@ -358,7 +358,7 @@ function LimparCredoresModal({
 
 // ─── Linha com dropdowns inline ───────────────────────────────────────────────
 
-export function CredorRow({
+function CredorRow({
   credor,
   grupos,
   subgrupos,
