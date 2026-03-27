@@ -4,7 +4,6 @@ import { useEffect, useState, useCallback } from 'react';
 import { useSession } from 'next-auth/react';
 import { UserCog, Plus, Pencil, Trash2, KeyRound, X, Check, ShieldCheck, Eye } from 'lucide-react';
 import { SearchSelect } from '@/components/SearchSelect';
-import { SearchSelect } from '@/components/SearchSelect';
 
 const API = `${process.env.NEXT_PUBLIC_API_URL}/api`;
 
