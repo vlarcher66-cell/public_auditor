@@ -7,10 +7,7 @@ dotenv.config({ path: path.resolve(__dirname, '../../.env') });
 const isProduction = process.env.NODE_ENV === 'production';
 
 const connectionConfig = isProduction && process.env.MYSQL_URL
-  ? {
-      connectionString: process.env.MYSQL_URL,
-      ssl: { rejectUnauthorized: false },
-    }
+  ? process.env.MYSQL_URL
   : {
       host: process.env.DATABASE_HOST || '127.0.0.1',
       port: Number(process.env.DATABASE_PORT) || 3306,
