@@ -1,0 +1,16 @@
+[phases.setup]
+nixPkgs = ["nodejs_20"]
+
+[phases.install]
+cmds = [
+  "npm install -g pnpm@9",
+  "cd ../.. && pnpm install --frozen-lockfile"
+]
+
+[phases.build]
+cmds = [
+  "cd ../.. && pnpm --filter @public-auditor/api build"
+]
+
+[start]
+cmd = "node dist/server.js"
