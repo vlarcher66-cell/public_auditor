@@ -2,38 +2,117 @@ import { Request, Response } from 'express';
 import bcrypt from 'bcryptjs';
 import { db } from '../config/database';
 
-export async function listUsuarios(_req: Request, res: Response): Promise<void> {
-  const rows = await db('usuarios')
-    .select('id', 'nome', 'email', 'role', 'ativo', 'ultimo_acesso', 'criado_em')
-    .orderBy('nome');
+const ROLES_VALIDOS = ['SUPER_ADMIN', 'GESTOR', 'CONTADOR', 'AUDITOR', 'VEREADOR', 'VIEWER', 'ADMIN'];
+
+async function tabelaExiste(tabela: string): Promise<boolean> {
+  try {
+    const r = await db.raw(`SHOW TABLES LIKE '${tabela}'`);
+    return r[0].length > 0;
+  } catch { return false; }
+}
+
+async function colunaExiste(tabela: string, coluna: string): Promise<boolean> {
+  try {
+    const r = await db.raw(`SHOW COLUMNS FROM ${tabela} LIKE '${coluna}'`);
+    return r[0].length > 0;
+  } catch { return false; }
+}
+
+export async function listUsuarios(req: Request, res: Response): Promise<void> {
+  const user = req.user!;
+  const temMunicipio = await colunaExiste('usuarios', 'fk_municipio');
+  const temDimMunicipio = await tabelaExiste('dim_municipio');
+
+  let query;
+
+  if (temMunicipio && temDimMunicipio) {
+    query = db('usuarios as u')
+      .leftJoin('dim_municipio as m', 'u.fk_municipio', 'm.id')
+      .leftJoin('dim_entidade as e', 'u.fk_entidade', 'e.id')
+      .select(
+        'u.id', 'u.nome', 'u.email', 'u.role', 'u.ativo',
+        'u.fk_municipio', 'u.fk_entidade',
+        'm.nome as municipio_nome',
+        'e.nome as entidade_nome',
+        'u.ultimo_acesso', 'u.criado_em',
+      )
+      .orderBy('u.nome');
+
+    if (user.role !== 'SUPER_ADMIN' && user.fk_municipio) {
+      query.where('u.fk_municipio', user.fk_municipio);
+    }
+  } else {
+    query = db('usuarios').select('id', 'nome', 'email', 'role', 'ativo', 'ultimo_acesso', 'criado_em').orderBy('nome');
+  }
+
+  const rows = await query;
   res.json(rows);
 }
 
 export async function createUsuario(req: Request, res: Response): Promise<void> {
-  const { nome, email, senha, role = 'VIEWER' } = req.body;
+  const user = req.user!;
+  const { nome, email, senha, role = 'VIEWER', fk_municipio, fk_entidade } = req.body;
+
   if (!nome?.trim() || !email?.trim() || !senha) {
     res.status(400).json({ error: 'Nome, email e senha são obrigatórios' });
     return;
   }
+  if (!ROLES_VALIDOS.includes(role)) {
+    res.status(400).json({ error: 'Perfil inválido' });
+    return;
+  }
+  if (role === 'SUPER_ADMIN' && user.role !== 'SUPER_ADMIN') {
+    res.status(403).json({ error: 'Apenas o Super Admin pode criar outro Super Admin' });
+    return;
+  }
+
   const exists = await db('usuarios').where({ email: email.trim() }).first();
   if (exists) { res.status(409).json({ error: 'Email já cadastrado' }); return; }
 
+  const temColuna = await colunaExiste('usuarios', 'fk_municipio');
+  const municipioFinal = user.role === 'SUPER_ADMIN' ? (fk_municipio || null) : (user.fk_municipio || null);
+
   const senha_hash = await bcrypt.hash(senha, 12);
-  const [id] = await db('usuarios').insert({
-    nome: nome.trim(), email: email.trim().toLowerCase(),
-    senha_hash, role, ativo: true, criado_em: new Date(),
-  });
+  const insert: Record<string, any> = {
+    nome: nome.trim(),
+    email: email.trim().toLowerCase(),
+    senha_hash,
+    role,
+    ativo: true,
+    criado_em: new Date(),
+  };
+  if (temColuna) {
+    insert.fk_municipio = municipioFinal;
+    insert.fk_entidade = fk_entidade || null;
+  }
+
+  const [id] = await db('usuarios').insert(insert);
   res.status(201).json({ id, nome: nome.trim(), email, role, ativo: true });
 }
 
 export async function updateUsuario(req: Request, res: Response): Promise<void> {
+  const user = req.user!;
   const { id } = req.params;
-  const { nome, email, role, ativo } = req.body;
+  const { nome, email, role, ativo, fk_municipio, fk_entidade } = req.body;
+
+  const temColuna = await colunaExiste('usuarios', 'fk_municipio');
+
+  if (temColuna && user.role !== 'SUPER_ADMIN') {
+    const alvo = await db('usuarios').where({ id }).first();
+    if (alvo?.fk_municipio && alvo.fk_municipio !== user.fk_municipio) {
+      res.status(403).json({ error: 'Acesso negado' });
+      return;
+    }
+  }
+
   const update: Record<string, any> = {};
   if (nome !== undefined) update.nome = nome.trim();
   if (email !== undefined) update.email = email.trim().toLowerCase();
-  if (role !== undefined) update.role = role;
+  if (role !== undefined && ROLES_VALIDOS.includes(role)) update.role = role;
   if (ativo !== undefined) update.ativo = ativo;
+  if (temColuna && fk_municipio !== undefined && user.role === 'SUPER_ADMIN') update.fk_municipio = fk_municipio || null;
+  if (temColuna && fk_entidade !== undefined) update.fk_entidade = fk_entidade || null;
+
   await db('usuarios').where({ id }).update(update);
   res.json({ message: 'Usuário atualizado' });
 }
@@ -51,14 +130,17 @@ export async function changePassword(req: Request, res: Response): Promise<void>
 }
 
 export async function deleteUsuario(req: Request, res: Response): Promise<void> {
+  const user = req.user!;
   const { id } = req.params;
-  // Prevent deleting the last admin
-  const admins = await db('usuarios').where({ role: 'ADMIN', ativo: true }).count('id as n').first();
+
   const target = await db('usuarios').where({ id }).first();
-  if (target?.role === 'ADMIN' && Number((admins as any)?.n) <= 1) {
-    res.status(409).json({ error: 'Não é possível excluir o único administrador' });
-    return;
+  if (!target) { res.status(404).json({ error: 'Usuário não encontrado' }); return; }
+
+  const temColuna = await colunaExiste('usuarios', 'fk_municipio');
+  if (temColuna && user.role !== 'SUPER_ADMIN' && target.fk_municipio && target.fk_municipio !== user.fk_municipio) {
+    res.status(403).json({ error: 'Acesso negado' }); return;
   }
+
   await db('usuarios').where({ id }).delete();
   res.json({ message: 'Usuário excluído' });
 }

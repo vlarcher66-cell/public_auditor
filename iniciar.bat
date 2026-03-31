@@ -4,22 +4,22 @@ echo  Iniciando GestorPublico
 echo ========================================
 echo.
 
+echo [1/3] Matando processos antigos...
+taskkill /F /IM node.exe /T 2>nul
+timeout /t 3 /nobreak >nul
+
 cd /d C:\Users\Usuario\Desktop\public_auditor
 
-echo [1/2] Rodando migration do banco de dados...
-call pnpm --filter api migrate
-echo.
+echo [2/3] Iniciando API (porta 3001)...
+start cmd /k "cd /d C:\Users\Usuario\Desktop\public_auditor\apps\api && pnpm dev"
+timeout /t 8 /nobreak >nul
 
-echo [2/2] Iniciando servidores (API + Web)...
-echo.
-echo Abrindo dois terminais separados...
-start cmd /k "cd /d C:\Users\Usuario\Desktop\public_auditor && echo === API - porta 3001 === && pnpm --filter api dev"
-timeout /t 3 /nobreak >nul
-start cmd /k "cd /d C:\Users\Usuario\Desktop\public_auditor && echo === WEB - porta 3000 === && pnpm --filter web dev"
+echo [3/3] Iniciando Web (porta 3000)...
+start cmd /k "cd /d C:\Users\Usuario\Desktop\public_auditor\apps\web && pnpm dev"
 
 echo.
 echo ========================================
-echo  Aguarde os servidores iniciarem...
+echo  Aguarde ~20 segundos...
 echo  Depois acesse: http://localhost:3000
 echo ========================================
 pause

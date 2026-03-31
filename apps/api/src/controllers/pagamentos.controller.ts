@@ -429,6 +429,8 @@ function applyFiltrosSintetica(q: any, p: {
   setorId?: string;
   blocoId?: string;
   fonteRecurso?: string;
+  grupoId?: string;
+  subgrupoId?: string;
 }) {
   q.whereRaw('YEAR(f.data_pagamento) = ?', [p.anoFiltro]);
   if (p.entidadeId)   q.where('f.fk_entidade', p.entidadeId);
@@ -436,12 +438,15 @@ function applyFiltrosSintetica(q: any, p: {
   if (p.setorId)      q.where('f.fk_setor_pag', p.setorId);
   if (p.blocoId)      q.where('st.fk_bloco', p.blocoId);
   if (p.fonteRecurso) q.where('fr.codigo', p.fonteRecurso);
+  if (p.grupoId)      q.where(db.raw('COALESCE(f.fk_grupo_pag, c.fk_grupo)') as any, p.grupoId);
+  if (p.subgrupoId)   q.where(db.raw('COALESCE(f.fk_subgrupo_pag, c.fk_subgrupo)') as any, p.subgrupoId);
 }
 
 export async function getSinteticaMensal(req: Request, res: Response): Promise<void> {
-  const { ano, entidadeId, secretariaId, setorId, blocoId, fonteRecurso } = req.query as Record<string, string>;
+  const { ano, entidadeId, secretariaId, setorId, blocoId, fonteRecurso, grupoId, subgrupoId } = req.query as Record<string, string>;
   const anoFiltro = ano || new Date().getFullYear().toString();
-  const filtros = { anoFiltro, entidadeId, secretariaId, setorId, blocoId, fonteRecurso };
+  const filtrosBase = { anoFiltro, entidadeId, secretariaId, setorId, blocoId, fonteRecurso };
+  const filtrosSemRateio = { ...filtrosBase, grupoId, subgrupoId };
 
   const baseJoins = (q: any) => q
     .leftJoin('dim_credor as c', 'f.fk_credor', 'c.id')
@@ -453,7 +458,7 @@ export async function getSinteticaMensal(req: Request, res: Response): Promise<v
 
     // Pagamentos SEM rateio: agrupa pelo grupo do pagamento/credor
     baseJoins(db('fact_ordem_pagamento as f'))
-      .modify((q: any) => applyFiltrosSintetica(q, filtros))
+      .modify((q: any) => applyFiltrosSintetica(q, filtrosSemRateio))
       .whereNull('f.rateio_itens')
       .whereNotNull(db.raw('COALESCE(f.fk_grupo_pag, c.fk_grupo)') as any)
       .select(
@@ -465,7 +470,7 @@ export async function getSinteticaMensal(req: Request, res: Response): Promise<v
 
     // Pagamentos COM rateio: traz o JSON para expandir em memória
     baseJoins(db('fact_ordem_pagamento as f'))
-      .modify((q: any) => applyFiltrosSintetica(q, filtros))
+      .modify((q: any) => applyFiltrosSintetica(q, filtrosBase))
       .whereNotNull('f.rateio_itens')
       .select(
         db.raw('MONTH(f.data_pagamento) as mes'),
@@ -487,24 +492,33 @@ export async function getSinteticaMensal(req: Request, res: Response): Promise<v
   // 2) Com rateio — expande JSON em memória
   for (const row of pagamentosComRateio) {
     const mes = Number(row.mes);
-    let itens: { fk_grupo: number | null; valor: number }[] = [];
+    let itens: { fk_grupo: number | null; fk_subgrupo?: number | null; valor: number }[] = [];
     try { itens = JSON.parse(String(row.rateio_itens)); } catch { continue; }
     for (const item of itens) {
       if (!item.fk_grupo || Number(item.valor) <= 0) continue;
+      if (grupoId && Number(item.fk_grupo) !== Number(grupoId)) continue;
+      if (subgrupoId && Number(item.fk_subgrupo) !== Number(subgrupoId)) continue;
       const gId = Number(item.fk_grupo);
       if (!matrix[gId]) matrix[gId] = {};
       matrix[gId][mes] = (matrix[gId][mes] || 0) + Number(item.valor);
     }
   }
 
-  // Total geral por mês (inclui sem classificação)
-  const totalPorMes = await baseJoins(db('fact_ordem_pagamento as f'))
-    .modify((q: any) => applyFiltrosSintetica(q, filtros))
-    .select(db.raw('MONTH(f.data_pagamento) as mes'), db.raw('SUM(f.valor_bruto) as total'))
-    .groupByRaw('MONTH(f.data_pagamento)');
-
   const totaisMes: Record<number, number> = {};
-  for (const r of totalPorMes) totaisMes[Number(r.mes)] = Number(r.total);
+  if (grupoId || subgrupoId) {
+    for (const meses of Object.values(matrix)) {
+      for (const [mesStr, total] of Object.entries(meses)) {
+        const mes = Number(mesStr);
+        totaisMes[mes] = (totaisMes[mes] || 0) + Number(total);
+      }
+    }
+  } else {
+    const totalPorMes = await baseJoins(db('fact_ordem_pagamento as f'))
+      .modify((q: any) => applyFiltrosSintetica(q, filtrosBase))
+      .select(db.raw('MONTH(f.data_pagamento) as mes'), db.raw('SUM(f.valor_bruto) as total'))
+      .groupByRaw('MONTH(f.data_pagamento)');
+    for (const r of totalPorMes) totaisMes[Number(r.mes)] = Number(r.total);
+  }
 
   // Identifica grupos de exercícios anteriores pelo nome (RESTOS A PAGAR e DESPESAS DO EXERCÍCIO ANTERIOR)
   const gruposExAntDef = await db('dim_grupo_despesa')
@@ -528,9 +542,10 @@ export async function getSinteticaMensal(req: Request, res: Response): Promise<v
 }
 
 export async function getAnaliticaMensal(req: Request, res: Response): Promise<void> {
-  const { ano, entidadeId, secretariaId, setorId, blocoId, fonteRecurso } = req.query as Record<string, string>;
+  const { ano, entidadeId, secretariaId, setorId, blocoId, fonteRecurso, grupoId, subgrupoId } = req.query as Record<string, string>;
   const anoFiltro = ano || new Date().getFullYear().toString();
-  const filtros = { anoFiltro, entidadeId, secretariaId, setorId, blocoId, fonteRecurso };
+  const filtrosBase = { anoFiltro, entidadeId, secretariaId, setorId, blocoId, fonteRecurso };
+  const filtrosSemRateio = { ...filtrosBase, grupoId, subgrupoId };
 
   const baseJoins = (q: any) => q
     .leftJoin('dim_credor as c', 'f.fk_credor', 'c.id')
@@ -545,7 +560,7 @@ export async function getAnaliticaMensal(req: Request, res: Response): Promise<v
 
     // Pagamentos SEM rateio — agrupa por grupo + subgrupo + mês
     baseJoins(db('fact_ordem_pagamento as f'))
-      .modify((q: any) => applyFiltrosSintetica(q, filtros))
+      .modify((q: any) => applyFiltrosSintetica(q, filtrosSemRateio))
       .whereNull('f.rateio_itens')
       .whereNotNull(db.raw('COALESCE(f.fk_grupo_pag, c.fk_grupo)') as any)
       .select(
@@ -558,7 +573,7 @@ export async function getAnaliticaMensal(req: Request, res: Response): Promise<v
 
     // Pagamentos COM rateio — expande JSON em memória
     baseJoins(db('fact_ordem_pagamento as f'))
-      .modify((q: any) => applyFiltrosSintetica(q, filtros))
+      .modify((q: any) => applyFiltrosSintetica(q, filtrosBase))
       .whereNotNull('f.rateio_itens')
       .select(db.raw('MONTH(f.data_pagamento) as mes'), 'f.rateio_itens'),
   ]);
@@ -583,6 +598,8 @@ export async function getAnaliticaMensal(req: Request, res: Response): Promise<v
     try { itens = JSON.parse(String(row.rateio_itens)); } catch { continue; }
     for (const item of itens) {
       if (!item.fk_grupo || Number(item.valor) <= 0) continue;
+      if (grupoId && Number(item.fk_grupo) !== Number(grupoId)) continue;
+      if (subgrupoId && Number(item.fk_subgrupo) !== Number(subgrupoId)) continue;
       addToMatrix(Number(item.fk_grupo), Number(item.fk_subgrupo) || 0, mes, Number(item.valor));
     }
   }
@@ -881,7 +898,7 @@ export async function getSinteticaFiltros(req: Request, res: Response): Promise<
       .join('dim_fonte_recurso as fr', 'f.fk_fonte_recurso', 'fr.id')
       .whereRaw('YEAR(f.data_pagamento) = ?', [anoFiltro]);
 
-  const [entidades, secretarias, setores, blocos, fontes] = await Promise.all([
+  const [entidades, secretarias, setores, blocos, fontes, grupos, subgrupos] = await Promise.all([
     base()
       .join('dim_entidade as e', 'f.fk_entidade', 'e.id')
       .distinct('e.id', 'e.nome')
@@ -912,9 +929,20 @@ export async function getSinteticaFiltros(req: Request, res: Response): Promise<
       .distinct('fr.codigo')
       .orderBy('fr.codigo')
       .select('fr.codigo'),
+
+    db('dim_grupo_despesa').select('id', 'nome').orderBy('nome'),
+    db('dim_subgrupo_despesa').select('id', 'nome', 'fk_grupo').orderBy('nome'),
   ]);
 
-  res.json({ entidades, secretarias, setores, blocos, fontes: fontes.map((f: any) => f.codigo) });
+  res.json({
+    entidades,
+    secretarias,
+    setores,
+    blocos,
+    fontes: fontes.map((f: any) => f.codigo),
+    grupos,
+    subgrupos,
+  });
 }
 
 export async function getCardStats(req: Request, res: Response): Promise<void> {

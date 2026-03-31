@@ -1,23 +1,19 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
-import { signOut } from 'next-auth/react';
+import { usePathname, useRouter } from 'next/navigation';
+import { signOut, useSession } from 'next-auth/react';
 import { useState } from 'react';
 import {
   LayoutDashboard, Upload, FileText, LogOut, ChevronRight,
-  Building2, Layers, Tag, ChevronDown, UserCog, PanelLeftClose, PanelLeftOpen, Grip, Landmark,
+  Building2, Layers, Tag, ChevronDown, UserCog, PanelLeftClose, PanelLeftOpen, Grip, Landmark, CheckCircle, TrendingUp, TrendingDown, BarChart2, ArrowLeftRight, ShieldCheck, Target,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-const navItems = [
-  { href: '/dashboard', icon: <LayoutDashboard size={18} />, label: 'Dashboard' },
-  { href: '/importacao', icon: <Upload size={18} />, label: 'Importação' },
-  { href: '/pagamentos', icon: <FileText size={18} />, label: 'Pagamentos' },
-  { href: '/cadastros/credor', icon: <Tag size={18} />, label: 'Classificação' },
-];
+// ─── Estrutura do menu ────────────────────────────────────────────────────────
 
 const cadastrosItems = [
+  { href: '/cadastros/municipio', icon: <Landmark size={16} />, label: 'Cad. Município', superAdminOnly: true },
   { href: '/cadastros/entidade', icon: <Building2 size={16} />, label: 'Cad. Entidade' },
   { href: '/cadastros/secretaria', icon: <Landmark size={16} />, label: 'Cad. Secretaria' },
   { href: '/cadastros/bloco', icon: <Grip size={16} />, label: 'Cad. Bloco' },
@@ -26,15 +22,128 @@ const cadastrosItems = [
   { href: '/cadastros/subgrupo', icon: <Tag size={16} />, label: 'Cad. Subgrupo' },
 ];
 
+const classificacaoItems = [
+  { href: '/cadastros/credor', icon: <Tag size={14} />, label: 'Credores' },
+];
+
 interface SidebarProps {
   collapsed: boolean;
   onToggle: () => void;
 }
 
+// ─── Componente de item simples ───────────────────────────────────────────────
+
+function NavItem({
+  href, icon, label, collapsed, active,
+}: {
+  href: string; icon: React.ReactNode; label: string; collapsed: boolean; active: boolean;
+}) {
+  return (
+    <Link
+      href={href}
+      title={collapsed ? label : undefined}
+      className={cn(
+        'flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200',
+        collapsed && 'justify-center px-0',
+        active ? 'bg-white/15 text-white shadow-sm' : 'text-white/60 hover:bg-white/10 hover:text-white',
+      )}
+    >
+      <span className={active ? 'text-gold-500' : ''}>{icon}</span>
+      {!collapsed && <span>{label}</span>}
+      {!collapsed && active && <ChevronRight size={14} className="ml-auto text-gold-500" />}
+    </Link>
+  );
+}
+
+// ─── Componente de grupo expansível ──────────────────────────────────────────
+
+function NavGroup({
+  icon, label, collapsed, active, open, onToggle, children,
+}: {
+  icon: React.ReactNode; label: string; collapsed: boolean;
+  active: boolean; open: boolean; onToggle: () => void;
+  children: React.ReactNode;
+}) {
+  if (collapsed) {
+    return (
+      <button
+        onClick={onToggle}
+        title={label}
+        className={cn(
+          'flex justify-center items-center px-0 py-2.5 w-full rounded-xl text-sm font-medium transition-all duration-200',
+          active ? 'bg-white/15 text-gold-500' : 'text-white/60 hover:bg-white/10 hover:text-white',
+        )}
+      >
+        {icon}
+      </button>
+    );
+  }
+
+  return (
+    <div>
+      <button
+        onClick={onToggle}
+        className={cn(
+          'flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 w-full',
+          active ? 'bg-white/15 text-white shadow-sm' : 'text-white/60 hover:bg-white/10 hover:text-white',
+        )}
+      >
+        <span className={active ? 'text-gold-500' : ''}>{icon}</span>
+        <span>{label}</span>
+        <ChevronDown size={14} className={cn('ml-auto transition-transform duration-200', open ? 'rotate-180' : '')} />
+      </button>
+      {open && (
+        <div className="ml-4 mt-1 space-y-0.5 border-l border-white/10 pl-3">
+          {children}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Sub-item dentro de grupo ─────────────────────────────────────────────────
+
+function SubItem({
+  href, icon, label, active,
+}: {
+  href: string; icon: React.ReactNode; label: string; active: boolean;
+}) {
+  return (
+    <Link
+      href={href}
+      className={cn(
+        'flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200',
+        active ? 'bg-white/15 text-white' : 'text-white/60 hover:bg-white/10 hover:text-white',
+      )}
+    >
+      <span className={active ? 'text-gold-500' : ''}>{icon}</span>
+      <span>{label}</span>
+      {active && <ChevronRight size={12} className="ml-auto text-gold-500" />}
+    </Link>
+  );
+}
+
+// ─── Sidebar principal ────────────────────────────────────────────────────────
+
 export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
   const pathname = usePathname();
-  const cadastrosActive = pathname.startsWith('/cadastros');
-  const [cadastrosOpen, setCadastrosOpen] = useState(cadastrosActive);
+  const router = useRouter();
+  const { data: session } = useSession();
+  const role = (session as any)?.user?.role ?? '';
+  const isSuperAdmin = role === 'SUPER_ADMIN';
+
+  // Estados dos grupos
+  const isDashboardActive = pathname === '/dashboard' || pathname === '/receitas' || pathname === '/saude-15' || pathname === '/metas';
+  const isImportacaoActive = pathname === '/importacao' || pathname === '/importacao-receita' || pathname === '/importacao-transf-bancaria';
+  const isAnaliseActive = pathname === '/pagamentos' || pathname === '/receitas/listagem';
+  const isCadastrosActive = pathname.startsWith('/cadastros');
+  const isClassificacaoActive = pathname === '/cadastros/credor' || pathname.startsWith('/cadastros/credor/');
+
+  const [dashboardOpen, setDashboardOpen] = useState(isDashboardActive);
+  const [importacaoOpen, setImportacaoOpen] = useState(isImportacaoActive);
+  const [analiseOpen, setAnaliseOpen] = useState(isAnaliseActive);
+  const [cadastrosOpen, setCadastrosOpen] = useState(isCadastrosActive);
+  const [classificacaoOpen, setClassificacaoOpen] = useState(isClassificacaoActive);
 
   return (
     <aside
@@ -67,7 +176,7 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
         )}
       </div>
 
-      {/* Botão expandir (só aparece colapsado) */}
+      {/* Botão expandir (colapsado) */}
       {collapsed && (
         <div className="flex justify-center py-2 border-b border-white/10">
           <button
@@ -81,105 +190,186 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
       )}
 
       {/* Navigation */}
-      <nav className="flex-1 px-2 py-4 space-y-1">
+      <nav className="flex-1 px-2 py-4 space-y-1 overflow-y-auto">
         {!collapsed && (
           <p className="text-xs font-semibold text-white/40 uppercase tracking-wider px-3 mb-3">Menu</p>
         )}
 
-        {navItems.slice(0, 3).map((item) => {
-          const active = pathname === item.href || pathname.startsWith(item.href + '/');
-          return (
-            <Link
+        {/* ── Dashboard (Receita / Despesa) ─────────────────────────────── */}
+        <NavGroup
+          icon={<LayoutDashboard size={18} />}
+          label="Dashboard"
+          collapsed={collapsed}
+          active={isDashboardActive}
+          open={dashboardOpen}
+          onToggle={() => setDashboardOpen(v => !v)}
+        >
+          <SubItem
+            href="/dashboard"
+            icon={<TrendingDown size={14} />}
+            label="Despesa"
+            active={pathname === '/dashboard'}
+          />
+          <SubItem
+            href="/receitas"
+            icon={<TrendingUp size={14} />}
+            label="Receita"
+            active={pathname === '/receitas'}
+          />
+          <SubItem
+            href="/saude-15"
+            icon={<ShieldCheck size={14} />}
+            label="Índice Saúde 15%"
+            active={pathname === '/saude-15'}
+          />
+          <SubItem
+            href="/metas"
+            icon={<Target size={14} />}
+            label="Metas por Subgrupo"
+            active={pathname === '/metas'}
+          />
+        </NavGroup>
+
+        {/* ── Importação (Despesa / Receita) ────────────────────────────── */}
+        <NavGroup
+          icon={<Upload size={18} />}
+          label="Importação"
+          collapsed={collapsed}
+          active={isImportacaoActive}
+          open={importacaoOpen}
+          onToggle={() => setImportacaoOpen(v => !v)}
+        >
+          <SubItem
+            href="/importacao"
+            icon={<TrendingDown size={14} />}
+            label="Despesa"
+            active={pathname === '/importacao'}
+          />
+          <SubItem
+            href="/importacao-receita"
+            icon={<TrendingUp size={14} />}
+            label="Receita"
+            active={pathname === '/importacao-receita'}
+          />
+          <SubItem
+            href="/importacao-transf-bancaria"
+            icon={<ArrowLeftRight size={14} />}
+            label="Transf. Bancária"
+            active={pathname === '/importacao-transf-bancaria'}
+          />
+        </NavGroup>
+
+        {/* ── Análise (Pagamentos / Receitas) ───────────────────────────── */}
+        <NavGroup
+          icon={<BarChart2 size={18} />}
+          label="Análise"
+          collapsed={collapsed}
+          active={isAnaliseActive}
+          open={analiseOpen}
+          onToggle={() => setAnaliseOpen(v => !v)}
+        >
+          <SubItem
+            href="/pagamentos"
+            icon={<TrendingDown size={14} />}
+            label="Despesa"
+            active={pathname === '/pagamentos'}
+          />
+          <SubItem
+            href="/receitas/listagem"
+            icon={<TrendingUp size={14} />}
+            label="Receita"
+            active={pathname === '/receitas/listagem'}
+          />
+        </NavGroup>
+
+        {/* ── Classificação ─────────────────────────────────────────────── */}
+        <NavGroup
+          icon={<Tag size={18} />}
+          label="Classificação"
+          collapsed={collapsed}
+          active={isClassificacaoActive}
+          open={classificacaoOpen}
+          onToggle={() => setClassificacaoOpen(v => !v)}
+        >
+          {classificacaoItems.map(item => (
+            <SubItem
               key={item.href}
               href={item.href}
-              title={collapsed ? item.label : undefined}
-              className={cn(
-                'flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200',
-                collapsed && 'justify-center px-0',
-                active ? 'bg-white/15 text-white shadow-sm' : 'text-white/60 hover:bg-white/10 hover:text-white',
-              )}
-            >
-              <span className={active ? 'text-gold-500' : ''}>{item.icon}</span>
-              {!collapsed && <span>{item.label}</span>}
-              {!collapsed && active && <ChevronRight size={14} className="ml-auto text-gold-500" />}
-            </Link>
-          );
-        })}
+              icon={item.icon}
+              label={item.label}
+              active={pathname === item.href}
+            />
+          ))}
+          <button
+            onClick={() => router.push(`/cadastros/credor?conf=diarias&t=${Date.now()}`)}
+            className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 w-full text-white/60 hover:bg-white/10 hover:text-white"
+          >
+            <CheckCircle size={14} />
+            <span>Conf. Diárias</span>
+          </button>
+          <button
+            onClick={() => router.push(`/cadastros/credor?conf=pessoal&t=${Date.now()}`)}
+            className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 w-full text-white/60 hover:bg-white/10 hover:text-white"
+          >
+            <CheckCircle size={14} />
+            <span>Conf. Pessoal</span>
+          </button>
+        </NavGroup>
 
-        {/* Classificação */}
-        <Link
-          href="/cadastros/credor"
-          title={collapsed ? 'Classificação' : undefined}
-          className={cn(
-            'flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200',
-            collapsed && 'justify-center px-0',
-            (pathname === '/cadastros/credor' || pathname.startsWith('/cadastros/credor/')) ? 'bg-white/15 text-white shadow-sm' : 'text-white/60 hover:bg-white/10 hover:text-white',
-          )}
-        >
-          <span className={(pathname === '/cadastros/credor' || pathname.startsWith('/cadastros/credor/')) ? 'text-gold-500' : ''}><Tag size={18} /></span>
-          {!collapsed && <span>Classificação</span>}
-          {!collapsed && (pathname === '/cadastros/credor' || pathname.startsWith('/cadastros/credor/')) && <ChevronRight size={14} className="ml-auto text-gold-500" />}
-        </Link>
-
-        {/* Cadastros section */}
+        {/* ── Cadastros ─────────────────────────────────────────────────── */}
         <div className="pt-2">
           {!collapsed && (
-            <p className="text-xs font-semibold text-white/40 uppercase tracking-wider px-3 mb-3 mt-2">Cadastros</p>
+            <p className="text-xs font-semibold text-white/40 uppercase tracking-wider px-3 mb-2 mt-1">Configurações</p>
           )}
 
           {collapsed ? (
-            // No modo colapsado mostra os itens de cadastro direto com ícone
-            cadastrosItems.map((item) => {
-              const active = pathname === item.href || pathname.startsWith(item.href + '/');
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  title={item.label}
-                  className={cn(
-                    'flex justify-center items-center px-0 py-2.5 rounded-xl text-sm font-medium transition-all duration-200',
-                    active ? 'bg-white/15 text-gold-500' : 'text-white/60 hover:bg-white/10 hover:text-white',
-                  )}
-                >
-                  {item.icon}
-                </Link>
-              );
-            })
+            cadastrosItems
+              .filter(item => !item.superAdminOnly || isSuperAdmin)
+              .map((item) => {
+                const active = pathname === item.href || pathname.startsWith(item.href + '/');
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    title={item.label}
+                    className={cn(
+                      'flex justify-center items-center px-0 py-2.5 rounded-xl text-sm font-medium transition-all duration-200',
+                      active ? 'bg-white/15 text-gold-500' : 'text-white/60 hover:bg-white/10 hover:text-white',
+                    )}
+                  >
+                    {item.icon}
+                  </Link>
+                );
+              })
           ) : (
             <>
               <button
-                onClick={() => setCadastrosOpen((v) => !v)}
+                onClick={() => setCadastrosOpen(v => !v)}
                 className={cn(
                   'flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 w-full',
-                  cadastrosActive ? 'bg-white/15 text-white shadow-sm' : 'text-white/60 hover:bg-white/10 hover:text-white',
+                  isCadastrosActive ? 'bg-white/15 text-white shadow-sm' : 'text-white/60 hover:bg-white/10 hover:text-white',
                 )}
               >
-                <span className={cadastrosActive ? 'text-gold-500' : ''}><Layers size={18} /></span>
+                <span className={isCadastrosActive ? 'text-gold-500' : ''}><Layers size={18} /></span>
                 <span>Cadastros</span>
-                <ChevronDown
-                  size={14}
-                  className={cn('ml-auto transition-transform duration-200', cadastrosOpen ? 'rotate-180' : '')}
-                />
+                <ChevronDown size={14} className={cn('ml-auto transition-transform duration-200', cadastrosOpen ? 'rotate-180' : '')} />
               </button>
               {cadastrosOpen && (
-                <div className="ml-4 mt-1 space-y-1 border-l border-white/10 pl-3">
-                  {cadastrosItems.map((item) => {
-                    const active = pathname === item.href || pathname.startsWith(item.href + '/');
-                    return (
-                      <Link
-                        key={item.href}
-                        href={item.href}
-                        className={cn(
-                          'flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200',
-                          active ? 'bg-white/15 text-white' : 'text-white/60 hover:bg-white/10 hover:text-white',
-                        )}
-                      >
-                        <span className={active ? 'text-gold-500' : ''}>{item.icon}</span>
-                        <span>{item.label}</span>
-                        {active && <ChevronRight size={12} className="ml-auto text-gold-500" />}
-                      </Link>
-                    );
-                  })}
+                <div className="ml-4 mt-1 space-y-0.5 border-l border-white/10 pl-3">
+                  {cadastrosItems
+                    .filter(item => !item.superAdminOnly || isSuperAdmin)
+                    .map((item) => {
+                      const active = pathname === item.href || pathname.startsWith(item.href + '/');
+                      return (
+                        <SubItem
+                          key={item.href}
+                          href={item.href}
+                          icon={item.icon}
+                          label={item.label}
+                          active={active}
+                        />
+                      );
+                    })}
                 </div>
               )}
             </>
@@ -189,19 +379,13 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
 
       {/* Rodapé */}
       <div className="px-2 pb-4 border-t border-white/10 pt-3 space-y-1">
-        <Link
+        <NavItem
           href="/usuarios"
-          title={collapsed ? 'Usuários' : undefined}
-          className={cn(
-            'flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200',
-            collapsed && 'justify-center px-0',
-            pathname.startsWith('/usuarios') ? 'bg-white/15 text-white shadow-sm' : 'text-white/60 hover:bg-white/10 hover:text-white',
-          )}
-        >
-          <span className={pathname.startsWith('/usuarios') ? 'text-gold-500' : ''}><UserCog size={18} /></span>
-          {!collapsed && <span>Usuários</span>}
-          {!collapsed && pathname.startsWith('/usuarios') && <ChevronRight size={14} className="ml-auto text-gold-500" />}
-        </Link>
+          icon={<UserCog size={18} />}
+          label="Usuários"
+          collapsed={collapsed}
+          active={pathname.startsWith('/usuarios')}
+        />
         <button
           onClick={() => signOut({ callbackUrl: '/' })}
           title={collapsed ? 'Sair' : undefined}

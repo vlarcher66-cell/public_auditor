@@ -1014,6 +1014,7 @@ interface RateioItemLocal {
   subgrupo_nome?: string;
   valor: string;
   valorDisplay?: string;
+  autoFilled?: boolean;
 }
 
 function RateioModal({
@@ -1032,6 +1033,21 @@ function RateioModal({
   const [salvo, setSalvo] = useState(false);
   const [error, setError] = useState('');
   const [search, setSearch] = useState('');
+
+  // DEA/RP: grupo travado
+  const tipoRelatorio = (pagamento as any).tipo_relatorio as string;
+  const isDeaOuRp = tipoRelatorio === 'DEA' || tipoRelatorio === 'RP';
+  const grupoTravado = isDeaOuRp
+    ? grupos.find(g =>
+        tipoRelatorio === 'DEA'
+          ? g.nome.toUpperCase().includes('EXERC') && g.nome.toUpperCase().includes('ANTERIOR')
+          : g.nome.toUpperCase().includes('RESTOS A PAGAR')
+      ) ?? null
+    : null;
+  // Subgrupos normais (sem prefixo DEA/RP) para exibir no select quando DEA/RP
+  const subgruposNormais = isDeaOuRp
+    ? subgrupos.filter(s => !s.nome.startsWith('DEA - ') && !s.nome.startsWith('RP - '))
+    : subgrupos;
 
   const fmt = (v: number) => v.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
@@ -1056,16 +1072,15 @@ function RateioModal({
           valor: String(d.valor),
           valorDisplay: Number(d.valor).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
         })));
-      } else if (templateData.length > 0) {
-        // Sem rateio mas tem template — carrega sem valores
-        setItens(templateData.map((d: any) => ({
-          fk_grupo: d.fk_grupo ?? '',
-          fk_subgrupo: d.fk_subgrupo ?? '',
-          grupo_nome: d.grupo_nome,
-          subgrupo_nome: d.subgrupo_nome,
+      } else {
+        // Sem rateio salvo — começa com apenas uma linha vazia
+        setItens([{ 
+          fk_grupo: grupoTravado ? grupoTravado.id : '',
+          fk_subgrupo: '',
           valor: '',
           valorDisplay: '',
-        })));
+          autoFilled: false,
+        }]);
       }
       setLoading(false);
     }).catch(() => setLoading(false));
@@ -1073,7 +1088,13 @@ function RateioModal({
   }, []);
 
   function addItem() {
-    setItens((prev) => [...prev, { fk_grupo: '', fk_subgrupo: '', valor: '' }]);
+    setItens((prev) => [...prev, {
+      fk_grupo: grupoTravado ? grupoTravado.id : '',
+      fk_subgrupo: '',
+      valor: '',
+      valorDisplay: '',
+      autoFilled: false,
+    }]);
   }
 
   function removeItem(idx: number) {
@@ -1101,10 +1122,11 @@ function RateioModal({
 
   // Detecta se há qualquer combinação grupo+subgrupo duplicada na lista
   const temDuplicados = itens.some((item, idx) =>
-    item.fk_grupo !== '' && itens.some((other, otherIdx) =>
+    item.fk_grupo !== '' && item.fk_subgrupo !== '' && itens.some((other, otherIdx) =>
       otherIdx !== idx &&
       other.fk_grupo === item.fk_grupo &&
-      other.fk_subgrupo === item.fk_subgrupo,
+      other.fk_subgrupo === item.fk_subgrupo &&
+      other.fk_subgrupo !== '',
     ),
   );
 
@@ -1156,6 +1178,10 @@ function RateioModal({
     return num.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   }
 
+  function formatCurrencyValue(value: number): string {
+    return value.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+
   function parseCurrencyInput(formatted: string): string {
     const clean = formatted.replace(/\./g, '').replace(',', '.');
     const num = parseFloat(clean);
@@ -1165,7 +1191,55 @@ function RateioModal({
   function handleValorChange(idx: number, raw: string) {
     const formatted = formatCurrencyInput(raw);
     const numeric = parseCurrencyInput(formatted);
-    setItens((prev) => prev.map((item, i) => i === idx ? { ...item, valor: numeric, valorDisplay: formatted } : item));
+
+    setItens((prev) => {
+      const updated = prev.map((item, i) => i === idx
+        ? { ...item, valor: numeric, valorDisplay: formatted, autoFilled: false }
+        : item
+      );
+
+      if (!formatted.trim()) {
+        return updated.map((item, i) => i > idx && item.autoFilled
+          ? { ...item, valor: '', valorDisplay: '', autoFilled: false }
+          : item
+        );
+      }
+
+      const laterManual = updated.slice(idx + 1).some((item) => item.valorDisplay?.trim() && !item.autoFilled);
+      if (laterManual) return updated;
+
+      const nextAutoIndex = updated.findIndex((item, i) => i > idx && (!item.valorDisplay?.trim() || item.autoFilled));
+      const sumBeforeNext = updated.slice(0, nextAutoIndex === -1 ? updated.length : nextAutoIndex)
+        .reduce((acc, item) => acc + (parseFloat(item.valor) || 0), 0);
+      const remainder = total - sumBeforeNext;
+
+      if (nextAutoIndex === -1) {
+        if (remainder > 0) {
+          return [
+            ...updated,
+            {
+              fk_grupo: grupoTravado ? grupoTravado.id : '',
+              fk_subgrupo: '',
+              valor: String(remainder),
+              valorDisplay: formatCurrencyValue(remainder),
+              autoFilled: true,
+            },
+          ];
+        }
+        return updated;
+      }
+
+      if (remainder < 0) return updated;
+
+      updated[nextAutoIndex] = {
+        ...updated[nextAutoIndex],
+        valor: String(remainder),
+        valorDisplay: formatCurrencyValue(remainder),
+        autoFilled: true,
+      };
+
+      return updated;
+    });
   }
 
   return (
@@ -1252,7 +1326,10 @@ function RateioModal({
                   <tr><td colSpan={5} className="px-4 py-6 text-center text-sm text-gray-400">Nenhum item para &quot;{search}&quot;</td></tr>
                 )}
                 {itensFiltrados.map(({ item, idx }) => {
-                  const subsFiltrados = subgrupos.filter((s) => s.fk_grupo === Number(item.fk_grupo));
+                  // DEA/RP: mostra subgrupos normais (sem prefixo); backend cria o prefixado ao salvar
+                  const subsFiltrados = isDeaOuRp
+                    ? subgruposNormais
+                    : subgrupos.filter((s) => s.fk_grupo === Number(item.fk_grupo));
                   const temValor = parseFloat(item.valor) > 0;
                   // Detecta combinação duplicada (mesmo grupo+subgrupo em outro item)
                   const isDuplicado = item.fk_grupo !== '' && itens.some((other, otherIdx) =>
@@ -1268,12 +1345,18 @@ function RateioModal({
                           : <span className="text-gray-400">{idx + 1}</span>}
                       </td>
                       <td className="px-2 py-2">
-                        <SearchSelect
-                          value={item.fk_grupo}
-                          onChange={(v) => updateItem(idx, 'fk_grupo', v === '' ? '' : Number(v))}
-                          options={grupos}
-                          placeholder="— sem grupo —"
-                        />
+                        {isDeaOuRp && grupoTravado ? (
+                          <div className="text-xs font-semibold px-2 py-1.5 bg-amber-50 border border-amber-200 rounded-lg text-amber-800 flex items-center gap-1">
+                            <span>🔒</span> {grupoTravado.nome}
+                          </div>
+                        ) : (
+                          <SearchSelect
+                            value={item.fk_grupo}
+                            onChange={(v) => updateItem(idx, 'fk_grupo', v === '' ? '' : Number(v))}
+                            options={grupos}
+                            placeholder="— sem grupo —"
+                          />
+                        )}
                       </td>
                       <td className="px-2 py-2">
                         <div>
@@ -1292,14 +1375,25 @@ function RateioModal({
                       <td className="px-2 py-2">
                         <div className="relative">
                           <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-gray-400">R$</span>
-                          <input
-                            type="text"
-                            inputMode="numeric"
-                            value={item.valorDisplay ?? ''}
-                            onChange={(e) => handleValorChange(idx, e.target.value)}
-                            placeholder="0,00"
-                            className="w-full text-sm border border-gray-200 rounded-lg pl-8 pr-2 py-1.5 text-right focus:outline-none focus:ring-2 focus:ring-violet-400 font-medium bg-white"
-                          />
+                          {(() => {
+                            // Calcular restante até este item (soma dos anteriores)
+                            const somaAnterior = itensFiltrados.slice(0, itensFiltrados.findIndex(x => x.idx === idx))
+                              .reduce((acc, x) => acc + (parseFloat(x.item.valor) || 0), 0);
+                            const sugestaoRestante = total - somaAnterior;
+                            const placeholderSugestao = sugestaoRestante > 0
+                              ? fmt(sugestaoRestante)
+                              : '0,00';
+                            return (
+                              <input
+                                type="text"
+                                inputMode="numeric"
+                                value={item.valorDisplay ?? ''}
+                                onChange={(e) => handleValorChange(idx, e.target.value)}
+                                placeholder={placeholderSugestao}
+                                className="w-full text-sm border border-gray-200 rounded-lg pl-8 pr-2 py-1.5 text-right focus:outline-none focus:ring-2 focus:ring-violet-400 font-medium bg-white"
+                              />
+                            );
+                          })()}
                         </div>
                       </td>
                       <td className="px-2 py-2 text-center">

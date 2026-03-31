@@ -1,6 +1,15 @@
 import { Request, Response } from 'express';
 import { db } from '../config/database';
 
+// ─── Helper: find-or-create subgrupo prefixado (DEA/RP) ──────────────────────
+async function resolverSubgrupoPrefixado(grupoId: number, prefixo: string, subgrupoNome: string): Promise<number> {
+  const nomeComPrefixo = `${prefixo} - ${subgrupoNome}`;
+  const existing = await db('dim_subgrupo_despesa').where({ nome: nomeComPrefixo, fk_grupo: grupoId }).first();
+  if (existing) return existing.id;
+  const [novoId] = await db('dim_subgrupo_despesa').insert({ nome: nomeComPrefixo, fk_grupo: grupoId });
+  return novoId;
+}
+
 export interface RateioItem {
   fk_grupo: number | null;
   fk_subgrupo: number | null;
@@ -33,15 +42,49 @@ export async function saveRateio(req: Request, res: Response): Promise<void> {
     return;
   }
 
-  // Buscar pagamento
+  // Buscar pagamento + tipo_relatorio
   const pagamento = await db('fact_ordem_pagamento')
     .where({ id })
-    .select('valor_bruto', 'fk_credor', 'num_empenho_base', 'fk_setor_pag')
+    .select('valor_bruto', 'fk_credor', 'num_empenho_base', 'fk_setor_pag', 'tipo_relatorio')
     .first();
 
   if (!pagamento) {
     res.status(404).json({ error: 'Pagamento não encontrado' });
     return;
+  }
+
+  // Resolver grupos DEA/RP para travar no grupo correto
+  const tipoRelatorio = pagamento.tipo_relatorio; // 'DEA', 'RP', ou 'OR'
+  let grupoTravadoId: number | null = null;
+  let prefixoTravado: string | null = null;
+
+  if (tipoRelatorio === 'DEA') {
+    const g = await db('dim_grupo_despesa').whereRaw("UPPER(nome) LIKE '%EXERC%CIO ANTERIOR%'").select('id').first();
+    if (g) { grupoTravadoId = g.id; prefixoTravado = 'DEA'; }
+  } else if (tipoRelatorio === 'RP') {
+    const g = await db('dim_grupo_despesa').whereRaw("UPPER(nome) LIKE '%RESTOS A PAGAR%'").select('id').first();
+    if (g) { grupoTravadoId = g.id; prefixoTravado = 'RP'; }
+  }
+
+  // Se DEA/RP: resolve subgrupo prefixado para cada item antes de salvar
+  if (grupoTravadoId && prefixoTravado) {
+    for (const item of itens) {
+      // Força o grupo travado
+      item.fk_grupo = grupoTravadoId;
+
+      // Se o item tem subgrupo selecionado, verifica se já é prefixado ou precisa criar
+      if (item.fk_subgrupo) {
+        const sub = await db('dim_subgrupo_despesa').where({ id: item.fk_subgrupo }).first();
+        if (sub) {
+          const jaTemPrefixo = sub.nome.startsWith(`${prefixoTravado} - `);
+          if (!jaTemPrefixo) {
+            // Cria/busca subgrupo prefixado
+            item.fk_subgrupo = await resolverSubgrupoPrefixado(grupoTravadoId, prefixoTravado, sub.nome);
+          }
+          // Se já tem prefixo, mantém como está
+        }
+      }
+    }
   }
 
   // Filtrar apenas itens com valor preenchido
@@ -60,11 +103,19 @@ export async function saveRateio(req: Request, res: Response): Promise<void> {
   }
 
   // Salvar JSON com apenas itens com valor
+  const pagamentoUpdate: Record<string, any> = {
+    rateio_itens: itensComValor.length > 0 ? JSON.stringify(itensComValor) : null,
+  };
+
+  // Se for DEA/RP e houve rateio válido, marca o pagamento no grid com o subgrupo "DEA - RATEIO" / "RP - RATEIO"
+  if (itensComValor.length > 0 && grupoTravadoId && prefixoTravado) {
+    pagamentoUpdate.fk_grupo_pag = grupoTravadoId;
+    pagamentoUpdate.fk_subgrupo_pag = await resolverSubgrupoPrefixado(grupoTravadoId, prefixoTravado, 'RATEIO');
+  }
+
   await db('fact_ordem_pagamento')
     .where({ id })
-    .update({
-      rateio_itens: itensComValor.length > 0 ? JSON.stringify(itensComValor) : null,
-    });
+    .update(pagamentoUpdate);
 
   // Atualizar template: gravar TODOS os grupos/subgrupos enviados (mesmo sem valor)
   // para que apareçam como sugestão na próxima vez

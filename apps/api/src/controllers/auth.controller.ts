@@ -29,16 +29,29 @@ export async function login(req: Request, res: Response): Promise<void> {
   await db('usuarios').where({ id: user.id }).update({ ultimo_acesso: new Date() });
 
   const token = jwt.sign(
-    { sub: user.id, email: user.email, role: user.role },
+    {
+      sub: user.id,
+      email: user.email,
+      role: user.role,
+      fk_municipio: user.fk_municipio ?? null,
+      fk_entidade: user.fk_entidade ?? null,
+    },
     env.JWT_SECRET,
     { expiresIn: env.JWT_EXPIRES_IN } as jwt.SignOptions,
   );
 
-  logger.info({ userId: user.id, email: user.email }, 'Login bem-sucedido');
+  logger.info({ userId: user.id, email: user.email, fk_municipio: user.fk_municipio }, 'Login bem-sucedido');
 
   res.json({
     token,
-    user: { id: user.id, nome: user.nome, email: user.email, role: user.role },
+    user: {
+      id: user.id,
+      nome: user.nome,
+      email: user.email,
+      role: user.role,
+      fk_municipio: user.fk_municipio ?? null,
+      fk_entidade: user.fk_entidade ?? null,
+    },
   });
 }
 
@@ -53,5 +66,9 @@ export async function me(req: Request, res: Response): Promise<void> {
     return;
   }
 
-  res.json(user);
+  res.json({
+    ...user,
+    fk_municipio: req.user!.fk_municipio ?? null,
+    fk_entidade: req.user!.fk_entidade ?? null,
+  });
 }

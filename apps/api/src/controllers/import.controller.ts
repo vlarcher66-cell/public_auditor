@@ -19,9 +19,14 @@ export async function uploadFile(req: Request, res: Response): Promise<void> {
   const ext = path.extname(req.file.originalname).toLowerCase();
   const fileType = ext === '.pdf' ? 'PDF' : ext === '.csv' ? 'CSV' : 'XLSX';
   const uuid = uuidv4();
-  const tipoRelatorio = req.body.tipo_relatorio === 'RP' ? 'RP' : 'OR';
+  const tipoRaw = String(req.body.tipo_relatorio || 'OR').toUpperCase();
+  const tipoRelatorio = tipoRaw === 'RP' ? 'RP'
+    : tipoRaw === 'RECEITA' ? 'RECEITA'
+    : tipoRaw === 'TRANSF_BANCARIA' ? 'TRANSF_BANCARIA'
+    : 'OR';
   const entidadeId = req.body.entidade_id ? parseInt(req.body.entidade_id) : undefined;
   const sistemaOrigem = req.body.sistema_origem ? String(req.body.sistema_origem).slice(0, 50) : null;
+  const periodoReferencia = req.body.periodo ? String(req.body.periodo).slice(0, 20) : undefined;
 
   // Validate entidade if provided
   if (entidadeId) {
@@ -45,7 +50,7 @@ export async function uploadFile(req: Request, res: Response): Promise<void> {
   });
 
   // Start ETL asynchronously (no Redis needed)
-  enqueueETLJob({ importJobId: id, filePath: req.file.path, tipoRelatorio, entidadeId });
+  enqueueETLJob({ importJobId: id, filePath: req.file.path, tipoRelatorio, entidadeId, periodoReferencia });
 
   logger.info({ uuid, filename: req.file.originalname }, 'Import job queued');
 
@@ -57,6 +62,7 @@ export async function listJobs(req: Request, res: Response): Promise<void> {
   const limit = Math.min(50, parseInt(req.query.limit as string) || 20);
   const offset = (page - 1) * limit;
   const status = req.query.status as string | undefined;
+  const tipo   = req.query.tipo   as string | undefined;
 
   let query = db('import_jobs')
     .join('usuarios', 'import_jobs.fk_usuario', 'usuarios.id')
@@ -65,10 +71,19 @@ export async function listJobs(req: Request, res: Response): Promise<void> {
     .limit(limit)
     .offset(offset);
 
-  if (status) query = query.where('import_jobs.status', status);
-
   let countQuery = db('import_jobs').count('* as total');
-  if (status) countQuery = countQuery.where('status', status);
+
+  if (status) {
+    query      = query.where('import_jobs.status', status);
+    countQuery = countQuery.where('status', status);
+  }
+  if (tipo === 'DESPESA') {
+    query      = query.whereIn('import_jobs.tipo_relatorio', ['OR', 'RP']);
+    countQuery = countQuery.whereIn('tipo_relatorio', ['OR', 'RP']);
+  } else if (tipo) {
+    query      = query.where('import_jobs.tipo_relatorio', tipo);
+    countQuery = countQuery.where('tipo_relatorio', tipo);
+  }
 
   const [jobs, countRows] = await Promise.all([query, countQuery]);
   const total = (countRows[0] as any).total;
@@ -166,11 +181,12 @@ export async function deleteJob(req: Request, res: Response): Promise<void> {
   if (!job) { res.status(404).json({ error: 'Job não encontrado' }); return; }
 
   await db.transaction(async (trx) => {
-    // Remove all fact rows linked to this import job
-    const deleted = await trx('fact_ordem_pagamento').where({ fk_import_job: job.id }).delete();
-    // Remove the job record itself
+    // Remove registros de despesa ou receita vinculados a este job
+    const deletedDespesa  = await trx('fact_ordem_pagamento').where({ fk_import_job: job.id }).delete();
+    const deletedReceita  = await trx('fact_receita').where({ fk_import_job: job.id }).delete();
+    const deletedTransfer = await trx('fact_transf_bancaria').where({ fk_import_job: job.id }).delete();
     await trx('import_jobs').where({ id: job.id }).delete();
-    logger.info({ jobId: job.id, uuid: job.uuid, rowsDeleted: deleted }, 'Import job deleted');
+    logger.info({ jobId: job.id, uuid: job.uuid, deletedDespesa, deletedReceita, deletedTransfer }, 'Import job deleted');
   });
 
   res.json({ message: 'Importação e registros excluídos com sucesso' });

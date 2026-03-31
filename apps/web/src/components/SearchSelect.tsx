@@ -41,8 +41,8 @@ export function SearchSelect({
       top: rect.bottom + 4,
       left: rect.left,
       width: Math.max(rect.width, 200),
-      zIndex: 9999,
-      maxHeight: dropdownHeight > 100 ? dropdownHeight : undefined,
+      zIndex: 99999,
+      maxHeight: dropdownHeight > 100 ? dropdownHeight : 300,
     });
   }, []);
 
@@ -75,7 +75,7 @@ export function SearchSelect({
   }, [open]);
 
   if (disabled) return (
-    <div className={`text-sm border border-gray-200 rounded-lg px-3 py-2 bg-gray-50 text-gray-300 cursor-not-allowed w-full ${className ?? ''}`}>
+    <div className={`text-sm border border-gray-200 rounded-lg px-2.5 py-1.5 bg-gray-50 text-gray-300 cursor-not-allowed w-full ${className ?? ''}`}>
       {selected ? selected.nome : placeholder}
     </div>
   );
@@ -141,14 +141,14 @@ export function SearchSelect({
               top: rect.bottom + 4,
               left: rect.left,
               width: Math.max(rect.width, 200),
-              zIndex: 9999,
-              maxHeight: dropdownHeight > 100 ? dropdownHeight : undefined,
+              zIndex: 99999,
+              maxHeight: dropdownHeight > 100 ? dropdownHeight : 300,
             });
           }
           setOpen(!open);
           setSearch('');
         }}
-        className={`w-full text-sm border rounded-lg px-3 py-2 text-left flex items-center justify-between gap-2 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500
+        className={`w-full text-sm border rounded-lg px-2.5 py-1.5 text-left flex items-center justify-between gap-2 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500
           ${open ? 'border-blue-400 bg-white' : 'border-gray-300 bg-white hover:border-gray-400'}
           ${required && !value ? 'border-orange-300 bg-orange-50' : ''}`}
       >

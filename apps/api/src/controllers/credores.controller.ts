@@ -1,6 +1,8 @@
 import { Request, Response } from 'express';
 import { db } from '../config/database';
 import { logger } from '../config/logger';
+import { classificarTodosCredoresDiarias, classificarCredorDiarias } from '../services/diariasClassificacao.service';
+import { classificarPorHistorico, listarCredoresParaConfirmar } from '../services/classificacaoHistorico.service';
 
 // ── Grupos ────────────────────────────────────────────────────────────────────
 
@@ -260,4 +262,192 @@ export async function getCredorStats(_req: Request, res: Response): Promise<void
     semGrupo: Number((semGrupo as any)?.n || 0),
     semSubgrupo: Number((semSubgrupo as any)?.n || 0),
   });
+}
+
+export async function autoClassificarDiariasPorHistorico(_req: Request, res: Response): Promise<void> {
+  try {
+    const resultado = await classificarTodosCredoresDiarias();
+    res.json(resultado);
+  } catch (err: any) {
+    logger.error({ err: err?.message }, 'Erro ao classificar diárias por histórico');
+    res.status(500).json({ error: err?.message ?? 'Erro ao classificar' });
+  }
+}
+
+export async function autoClassificarCredorDiariaIndividual(req: Request, res: Response): Promise<void> {
+  try {
+    const { id } = req.params;
+    const credorId = parseInt(id);
+
+    const { atualizado, resultado } = await classificarCredorDiarias(credorId);
+    res.json({ atualizado, resultado });
+  } catch (err: any) {
+    logger.error({ err: err?.message }, 'Erro ao classificar credor');
+    res.status(500).json({ error: err?.message ?? 'Erro ao classificar' });
+  }
+}
+
+// ─── Pessoal ──────────────────────────────────────────────────────────────────
+
+export async function listarCredoresParaConfirmarPessoal(req: Request, res: Response): Promise<void> {
+  try {
+    const { page = '1', limit = '10' } = req.query as Record<string, string>;
+    const pg = Math.max(1, parseInt(page));
+    const lim = Math.min(100, parseInt(limit));
+
+    const { rows, total } = await listarCredoresParaConfirmar('3.1.90.11%', '%PESSOAL%', undefined, pg, lim);
+
+    const credoresComSugestao = await Promise.all(
+      rows.map(async (credor: any) => {
+        const sugestao = await classificarPorHistorico(credor.historico, '%PESSOAL%', 'FOPAG');
+        return { ...credor, sugestao };
+      })
+    );
+
+    const ordemConfianca = { alta: 0, media: 1, baixa: 2, nenhuma: 3 };
+    credoresComSugestao.sort((a, b) =>
+      (ordemConfianca[a.sugestao.confianca as keyof typeof ordemConfianca] ?? 3) -
+      (ordemConfianca[b.sugestao.confianca as keyof typeof ordemConfianca] ?? 3)
+    );
+
+    res.json({ rows: credoresComSugestao, total, page: pg, limit: lim });
+  } catch (err: any) {
+    logger.error({ err: err?.message }, 'Erro ao listar credores pessoal');
+    res.status(500).json({ error: err?.message ?? 'Erro ao listar' });
+  }
+}
+
+export async function confirmarClassificacaoPessoalCredor(req: Request, res: Response): Promise<void> {
+  try {
+    const { id } = req.params;
+    const { fk_subgrupo } = req.body;
+    if (!fk_subgrupo) { res.status(400).json({ error: 'fk_subgrupo é obrigatório' }); return; }
+
+    await db('dim_credor').where('id', id).update({ fk_subgrupo, precisa_reclassificacao: false });
+    logger.info({ credorId: id, subgrupoId: fk_subgrupo }, 'Classificação de pessoal confirmada');
+    res.json({ message: 'Classificação confirmada com sucesso' });
+  } catch (err: any) {
+    logger.error({ err: err?.message }, 'Erro ao confirmar classificação pessoal');
+    res.status(500).json({ error: err?.message ?? 'Erro ao confirmar' });
+  }
+}
+
+export async function testeClassificacaoDiaria(req: Request, res: Response): Promise<void> {
+  try {
+    const { historico } = req.body;
+
+    if (!historico) {
+      res.status(400).json({ error: 'historico é obrigatório' });
+      return;
+    }
+
+    const { classificarDiariasPorHistorico } = await import('../services/diariasClassificacao.service');
+    const resultado = await classificarDiariasPorHistorico(historico);
+
+    res.json({
+      historico: historico.substring(0, 150),
+      resultado,
+    });
+  } catch (err: any) {
+    logger.error({ err: err?.message }, 'Erro no teste de classificação');
+    res.status(500).json({ error: err?.message ?? 'Erro ao testar' });
+  }
+}
+
+export async function listarCredoresParaConfirmarDiarias(req: Request, res: Response): Promise<void> {
+  try {
+    const { page = '1', limit = '20' } = req.query as Record<string, string>;
+    const pg = Math.max(1, parseInt(page));
+    const lim = Math.min(100, parseInt(limit));
+    const offset = (pg - 1) * lim;
+
+    // Lista credores SEM SUBGRUPO que têm pagamentos com elemento 3.3.90.14 (único critério de diária)
+    const base = () => db('dim_credor as c')
+      .join('dim_grupo_despesa as g', 'c.fk_grupo', 'g.id')
+      .whereNull('c.fk_subgrupo')
+      .where(function () {
+        this.where('g.nome', 'like', '%DIÁRIA%').orWhere('g.nome', 'like', '%DIARIA%');
+      })
+      .whereExists(
+        db('fact_ordem_pagamento as f')
+          .join('dim_elemento_despesa as el', 'f.fk_elemento_despesa', 'el.id')
+          .where('f.fk_credor', db.raw('c.id'))
+          .where('el.codigo', 'like', '3.3.90.14%')
+          .select(db.raw('1'))
+      );
+
+    const [credores, [{ total }]] = await Promise.all([
+      base()
+        .select('c.id', 'c.nome', 'c.historico', 'c.fk_grupo', 'g.nome as grupo_nome')
+        .orderBy('c.nome')
+        .limit(lim)
+        .offset(offset),
+      base().count('c.id as total'),
+    ]);
+
+    // Para cada credor, busca a sugestão de subgrupo
+    const { classificarDiariasPorHistorico } = await import('../services/diariasClassificacao.service');
+    const credoresComSugestao = await Promise.all(
+      credores.map(async (credor: any) => {
+        const sugestao = await classificarDiariasPorHistorico(credor.historico);
+        return { ...credor, sugestao };
+      })
+    );
+
+    // Ordena: identificados (alta/media/baixa) primeiro, sem identificação por último
+    const ordemConfianca = { alta: 0, media: 1, baixa: 2, nenhuma: 3 };
+    credoresComSugestao.sort((a, b) =>
+      (ordemConfianca[a.sugestao.confianca as keyof typeof ordemConfianca] ?? 3) -
+      (ordemConfianca[b.sugestao.confianca as keyof typeof ordemConfianca] ?? 3)
+    );
+
+    res.json({
+      rows: credoresComSugestao,
+      total: Number(total),
+      page: pg,
+      limit: lim,
+    });
+  } catch (err: any) {
+    logger.error({ err: err?.message }, 'Erro ao listar credores para confirmar');
+    res.status(500).json({ error: err?.message ?? 'Erro ao listar' });
+  }
+}
+
+export async function confirmarClassificacaoDiariaCredor(req: Request, res: Response): Promise<void> {
+  try {
+    const { id } = req.params;
+    const { fk_subgrupo } = req.body;
+
+    if (!fk_subgrupo) {
+      res.status(400).json({ error: 'fk_subgrupo é obrigatório' });
+      return;
+    }
+
+    // Valida se o subgrupo existe e é de diárias
+    const subgrupo = await db('dim_subgrupo_despesa as s')
+      .join('dim_grupo_despesa as g', 's.fk_grupo', 'g.id')
+      .where('s.id', fk_subgrupo)
+      .where(function () {
+        this.where('g.nome', 'like', '%DIÁRIA%').orWhere('g.nome', 'like', '%DIARIA%');
+      })
+      .first();
+
+    if (!subgrupo) {
+      res.status(400).json({ error: 'Subgrupo inválido ou não é de diárias' });
+      return;
+    }
+
+    // Atualiza o credor com o subgrupo confirmado
+    await db('dim_credor').where('id', id).update({
+      fk_subgrupo,
+      precisa_reclassificacao: false,
+    });
+
+    logger.info({ credorId: id, subgrupoId: fk_subgrupo }, 'Classificação de diária confirmada');
+
+    res.json({ message: 'Classificação confirmada com sucesso' });
+  } catch (err: any) {
+    logger.error({ err: err?.message }, 'Erro ao confirmar classificação');
+    res.status(500).json({ error: err?.message ?? 'Erro ao confirmar' });
+  }
 }

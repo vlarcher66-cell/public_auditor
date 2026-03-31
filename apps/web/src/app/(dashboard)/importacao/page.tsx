@@ -37,16 +37,23 @@ function TipoRelatorioModal({
   onCancel: () => void;
 }) {
   const [tipo, setTipo] = useState<'OR' | 'RP'>('OR');
+  const [municipioId, setMunicipioId] = useState<string>('');
   const [entidadeId, setEntidadeId] = useState<string>('');
   const [sistemaOrigem, setSistemaOrigem] = useState<string>('FATOR');
 
-  const { data: entidades = [], isLoading: loadingEntidades } = useQuery<{ id: number; nome: string; sigla?: string }[]>({
-    queryKey: ['entidades-list'],
-    queryFn: () => apiRequest('/entidades', { token, params: { limit: 200 } }).then((d: any) => d.rows ?? d),
+  const { data: municipios = [], isLoading: loadingMunicipios } = useQuery<{ id: number; nome: string }[]>({
+    queryKey: ['municipios-list'],
+    queryFn: () => apiRequest('/municipios', { token, params: { limit: 200 } }).then((d: any) => d.rows ?? d),
     enabled: !!token,
   });
 
-  const canConfirm = !!entidadeId;
+  const { data: entidades = [], isLoading: loadingEntidades } = useQuery<{ id: number; nome: string; sigla?: string }[]>({
+    queryKey: ['entidades-list', municipioId],
+    queryFn: () => apiRequest('/entidades', { token, params: { limit: 200, ...(municipioId ? { municipioId } : {}) } }).then((d: any) => d.rows ?? d),
+    enabled: !!token,
+  });
+
+  const canConfirm = !!municipioId && !!entidadeId;
 
   return (
     <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
@@ -65,6 +72,24 @@ function TipoRelatorioModal({
             Selecione o tipo do relatório <span className="font-medium text-gray-700">&quot;{filename}&quot;</span>
           </p>
 
+          {/* Município */}
+          <div>
+            <label className="block text-xs font-medium text-gray-500 mb-1">
+              Município <span className="text-red-500">*</span>
+            </label>
+            {loadingMunicipios ? (
+              <div className="w-full border rounded-lg px-3 py-2 text-sm text-gray-400 bg-gray-50">Carregando...</div>
+            ) : (
+              <SearchSelect
+                value={municipioId}
+                onChange={(val) => { setMunicipioId(String(val)); setEntidadeId(''); }}
+                options={municipios}
+                placeholder="Selecione o município"
+                required
+              />
+            )}
+          </div>
+
           {/* Entidade */}
           <div>
             <label className="block text-xs font-medium text-gray-500 mb-1">
@@ -72,6 +97,10 @@ function TipoRelatorioModal({
             </label>
             {loadingEntidades ? (
               <div className="w-full border rounded-lg px-3 py-2 text-sm text-gray-400 bg-gray-50">Carregando...</div>
+            ) : !municipioId ? (
+              <div className="w-full border rounded-lg px-3 py-2 text-sm text-gray-400 bg-gray-50 cursor-not-allowed">
+                Selecione um município primeiro
+              </div>
             ) : (
               <SearchSelect
                 value={entidadeId}
@@ -163,7 +192,7 @@ export default function ImportacaoPage() {
     queryKey: ['import-jobs'],
     queryFn: async () => {
       try {
-        return await apiRequest<{ jobs: ImportJob[]; total: number }>('/import/jobs', { token, params: { limit: 20 } });
+        return await apiRequest<{ jobs: ImportJob[]; total: number }>('/import/jobs', { token, params: { limit: 20, tipo: 'DESPESA' } });
       } catch { /* API offline */ }
     },
     enabled: !!token,

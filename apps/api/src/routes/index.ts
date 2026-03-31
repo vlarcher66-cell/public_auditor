@@ -9,6 +9,12 @@ import blocosRoutes from './blocos.routes';
 import entidadesRoutes from './entidades.routes';
 import secretariasRoutes from './secretarias.routes';
 import regraEmpenhoRoutes from './regraEmpenho.routes';
+import mmRoutes from './mm.routes';
+import municipiosRoutes from './municipios.routes';
+import receitasRoutes from './receitas.routes';
+import transferenciasRoutes from './transferencias.routes';
+import indice15Routes from './indice15.routes';
+import metasRoutes from './metas.routes';
 import { db } from '../config/database';
 import { authMiddleware } from '../middleware/auth.middleware';
 import { backfillEmpenhoBase } from '../controllers/pagamentos.controller';
@@ -25,6 +31,12 @@ router.use('/blocos', blocosRoutes);
 router.use('/entidades', entidadesRoutes);
 router.use('/secretarias', secretariasRoutes);
 router.use('/regras-empenho', regraEmpenhoRoutes);
+router.use('/mm', mmRoutes);
+router.use('/municipios', municipiosRoutes);
+router.use('/receitas', receitasRoutes);
+router.use('/transferencias-bancarias', transferenciasRoutes);
+router.use('/indice15', indice15Routes);
+router.use('/metas', metasRoutes);
 
 router.post('/admin/backfill-empenho-base', backfillEmpenhoBase);
 router.post('/admin/fix-regra-credor', async (_req, res) => {
@@ -50,6 +62,52 @@ router.get('/admin/debug-regras', async (_req, res) => {
 router.post('/admin/drop-regra-empenho', async (_req, res) => {
   await db.raw('DROP TABLE IF EXISTS dim_regra_empenho');
   res.json({ ok: true });
+});
+
+// Reset do super admin — sem autenticação (usar só em setup/emergência)
+router.get('/admin/reset-super-admin', async (_req, res) => {
+  try {
+    const bcrypt = await import('bcryptjs');
+    const senha_hash = await bcrypt.hash('Admin@2025!', 12);
+
+    // Verifica se a coluna fk_municipio já existe na tabela usuarios
+    const cols = await db.raw(`SHOW COLUMNS FROM usuarios LIKE 'fk_municipio'`);
+    const temColuna = cols[0].length > 0;
+
+    const base: Record<string, any> = {
+      nome: 'Administrador',
+      email: 'admin@prefeitura.gov.br',
+      senha_hash,
+      role: 'SUPER_ADMIN',
+      ativo: true,
+    };
+    if (temColuna) {
+      base.fk_municipio = null;
+      base.fk_entidade = null;
+    }
+
+    const exists = await db('usuarios').where({ email: 'admin@prefeitura.gov.br' }).first();
+    if (exists) {
+      await db('usuarios').where({ email: 'admin@prefeitura.gov.br' }).update({ role: 'SUPER_ADMIN', ativo: true, senha_hash });
+    } else {
+      await db('usuarios').insert({ ...base, criado_em: new Date() });
+    }
+
+    // Migra qualquer ADMIN antigo para SUPER_ADMIN
+    await db('usuarios').where({ role: 'ADMIN' }).update({ role: 'SUPER_ADMIN' });
+
+    res.send(`
+      <html><body style="font-family:sans-serif;padding:40px;background:#0f172a;color:#fff">
+        <h2 style="color:#fbbf24">✅ Super Admin resetado com sucesso!</h2>
+        <p>Email: <b>admin@prefeitura.gov.br</b></p>
+        <p>Senha: <b>Admin@2025!</b></p>
+        <p style="color:#94a3b8">Agora faça login no sistema. Este endpoint pode ser removido após o setup.</p>
+        <a href="http://localhost:3000" style="color:#fbbf24">→ Ir para o sistema</a>
+      </body></html>
+    `);
+  } catch (err: any) {
+    res.status(500).send(`<pre style="color:red">${err.message}</pre>`);
+  }
 });
 
 router.get('/elementos-despesa', authMiddleware, async (_req, res) => {

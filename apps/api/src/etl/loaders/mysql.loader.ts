@@ -45,7 +45,7 @@ export async function loadToMySQL(
   // 1. dim_entidade — se uma entidade foi selecionada na importação, usa ela diretamente.
   //    Caso contrário, tenta resolver pelo CNPJ extraído do arquivo (comportamento legado).
   const PLACEHOLDER_CNPJ = '00.000.000/0000-00';
-  let resolvedEntidadeRow: { id: number; cnpj: string } | null = null;
+  let resolvedEntidadeRow: { id: number; cnpj: string; fk_municipio?: number | null } | null = null;
 
   if (forcedEntidadeId) {
     resolvedEntidadeRow = await db('dim_entidade').where('id', forcedEntidadeId).first() || null;
@@ -179,6 +179,7 @@ export async function loadToMySQL(
       const fkEntidade = resolvedEntidadeRow
         ? resolvedEntidadeRow.id
         : entidadeMap.get(r.entidade_cnpj || PLACEHOLDER_CNPJ);
+      const fkMunicipio = resolvedEntidadeRow?.fk_municipio ?? null;
       const fkCredor = credorMap.get(`${r.cnpj_cpf_norm}||${r.credor_nome.trim().toUpperCase()}`);
       const fkTipo = tipoMap.get(r.tipo_empenho);
       const fkPeriodo = periodoMap.get(toDateStr(r.periodo_inicio) + '_' + toDateStr(r.periodo_fim));
@@ -242,6 +243,7 @@ export async function loadToMySQL(
           tipo_relatorio: tipoRow,
           fk_grupo_pag: fkGrupoPag,
           fk_subgrupo_pag: fkSubgrupoPag,
+          fk_municipio: fkMunicipio,
           fk_entidade: fkEntidade,
           fk_credor: fkCredor,
           fk_tipo_empenho: fkTipo,

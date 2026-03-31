@@ -6,6 +6,8 @@ export interface JwtPayload {
   sub: number;
   email: string;
   role: string;
+  fk_municipio: number | null;
+  fk_entidade: number | null;
   iat?: number;
   exp?: number;
 }
@@ -45,4 +47,17 @@ export function requireRole(...roles: string[]) {
     }
     next();
   };
+}
+
+/**
+ * Retorna o filtro de tenant para uso nas queries Knex.
+ * SUPER_ADMIN não tem filtro (vê tudo).
+ * GESTOR filtra por município.
+ * CONTADOR/AUDITOR/VIEWER filtra por entidade (se tiver) ou município.
+ */
+export function getTenantFilter(user: JwtPayload): { fk_municipio?: number; fk_entidade?: number } {
+  if (user.role === 'SUPER_ADMIN') return {};
+  if (user.fk_entidade) return { fk_entidade: user.fk_entidade };
+  if (user.fk_municipio) return { fk_municipio: user.fk_municipio };
+  return {};
 }

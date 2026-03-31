@@ -2,7 +2,8 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { useSession } from 'next-auth/react';
-import { Users, Search, ExternalLink, Check, Loader2, FileText, X, AlertTriangle, Trash2, Layers } from 'lucide-react';
+import { useSearchParams, useRouter } from 'next/navigation';
+import { Users, Search, ExternalLink, Check, Loader2, FileText, X, AlertTriangle, Trash2, Layers, CheckCircle, ChevronLeft, ChevronRight, AlertCircle } from 'lucide-react';
 import Link from 'next/link';
 import { SearchSelect } from '@/components/SearchSelect';
 
@@ -484,6 +485,233 @@ function CredorRow({
   );
 }
 
+// ─── Modal Confirmação Diárias ─────────────────────────────────────────────────
+
+interface SugestaoClassificacao {
+  fk_grupo: number | null;
+  fk_subgrupo: number | null;
+  grupo_nome: string | null;
+  subgrupo_nome: string | null;
+  confianca: 'alta' | 'media' | 'baixa' | 'nenhuma';
+  motivo: string;
+  palavrasEncontradas: string[];
+}
+
+interface CredorParaConfirmar {
+  id: number;
+  nome: string;
+  historico: string | null;
+  fk_grupo: number;
+  grupo_nome: string;
+  sugestao: SugestaoClassificacao;
+  subgrupoSelecionado?: number | '';
+}
+
+function ConfDiariasModal({
+  token, subgrupos, onClose, onSaved, tipo = 'diarias',
+}: {
+  token: string;
+  subgrupos: Subgrupo[];
+  onClose: () => void;
+  onSaved: () => void;
+  tipo?: 'diarias' | 'pessoal';
+}) {
+  const [credores, setCredores] = useState<CredorParaConfirmar[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(1);
+  const [total, setTotal] = useState(0);
+  const [confirmando, setConfirmando] = useState<number | null>(null);
+  const [historicoExpandido, setHistoricoExpandido] = useState<number | null>(null);
+  const LIMIT = 10;
+
+  useEffect(() => { carregar(); }, [page]);
+
+  const endpoint = tipo === 'pessoal' ? 'confirmar-pessoal' : 'confirmar-diarias';
+  const confirmarEndpoint = tipo === 'pessoal' ? 'confirmar-classificacao-pessoal' : 'confirmar-classificacao-diaria';
+  const titulo = tipo === 'pessoal' ? 'Confirmação de Pessoal' : 'Confirmação de Diárias';
+
+  async function carregar() {
+    setLoading(true);
+    try {
+      const res = await fetch(`${API}/credores/${endpoint}/listar?page=${page}&limit=${LIMIT}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setCredores((data.rows || []).map((c: CredorParaConfirmar) => ({
+          ...c,
+          subgrupoSelecionado: c.sugestao?.fk_subgrupo ?? '',
+        })));
+        setTotal(data.total || 0);
+      }
+    } catch { /* offline */ }
+    setLoading(false);
+  }
+
+  async function confirmar(credorId: number, fk_subgrupo: number | '') {
+    if (!fk_subgrupo) return;
+    setConfirmando(credorId);
+    try {
+      const res = await fetch(`${API}/credores/${credorId}/${confirmarEndpoint}`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fk_subgrupo }),
+      });
+      if (res.ok) {
+        setCredores((prev) => prev.filter((c) => c.id !== credorId));
+        setTotal((prev) => prev - 1);
+        onSaved();
+      }
+    } catch { /* offline */ }
+    setConfirmando(null);
+  }
+
+  function confiancaBadge(c: string) {
+    if (c === 'alta')  return { emoji: '🟢', label: 'Alta confiança' };
+    if (c === 'media') return { emoji: '🟡', label: 'Média confiança' };
+    if (c === 'baixa') return { emoji: '🔴', label: 'Baixa confiança' };
+    return { emoji: '⚫', label: 'Não identificado' };
+  }
+
+  const totalPaginas = Math.ceil(total / LIMIT);
+  const subgruposDiarias = subgrupos.filter(s => {
+    return credores.length > 0 && s.fk_grupo === credores[0]?.fk_grupo;
+  });
+
+  return (
+    <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] flex flex-col">
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 py-4 border-b">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 bg-amber-100 rounded-xl flex items-center justify-center">
+              <CheckCircle size={18} className="text-amber-600" />
+            </div>
+            <div>
+              <h2 className="text-lg font-bold text-gray-900">{titulo}</h2>
+              <p className="text-xs text-gray-500">{total} credores aguardando classificação de subgrupo</p>
+            </div>
+          </div>
+          <button onClick={onClose} className="p-2 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-600">
+            <X size={18} />
+          </button>
+        </div>
+
+        {/* Body */}
+        <div className="flex-1 overflow-y-auto px-6 py-4">
+          {loading ? (
+            <div className="flex items-center justify-center py-12 text-gray-400">
+              <Loader2 size={24} className="animate-spin mr-2" /> Carregando sugestões...
+            </div>
+          ) : credores.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-12 text-center">
+              <Check size={40} className="text-green-500 mb-3" />
+              <p className="text-lg font-semibold text-gray-700">Tudo classificado!</p>
+              <p className="text-sm text-gray-500">Todos os credores de diárias já têm subgrupo definido.</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {credores.map((credor) => {
+                const subgruposDoGrupo = subgrupos.filter(s => s.fk_grupo === credor.fk_grupo);
+                return (
+                  <div key={credor.id} className="border rounded-xl p-4 bg-gray-50 hover:bg-white transition-colors">
+                    <div className="flex items-start gap-4">
+                      <div className="flex-1 min-w-0">
+                        {/* Nome + confiança */}
+                        <div className="flex items-center gap-2 mb-1">
+                          <p className="font-semibold text-gray-900 truncate">{credor.nome}</p>
+                          {(() => {
+                            const badge = confiancaBadge(credor.sugestao?.confianca ?? 'nenhuma');
+                            return (
+                              <span className="flex items-center gap-1 text-xs text-gray-500" title={badge.label}>
+                                <span className="text-base">{badge.emoji}</span>
+                                <span>{badge.label}</span>
+                              </span>
+                            );
+                          })()}
+                        </div>
+                        {/* Histórico */}
+                        {credor.historico && (
+                          <div className="mb-2">
+                            <p className={`text-xs text-gray-500 italic ${historicoExpandido === credor.id ? '' : 'line-clamp-2'}`}>
+                              {credor.historico}
+                            </p>
+                            {credor.historico.length > 120 && (
+                              <button
+                                onClick={() => setHistoricoExpandido(historicoExpandido === credor.id ? null : credor.id)}
+                                className="text-[10px] text-blue-500 hover:underline mt-0.5"
+                              >
+                                {historicoExpandido === credor.id ? 'ver menos' : 'ver completo'}
+                              </button>
+                            )}
+                          </div>
+                        )}
+                        {/* Palavras encontradas */}
+                        {(credor.sugestao?.palavrasEncontradas?.length ?? 0) > 0 && (
+                          <div className="flex flex-wrap gap-1 mb-2">
+                            {credor.sugestao.palavrasEncontradas.map((p) => (
+                              <span key={p} className="px-2 py-0.5 text-[10px] font-medium bg-amber-100 text-amber-700 rounded-full">{p}</span>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Seleção + Confirmar */}
+                      <div className="flex items-center gap-2 shrink-0">
+                        <div className="w-56">
+                          <SearchSelect
+                            value={credor.subgrupoSelecionado ?? ''}
+                            onChange={(v) => setCredores(prev => prev.map(c =>
+                              c.id === credor.id ? { ...c, subgrupoSelecionado: v as number | '' } : c
+                            ))}
+                            options={subgruposDoGrupo.map(s => ({ id: s.id, nome: s.nome }))}
+                            placeholder="— escolha subgrupo —"
+                          />
+                        </div>
+                        <button
+                          onClick={() => confirmar(credor.id, credor.subgrupoSelecionado ?? '')}
+                          disabled={!credor.subgrupoSelecionado || confirmando === credor.id}
+                          className="flex items-center gap-1.5 px-3 py-1.5 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700 disabled:opacity-40 transition-colors font-medium whitespace-nowrap"
+                        >
+                          {confirmando === credor.id
+                            ? <Loader2 size={14} className="animate-spin" />
+                            : <Check size={14} />}
+                          Confirmar
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        {/* Paginação */}
+        {totalPaginas > 1 && (
+          <div className="flex items-center justify-between px-6 py-3 border-t bg-gray-50 rounded-b-2xl">
+            <button
+              onClick={() => setPage(p => Math.max(1, p - 1))}
+              disabled={page === 1}
+              className="flex items-center gap-1 px-3 py-1.5 rounded-lg border text-sm text-gray-600 hover:bg-white disabled:opacity-40"
+            >
+              <ChevronLeft size={14} /> Anterior
+            </button>
+            <span className="text-sm text-gray-500">Página {page} de {totalPaginas}</span>
+            <button
+              onClick={() => setPage(p => Math.min(totalPaginas, p + 1))}
+              disabled={page === totalPaginas}
+              className="flex items-center gap-1 px-3 py-1.5 rounded-lg border text-sm text-gray-600 hover:bg-white disabled:opacity-40"
+            >
+              Próxima <ChevronRight size={14} />
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ─── Página principal ─────────────────────────────────────────────────────────
 
 export default function CredorPage() {
@@ -502,8 +730,21 @@ export default function CredorPage() {
   const [cardFilter, setCardFilter] = useState<'semGrupo' | 'semSubgrupo' | null>(null);
   const [historicoModal, setHistoricoModal] = useState<Credor | null>(null);
   const [showLimparModal, setShowLimparModal] = useState(false);
-  const [classificandoDiarias, setClassificandoDiarias] = useState(false);
-  const [diariasResult, setDiariasResult] = useState<number | null>(null);
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const [showConfDiarias, setShowConfDiarias] = useState(false);
+  const [showConfPessoal, setShowConfPessoal] = useState(false);
+
+  useEffect(() => {
+    const conf = searchParams.get('conf');
+    if (conf === 'diarias') {
+      setShowConfDiarias(true);
+      router.replace('/cadastros/credor', { scroll: false });
+    } else if (conf === 'pessoal') {
+      setShowConfPessoal(true);
+      router.replace('/cadastros/credor', { scroll: false });
+    }
+  }, [searchParams]);
 
   const LIMIT = 50;
 
@@ -555,22 +796,6 @@ export default function CredorPage() {
 
   const totalPages = Math.ceil(total / LIMIT);
 
-  async function handleAutoClassificarDiarias() {
-    setClassificandoDiarias(true);
-    setDiariasResult(null);
-    try {
-      const res = await fetch(`${API}/credores/auto-classificar-diarias`, {
-        method: 'POST',
-        headers: authHeader(token),
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setDiariasResult(data.updated);
-        if (data.updated > 0) { loadCredores(); loadStats(); }
-      }
-    } catch { /* API offline */ }
-    setClassificandoDiarias(false);
-  }
 
   function handleHistoricoSaved(credorId: number, novoHistorico: string, grupoId: number | null, subgrupoId: number | null, grupoNome: string | null, subgrupoNome: string | null) {
     const saeDaLista =
@@ -612,21 +837,6 @@ export default function CredorPage() {
           <Link href="/cadastros/subgrupo" className="flex items-center gap-1.5 px-3 py-2 text-xs border rounded-xl hover:bg-gray-50 text-gray-600">
             <ExternalLink size={13} /> Cad. Subgrupo
           </Link>
-          <button
-            onClick={handleAutoClassificarDiarias}
-            disabled={classificandoDiarias}
-            className="flex items-center gap-1.5 px-3 py-2 text-xs border border-amber-300 rounded-xl hover:bg-amber-50 text-amber-700 transition-colors disabled:opacity-60"
-          >
-            {classificandoDiarias
-              ? <Loader2 size={13} className="animate-spin" />
-              : <Check size={13} />}
-            Auto-classificar Diárias
-            {diariasResult !== null && (
-              <span className="ml-1 bg-amber-200 text-amber-800 rounded-full px-1.5 py-0.5 text-[10px] font-bold">
-                {diariasResult}
-              </span>
-            )}
-          </button>
           <button
             onClick={() => setShowLimparModal(true)}
             className="flex items-center gap-1.5 px-3 py-2 text-xs border border-red-200 rounded-xl hover:bg-red-50 text-red-600 transition-colors"
@@ -781,6 +991,28 @@ export default function CredorPage() {
           token={token}
           onClose={() => setShowLimparModal(false)}
           onDone={() => { loadCredores(); loadStats(); }}
+        />
+      )}
+
+      {/* Modal Confirmação Diárias */}
+      {showConfDiarias && (
+        <ConfDiariasModal
+          token={token}
+          subgrupos={subgrupos}
+          tipo="diarias"
+          onClose={() => setShowConfDiarias(false)}
+          onSaved={() => { loadCredores(); loadStats(); }}
+        />
+      )}
+
+      {/* Modal Confirmação Pessoal */}
+      {showConfPessoal && (
+        <ConfDiariasModal
+          token={token}
+          subgrupos={subgrupos}
+          tipo="pessoal"
+          onClose={() => setShowConfPessoal(false)}
+          onSaved={() => { loadCredores(); loadStats(); }}
         />
       )}
     </div>

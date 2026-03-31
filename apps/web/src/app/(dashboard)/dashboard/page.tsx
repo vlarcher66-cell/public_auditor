@@ -63,6 +63,8 @@ function TabDespesaAnalitica({ token }: { token: string | undefined }) {
   const [fSetor, setFSetor]         = useState('');
   const [fBloco, setFBloco]         = useState('');
   const [fFonte, setFFonte]         = useState('');
+  const [fGrupo, setFGrupo]         = useState('');
+  const [fSubgrupo, setFSubgrupo]   = useState('');
 
   const { data: filtrosDisp } = useQuery<{
     entidades:   { id: number; nome: string }[];
@@ -84,7 +86,7 @@ function TabDespesaAnalitica({ token }: { token: string | undefined }) {
   if (fFonte)      params.set('fonteRecurso', fFonte);
 
   const { data, isLoading } = useQuery<AnaliticaData>({
-    queryKey: ['analitica-mensal', ano, fEntidade, fSecretaria, fSetor, fBloco, fFonte],
+    queryKey: ['analitica-mensal', ano, fEntidade, fSecretaria, fSetor, fBloco, fFonte, fGrupo, fSubgrupo],
     queryFn: () => apiRequest(`/pagamentos/analitica-mensal?${params}`, { token }),
     enabled: !!token,
   });
@@ -189,6 +191,8 @@ function TabDespesaAnalitica({ token }: { token: string | undefined }) {
           { label: 'Entidade', val: fEntidade, set: (v: string) => { setFEntidade(v); setFSecretaria(''); setFSetor(''); }, opts: (filtrosDisp?.entidades || []).map(e => ({ id: String(e.id), nome: e.nome })) },
           { label: 'Secretaria', val: fSecretaria, set: (v: string) => { setFSecretaria(v); setFSetor(''); }, opts: (filtrosDisp?.secretarias || []).map(s => ({ id: String(s.id), nome: (s.sigla ? `${s.sigla} — ` : '') + s.nome })) },
           { label: 'Setor', val: fSetor, set: setFSetor, opts: (filtrosDisp?.setores || []).map(s => ({ id: String(s.id), nome: s.descricao })) },
+          { label: 'Grupo', val: fGrupo, set: (v: string) => { setFGrupo(v); setFSubgrupo(''); }, opts: (filtrosDisp?.grupos || []).map(g => ({ id: String(g.id), nome: g.nome })) },
+          { label: 'Subgrupo', val: fSubgrupo, set: setFSubgrupo, opts: (filtrosDisp?.subgrupos || []).filter(s => !fGrupo || String(s.fk_grupo) === fGrupo).map(s => ({ id: String(s.id), nome: s.nome })) },
           { label: 'Bloco', val: fBloco, set: setFBloco, opts: (filtrosDisp?.blocos || []).map(b => ({ id: String(b.id), nome: b.descricao })) },
           { label: 'Fonte', val: fFonte, set: setFFonte, opts: (filtrosDisp?.fontes || []).map(f => ({ id: f, nome: f })) },
         ].map(({ label, val, set, opts }) => (
@@ -300,13 +304,13 @@ function TabDespesaAnalitica({ token }: { token: string | undefined }) {
                     <React.Fragment key={grupo.id}>
                       {/* Totalizador OUTROS EXERCÍCIOS antes do primeiro grupo DEA/RP */}
                       {isPrimeiroExAnt && totalEA > 0 && (
-                        <tr style={{ background: '#fee2e2', borderTop: '2px solid #fca5a5', borderBottom: '2px solid #fca5a5' }}>
-                          <td style={{ padding: '9px 14px', color: '#991b1b', fontWeight: 700, fontSize: '11px', letterSpacing: '0.03em', whiteSpace: 'nowrap', textAlign: 'center' }}>OUTROS EXERCÍCIOS</td>
+                        <tr style={{ background: '#dbeafe', borderTop: '2px solid #e2e8f0', borderBottom: '1px solid #e2e8f0' }}>
+                          <td style={{ padding: '9px 14px', color: '#1e3a5f', fontWeight: 700, fontSize: '11px', letterSpacing: '0.03em', whiteSpace: 'nowrap', textAlign: 'center' }}>OUTROS EXERCÍCIOS</td>
                           {mesesEA.map((v, i) => (
-                            <td key={i} style={{ padding: '9px 6px', textAlign: 'right', color: v > 0 ? '#991b1b' : '#fecaca', fontWeight: 600, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>{fmt(v)}</td>
+                            <td key={i} style={{ padding: '9px 6px', textAlign: 'right', color: v > 0 ? '#1e3a5f' : '#bfdbfe', fontWeight: 600, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>{fmt(v)}</td>
                           ))}
-                          <td style={{ padding: '9px 8px', textAlign: 'right', color: '#92400e', fontWeight: 700, fontVariantNumeric: 'tabular-nums', borderLeft: '1px solid #fca5a5', whiteSpace: 'nowrap' }}>{fmt(totalEA)}</td>
-                          <td style={{ padding: '9px 8px', textAlign: 'right', color: '#92400e', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>{fmt(mediaEA)}</td>
+                          <td style={{ padding: '9px 8px', textAlign: 'right', color: '#1e3a5f', fontWeight: 700, fontVariantNumeric: 'tabular-nums', borderLeft: '1px solid #bfdbfe', whiteSpace: 'nowrap' }}>{fmt(totalEA)}</td>
+                          <td style={{ padding: '9px 8px', textAlign: 'right', color: '#1e3a5f', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>{fmt(mediaEA)}</td>
                         </tr>
                       )}
                       {/* Linha do Grupo (pai) */}
@@ -549,22 +553,13 @@ function TabOutrosExercicios({ token }: { token: string | undefined }) {
       el.style.width = prevW;
       if (pdfFiltersEl) pdfFiltersEl.style.display = 'none';
       wrappers.forEach((e, i) => { const [ov, ovx] = prev[i].split('|'); e.style.overflow = ov; e.style.overflowX = ovx; });
-      const PAGE_W = 297, PAGE_H = 210, MARGIN = 8;
-      const printW = PAGE_W - MARGIN * 2, printH = PAGE_H - MARGIN * 2;
-      const scale = printW / (canvas.width / 2);
-      const scaledH = (canvas.height / 2) * scale;
-      const pdf = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'landscape' });
-      let yOffset = 0;
-      while (yOffset < scaledH) {
-        if (yOffset > 0) pdf.addPage();
-        const sliceH = Math.min(printH, scaledH - yOffset);
-        const srcY = (yOffset / scale) * 2, srcH = (sliceH / scale) * 2;
-        const slice = document.createElement('canvas');
-        slice.width = canvas.width; slice.height = srcH;
-        slice.getContext('2d')!.drawImage(canvas, 0, srcY, canvas.width, srcH, 0, 0, canvas.width, srcH);
-        pdf.addImage(slice.toDataURL('image/jpeg', 0.95), 'JPEG', MARGIN, MARGIN, printW, sliceH);
-        yOffset += printH;
-      }
+      const MARGIN = 8;
+      // Página com tamanho exato do conteúdo — sem quebra de página
+      const printW = 297 - MARGIN * 2;
+      const scaledH = (canvas.height / 2) * (printW / (canvas.width / 2));
+      const pageH = scaledH + MARGIN * 2;
+      const pdf = new jsPDF({ unit: 'mm', format: [297, pageH], orientation: 'landscape' });
+      pdf.addImage(canvas.toDataURL('image/jpeg', 0.95), 'JPEG', MARGIN, MARGIN, printW, scaledH);
       pdf.save(`outros-exercicios-${ano}.pdf`);
     } finally { setExportando(false); }
   }
@@ -1031,6 +1026,8 @@ function TabDespesaSintetica({ token }: { token: string | undefined }) {
   const [fSetor,      setFSetor]      = useState('');
   const [fBloco,      setFBloco]      = useState('');
   const [fFonte,      setFFonte]      = useState('');
+  const [fGrupo,      setFGrupo]      = useState('');
+  const [fSubgrupo,   setFSubgrupo]   = useState('');
 
   async function handleExportPDF() {
     if (!printRef.current) return;
@@ -1080,41 +1077,13 @@ function TabDespesaSintetica({ token }: { token: string | undefined }) {
         e.style.overflowX = ovx;
       });
 
-      // A4 landscape em mm
-      const PAGE_W = 297;
-      const PAGE_H = 210;
       const MARGIN = 8;
-      const printW = PAGE_W - MARGIN * 2;
-      const printH = PAGE_H - MARGIN * 2;
-
-      const imgW = canvas.width;
-      const imgH = canvas.height;
-
-      // Calcula escala para caber na largura
-      const scale = printW / (imgW / 2); // canvas está em scale=2
-      const scaledH = (imgH / 2) * scale;
-
-      const pdf = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'landscape' });
-      let yOffset = 0;
-
-      while (yOffset < scaledH) {
-        if (yOffset > 0) pdf.addPage();
-
-        // Recorta a fatia da página atual
-        const sliceH = Math.min(printH, scaledH - yOffset);
-        const srcY = (yOffset / scale) * 2; // volta para pixels do canvas
-        const srcH = (sliceH / scale) * 2;
-
-        const slice = document.createElement('canvas');
-        slice.width = imgW;
-        slice.height = srcH;
-        const ctx = slice.getContext('2d')!;
-        ctx.drawImage(canvas, 0, srcY, imgW, srcH, 0, 0, imgW, srcH);
-
-        const imgData = slice.toDataURL('image/jpeg', 0.95);
-        pdf.addImage(imgData, 'JPEG', MARGIN, MARGIN, printW, sliceH);
-        yOffset += printH;
-      }
+      // Página com tamanho exato do conteúdo — sem quebra de página
+      const printW = 297 - MARGIN * 2;
+      const scaledH = (canvas.height / 2) * (printW / (canvas.width / 2));
+      const pageH = scaledH + MARGIN * 2;
+      const pdf = new jsPDF({ unit: 'mm', format: [297, pageH], orientation: 'landscape' });
+      pdf.addImage(canvas.toDataURL('image/jpeg', 0.95), 'JPEG', MARGIN, MARGIN, printW, scaledH);
 
       pdf.save(`despesa-sintetica-${ano}.pdf`);
     } finally {
@@ -1129,6 +1098,8 @@ function TabDespesaSintetica({ token }: { token: string | undefined }) {
     setores:     { id: number; descricao: string }[];
     blocos:      { id: number; descricao: string }[];
     fontes:      string[];
+    grupos:      { id: number; nome: string }[];
+    subgrupos:   { id: number; nome: string; fk_grupo: number }[];
   }>({
     queryKey: ['sintetica-filtros', ano],
     queryFn: () => apiRequest(`/pagamentos/sintetica-filtros?ano=${ano}`, { token }),
@@ -1141,6 +1112,8 @@ function TabDespesaSintetica({ token }: { token: string | undefined }) {
   if (fSetor)      params.set('setorId',      fSetor);
   if (fBloco)      params.set('blocoId',      fBloco);
   if (fFonte)      params.set('fonteRecurso', fFonte);
+  if (fGrupo)      params.set('grupoId',      fGrupo);
+  if (fSubgrupo)   params.set('subgrupoId',   fSubgrupo);
 
   const { data, isLoading } = useQuery<{
     grupos: { id: number; nome: string }[];
@@ -1269,6 +1242,8 @@ function TabDespesaSintetica({ token }: { token: string | undefined }) {
           { label: 'Entidade', val: fEntidade, set: (v: string) => { setFEntidade(v); setFSecretaria(''); setFSetor(''); }, opts: (filtrosDisp?.entidades || []).map(e => ({ id: String(e.id), nome: e.nome })) },
           { label: 'Secretaria', val: fSecretaria, set: (v: string) => { setFSecretaria(v); setFSetor(''); }, opts: (filtrosDisp?.secretarias || []).map(s => ({ id: String(s.id), nome: (s.sigla ? `${s.sigla} — ` : '') + s.nome })) },
           { label: 'Setor', val: fSetor, set: setFSetor, opts: (filtrosDisp?.setores || []).map(s => ({ id: String(s.id), nome: s.descricao })) },
+          { label: 'Grupo', val: fGrupo, set: (v: string) => { setFGrupo(v); setFSubgrupo(''); }, opts: (filtrosDisp?.grupos || []).map(g => ({ id: String(g.id), nome: g.nome })) },
+          { label: 'Subgrupo', val: fSubgrupo, set: setFSubgrupo, opts: (filtrosDisp?.subgrupos || []).filter(s => !fGrupo || String(s.fk_grupo) === fGrupo).map(s => ({ id: String(s.id), nome: s.nome })) },
           { label: 'Bloco', val: fBloco, set: setFBloco, opts: (filtrosDisp?.blocos || []).map(b => ({ id: String(b.id), nome: b.descricao })) },
           { label: 'Fonte', val: fFonte, set: setFFonte, opts: (filtrosDisp?.fontes || []).map(f => ({ id: f, nome: f })) },
         ].map(({ label, val, set, opts }) => (
@@ -1281,8 +1256,8 @@ function TabDespesaSintetica({ token }: { token: string | undefined }) {
             <ChevronDown size={11} style={{ position: 'absolute', right: '6px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8', pointerEvents: 'none' }} />
           </div>
         ))}
-        {(fEntidade || fSecretaria || fSetor || fBloco || fFonte) && (
-          <button onClick={() => { setFEntidade(''); setFSecretaria(''); setFSetor(''); setFBloco(''); setFFonte(''); }}
+        {(fEntidade || fSecretaria || fSetor || fGrupo || fSubgrupo || fBloco || fFonte) && (
+          <button onClick={() => { setFEntidade(''); setFSecretaria(''); setFSetor(''); setFGrupo(''); setFSubgrupo(''); setFBloco(''); setFFonte(''); }}
             style={{ fontSize: '11px', color: '#ef4444', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '6px', padding: '5px 8px', cursor: 'pointer', fontWeight: 500, flexShrink: 0, whiteSpace: 'nowrap' }}>
             Limpar
           </button>
@@ -1386,13 +1361,13 @@ function TabDespesaSintetica({ token }: { token: string | undefined }) {
                 return (
                   <>
                     <tr style={{ background: '#dbeafe', borderTop: '2px solid #e2e8f0', borderBottom: '1px solid #e2e8f0' }}>
-                      <td style={{ padding: '10px 14px', color: '#1e3a5f', fontWeight: 700, fontSize: '11px', letterSpacing: '0.03em', whiteSpace: 'nowrap' }}>OUTROS EXERCÍCIOS</td>
+                      <td style={{ padding: '10px 14px', color: '#1e3a5f', fontWeight: 700, fontSize: '11px', letterSpacing: '0.03em', whiteSpace: 'nowrap', textAlign: 'center' }}>OUTROS EXERCÍCIOS</td>
                       {MESES.map((_, i) => {
                         const val = (totaisExAnt as Record<number,number>)[i+1] || 0;
                         return <td key={i} style={{ padding: '10px 6px', textAlign: 'right', color: val > 0 ? '#1e3a5f' : '#bfdbfe', fontWeight: 600, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>{fmt(val)}</td>;
                       })}
-                      <td style={{ padding: '10px 8px', textAlign: 'right', color: '#92400e', fontWeight: 700, fontVariantNumeric: 'tabular-nums', borderLeft: '1px solid #e2e8f0', whiteSpace: 'nowrap' }}>{fmt(totalEA)}</td>
-                      <td style={{ padding: '10px 8px', textAlign: 'right', color: '#92400e', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>{fmt(mediaEA)}</td>
+                      <td style={{ padding: '10px 8px', textAlign: 'right', color: '#1e3a5f', fontWeight: 700, fontVariantNumeric: 'tabular-nums', borderLeft: '1px solid #bfdbfe', whiteSpace: 'nowrap' }}>{fmt(totalEA)}</td>
+                      <td style={{ padding: '10px 8px', textAlign: 'right', color: '#1e3a5f', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>{fmt(mediaEA)}</td>
                     </tr>
                     {gruposExAnt.filter(g => totalPorGrupo(g.id) > 0).map((g, idx) => {
                       const acum = totalPorGrupo(g.id);
@@ -1429,10 +1404,11 @@ function TabDespesaSintetica({ token }: { token: string | undefined }) {
       {/* Gráficos */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4" style={{ marginTop: '16px' }}>
         {/* Evolução Mensal */}
-        <div style={{ background: '#fff', borderRadius: '14px', border: '1px solid #e2e8f0', padding: '20px', boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
-          <h3 style={{ fontSize: '11px', fontWeight: 700, color: '#64748b', marginBottom: '16px', textTransform: 'uppercase', letterSpacing: '0.06em', margin: '0 0 16px 0' }}>
-            Evolução das Despesas
-          </h3>
+        <div style={{ background: '#fff', borderRadius: '14px', border: '1px solid #e2e8f0', overflow: 'hidden', boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
+          <div style={{ background: 'linear-gradient(135deg, #0F2A4E, #1e4d95)', padding: '14px 20px' }}>
+            <h3 style={{ fontSize: '13px', fontWeight: 700, color: '#fff', margin: 0, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Evolução das Despesas</h3>
+          </div>
+          <div style={{ padding: '16px 20px 20px' }}>
           {isLoading ? (
             <div style={{ height: '220px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8', gap: '8px' }}><Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} /> Carregando...</div>
           ) : (
@@ -1449,13 +1425,15 @@ function TabDespesaSintetica({ token }: { token: string | undefined }) {
               </BarChart>
             </ResponsiveContainer>
           )}
+          </div>
         </div>
 
         {/* Pizza por grupo */}
-        <div style={{ background: '#fff', borderRadius: '14px', border: '1px solid #e2e8f0', padding: '20px', boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
-          <h3 style={{ fontSize: '11px', fontWeight: 700, color: '#64748b', margin: '0 0 16px 0', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-            (%) Despesas por Grupo
-          </h3>
+        <div style={{ background: '#fff', borderRadius: '14px', border: '1px solid #e2e8f0', overflow: 'hidden', boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
+          <div style={{ background: 'linear-gradient(135deg, #0F2A4E, #1e4d95)', padding: '14px 20px' }}>
+            <h3 style={{ fontSize: '13px', fontWeight: 700, color: '#fff', margin: 0, textTransform: 'uppercase', letterSpacing: '0.06em' }}>(%) Despesas por Grupo</h3>
+          </div>
+          <div style={{ padding: '16px 20px 20px' }}>
           {isLoading ? (
             <div style={{ height: '220px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8', gap: '8px' }}><Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} /> Carregando...</div>
           ) : pieData.length === 0 ? (
@@ -1474,6 +1452,7 @@ function TabDespesaSintetica({ token }: { token: string | undefined }) {
               </PieChart>
             </ResponsiveContainer>
           )}
+          </div>
         </div>
       </div>
 
@@ -1481,10 +1460,11 @@ function TabDespesaSintetica({ token }: { token: string | undefined }) {
       <GraficoPorSetor ano={String(ano)} token={token} />
 
       {/* Crescimento Mensal */}
-      <div style={{ background: '#fff', borderRadius: '14px', border: '1px solid #e2e8f0', padding: '20px', boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
-        <h3 style={{ fontSize: '11px', fontWeight: 700, color: '#64748b', margin: '0 0 16px 0', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-          Crescimento Mensal da Despesa (%)
-        </h3>
+      <div style={{ background: '#fff', borderRadius: '14px', border: '1px solid #e2e8f0', overflow: 'hidden', boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
+        <div style={{ background: 'linear-gradient(135deg, #0F2A4E, #1e4d95)', padding: '14px 20px' }}>
+          <h3 style={{ fontSize: '13px', fontWeight: 700, color: '#fff', margin: 0, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Crescimento Mensal da Despesa (%)</h3>
+        </div>
+        <div style={{ padding: '16px 20px 20px' }}>
         {isLoading ? (
           <div style={{ height: '140px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8', gap: '8px' }}><Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} /> Carregando...</div>
         ) : (
@@ -1500,6 +1480,7 @@ function TabDespesaSintetica({ token }: { token: string | undefined }) {
             </LineChart>
           </ResponsiveContainer>
         )}
+        </div>
       </div>
 
     </div>
@@ -1659,19 +1640,20 @@ function GraficoPorSetor({ ano, token }: { ano: string; token: string | undefine
   }));
 
   return (
-    <div style={{ background: '#fff', borderRadius: '14px', border: '1px solid #e2e8f0', padding: '20px', boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
+    <div style={{ background: '#fff', borderRadius: '14px', border: '1px solid #e2e8f0', overflow: 'hidden', boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
       {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
-        <h3 style={{ fontSize: '13px', fontWeight: 700, color: '#0F2A4E', textTransform: 'uppercase', letterSpacing: '0.05em', margin: 0 }}>
+      <div style={{ background: 'linear-gradient(135deg, #0F2A4E, #1e4d95)', padding: '14px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <h3 style={{ fontSize: '13px', fontWeight: 700, color: '#fff', margin: 0, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
           Despesas por Setor
         </h3>
         {!isLoading && rows.length > 0 && (
-          <span style={{ fontSize: '11px', color: '#64748b', background: '#f1f5f9', borderRadius: '6px', padding: '3px 10px', fontWeight: 500 }}>
+          <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.75)', background: 'rgba(255,255,255,0.12)', borderRadius: '6px', padding: '3px 10px', fontWeight: 500 }}>
             {rows.length} setores · {fmtK(totalGeral)} total
           </span>
         )}
       </div>
-      <p style={{ fontSize: '11px', color: '#94a3b8', marginBottom: '16px' }}>
+      <div style={{ padding: '4px 20px 8px' }}>
+      <p style={{ fontSize: '11px', color: '#94a3b8', marginBottom: '16px', marginTop: '12px' }}>
         Ranking dos setores com maior volume de pagamentos em {ano}
       </p>
 
@@ -1724,6 +1706,7 @@ function GraficoPorSetor({ ano, token }: { ano: string; token: string | undefine
           </BarChart>
         </ResponsiveContainer>
       )}
+      </div>
     </div>
   );
 }
@@ -1793,34 +1776,13 @@ function TabDespesaDiarias({ token }: { token: string | undefined }) {
         e.style.overflowX = ovx;
       });
 
-      const PAGE_W = 297;
-      const PAGE_H = 210;
       const MARGIN = 8;
-      const printW = PAGE_W - MARGIN * 2;
-      const printH = PAGE_H - MARGIN * 2;
-
-      const imgW = canvas.width;
-      const imgH = canvas.height;
-      const scale = printW / (imgW / 2);
-      const scaledH = (imgH / 2) * scale;
-
-      const pdf = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'landscape' });
-      let yOffset = 0;
-
-      while (yOffset < scaledH) {
-        if (yOffset > 0) pdf.addPage();
-        const sliceH = Math.min(printH, scaledH - yOffset);
-        const srcY = (yOffset / scale) * 2;
-        const srcH = (sliceH / scale) * 2;
-        const slice = document.createElement('canvas');
-        slice.width = imgW;
-        slice.height = srcH;
-        const ctx = slice.getContext('2d')!;
-        ctx.drawImage(canvas, 0, srcY, imgW, srcH, 0, 0, imgW, srcH);
-        const imgData = slice.toDataURL('image/jpeg', 0.95);
-        pdf.addImage(imgData, 'JPEG', MARGIN, MARGIN, printW, sliceH);
-        yOffset += printH;
-      }
+      // Página com tamanho exato do conteúdo — sem quebra de página
+      const printW = 297 - MARGIN * 2;
+      const scaledH = (canvas.height / 2) * (printW / (canvas.width / 2));
+      const pageH = scaledH + MARGIN * 2;
+      const pdf = new jsPDF({ unit: 'mm', format: [297, pageH], orientation: 'landscape' });
+      pdf.addImage(canvas.toDataURL('image/jpeg', 0.95), 'JPEG', MARGIN, MARGIN, printW, scaledH);
 
       pdf.save(`despesa-diarias-${ano}.pdf`);
     } finally {
@@ -2137,7 +2099,8 @@ function TabDespesaDiarias({ token }: { token: string | undefined }) {
                     label={false}
                   />
                   <Tooltip
-                    formatter={(v: number) => [formatCurrency(v), 'Total']}
+                    formatter={(v: number, _name: any, props: any) => [formatCurrency(v), props?.payload?.fullName || props?.payload?.name || 'Total']}
+                    labelFormatter={() => ''}
                     contentStyle={{ fontSize: '12px', borderRadius: '8px', border: '1px solid #e2e8f0' }}
                   />
                 </RadialBarChart>
@@ -2355,8 +2318,8 @@ function TabDespesaDiarias({ token }: { token: string | undefined }) {
               <YAxis hide />
               <Tooltip formatter={(v: number) => [formatCurrency(v), 'Total']} labelStyle={{ fontWeight: 600 }} contentStyle={{ fontSize: '12px', borderRadius: '8px', border: '1px solid #e2e8f0' }} />
               <Bar dataKey="total" radius={[4, 4, 0, 0]}>
-                {barData.map((_, i) => <Cell key={i} fill={i % 2 === 0 ? '#0F2A4E' : '#1e4d95'} />)}
-                <LabelList dataKey="total" position="top" formatter={(v: number) => formatCurrency(v)} style={{ fontSize: '11px', fill: '#0F2A4E', fontWeight: 700 }} />
+                {barData.map((_, i) => <Cell key={i} fill={i % 2 === 0 ? '#8a7020' : '#a68a2a'} />)}
+                <LabelList dataKey="total" position="top" formatter={(v: number) => formatCurrency(v)} style={{ fontSize: '11px', fill: '#6b5518', fontWeight: 700 }} />
               </Bar>
             </BarChart>
           </ResponsiveContainer>
@@ -2375,13 +2338,13 @@ function TabDespesaDiarias({ token }: { token: string | undefined }) {
         ) : (
           <ResponsiveContainer width="100%" height={140}>
             <LineChart data={crescData} margin={{ left: 8, right: 8, top: 20 }}>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#cbd5e1" />
               <XAxis dataKey="mes" tick={{ fontSize: 10, fill: '#64748b' }} axisLine={false} tickLine={false} />
               <YAxis tickFormatter={(v) => `${v}%`} tick={{ fontSize: 10, fill: '#64748b' }} axisLine={false} tickLine={false} width={45} />
               <Tooltip formatter={(v: number) => [`${v.toFixed(2)}%`, 'Crescimento']} contentStyle={{ fontSize: '12px', borderRadius: '8px', border: '1px solid #e2e8f0' }} />
-              <ReferenceLine y={0} stroke="#e2e8f0" strokeDasharray="4 2" />
-              <Line type="monotone" dataKey="perc" stroke="#1e4d95" strokeWidth={2.5} dot={{ fill: '#1e4d95', r: 4, strokeWidth: 0 }}>
-                <LabelList dataKey="perc" position="top" formatter={(v: number) => v === 0 ? '' : `${v > 0 ? '+' : ''}${v.toFixed(0)}%`} style={{ fontSize: '9px', fill: '#0F2A4E', fontWeight: 600 }} />
+              <ReferenceLine y={0} stroke="#cbd5e1" strokeDasharray="3 3" />
+              <Line type="monotone" dataKey="perc" stroke="#dc2626" strokeWidth={2.5} dot={{ fill: '#dc2626', r: 4, strokeWidth: 0 }}>
+                <LabelList dataKey="perc" position="top" formatter={(v: number) => v === 0 ? '' : `${v > 0 ? '+' : ''}${v.toFixed(0)}%`} style={{ fontSize: '9px', fill: '#dc2626', fontWeight: 600 }} />
               </Line>
             </LineChart>
           </ResponsiveContainer>
