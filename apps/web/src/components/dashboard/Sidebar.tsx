@@ -6,7 +6,7 @@ import { signOut, useSession } from 'next-auth/react';
 import { useState } from 'react';
 import {
   LayoutDashboard, Upload, FileText, LogOut, ChevronRight,
-  Building2, Layers, Tag, ChevronDown, UserCog, PanelLeftClose, PanelLeftOpen, Grip, Landmark, CheckCircle, TrendingUp, TrendingDown, BarChart2, ArrowLeftRight, ShieldCheck, Target,
+  Building2, Layers, Tag, ChevronDown, UserCog, PanelLeftClose, PanelLeftOpen, Grip, Landmark, CheckCircle, TrendingUp, TrendingDown, BarChart2, ArrowLeftRight, ShieldCheck, Target, Receipt, CreditCard, ClipboardList,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -133,9 +133,9 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
   const isSuperAdmin = role === 'SUPER_ADMIN';
 
   // Estados dos grupos
-  const isDashboardActive = pathname === '/dashboard' || pathname === '/receitas' || pathname === '/saude-15' || pathname === '/metas';
-  const isImportacaoActive = pathname === '/importacao' || pathname === '/importacao-receita' || pathname === '/importacao-transf-bancaria';
-  const isAnaliseActive = pathname === '/pagamentos' || pathname === '/receitas/listagem';
+  const isDashboardActive = pathname === '/dashboard' || pathname === '/receitas' || pathname === '/saude-15' || pathname === '/metas' || pathname === '/contas-a-pagar' || pathname === '/relatorio-saude';
+  const isImportacaoActive = pathname === '/importacao' || pathname === '/importacao-receita' || pathname === '/importacao-transf-bancaria' || pathname === '/importacao-empenhos';
+  const isAnaliseActive = pathname === '/pagamentos' || pathname === '/receitas/listagem' || pathname === '/analise/despesa-a-pagar';
   const isCadastrosActive = pathname.startsWith('/cadastros');
   const isClassificacaoActive = pathname === '/cadastros/credor' || pathname.startsWith('/cadastros/credor/');
 
@@ -228,6 +228,18 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
             label="Metas por Subgrupo"
             active={pathname === '/metas'}
           />
+          <SubItem
+            href="/contas-a-pagar"
+            icon={<CreditCard size={14} />}
+            label="Contas a Pagar"
+            active={pathname === '/contas-a-pagar'}
+          />
+          <SubItem
+            href="/relatorio-saude"
+            icon={<ClipboardList size={14} />}
+            label="Rel. Quadrimestral"
+            active={pathname === '/relatorio-saude'}
+          />
         </NavGroup>
 
         {/* ── Importação (Despesa / Receita) ────────────────────────────── */}
@@ -257,6 +269,12 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
             label="Transf. Bancária"
             active={pathname === '/importacao-transf-bancaria'}
           />
+          <SubItem
+            href="/importacao-empenhos"
+            icon={<Receipt size={14} />}
+            label="Empenhos Liq."
+            active={pathname === '/importacao-empenhos'}
+          />
         </NavGroup>
 
         {/* ── Análise (Pagamentos / Receitas) ───────────────────────────── */}
@@ -279,6 +297,12 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
             icon={<TrendingUp size={14} />}
             label="Receita"
             active={pathname === '/receitas/listagem'}
+          />
+          <SubItem
+            href="/analise/despesa-a-pagar"
+            icon={<Receipt size={14} />}
+            label="Despesa a Pagar"
+            active={pathname === '/analise/despesa-a-pagar'}
           />
         </NavGroup>
 

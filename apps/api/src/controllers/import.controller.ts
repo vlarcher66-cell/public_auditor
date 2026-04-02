@@ -23,6 +23,7 @@ export async function uploadFile(req: Request, res: Response): Promise<void> {
   const tipoRelatorio = tipoRaw === 'RP' ? 'RP'
     : tipoRaw === 'RECEITA' ? 'RECEITA'
     : tipoRaw === 'TRANSF_BANCARIA' ? 'TRANSF_BANCARIA'
+    : tipoRaw === 'EMPENHO_LIQUIDADO' ? 'EMPENHO_LIQUIDADO'
     : 'OR';
   const entidadeId = req.body.entidade_id ? parseInt(req.body.entidade_id) : undefined;
   const sistemaOrigem = req.body.sistema_origem ? String(req.body.sistema_origem).slice(0, 50) : null;
@@ -182,11 +183,12 @@ export async function deleteJob(req: Request, res: Response): Promise<void> {
 
   await db.transaction(async (trx) => {
     // Remove registros de despesa ou receita vinculados a este job
-    const deletedDespesa  = await trx('fact_ordem_pagamento').where({ fk_import_job: job.id }).delete();
-    const deletedReceita  = await trx('fact_receita').where({ fk_import_job: job.id }).delete();
-    const deletedTransfer = await trx('fact_transf_bancaria').where({ fk_import_job: job.id }).delete();
+    const deletedDespesa   = await trx('fact_ordem_pagamento').where({ fk_import_job: job.id }).delete();
+    const deletedReceita   = await trx('fact_receita').where({ fk_import_job: job.id }).delete();
+    const deletedTransfer  = await trx('fact_transf_bancaria').where({ fk_import_job: job.id }).delete();
+    const deletedEmpenhos  = await trx('fact_empenho_liquidado').where({ fk_import_job: job.id }).delete();
     await trx('import_jobs').where({ id: job.id }).delete();
-    logger.info({ jobId: job.id, uuid: job.uuid, deletedDespesa, deletedReceita, deletedTransfer }, 'Import job deleted');
+    logger.info({ jobId: job.id, uuid: job.uuid, deletedDespesa, deletedReceita, deletedTransfer, deletedEmpenhos }, 'Import job deleted');
   });
 
   res.json({ message: 'Importação e registros excluídos com sucesso' });

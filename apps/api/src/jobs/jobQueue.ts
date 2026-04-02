@@ -12,6 +12,8 @@ import { loadReceitaToMySQL } from '../etl/loaders/receita.loader';
 import { extractTransfBancariaFromPdf } from '../etl/extractors/transferenciaBancaria.extractor';
 import { extractTransfBancariaFromExcel } from '../etl/extractors/transferenciaBancariaExcel.extractor';
 import { loadTransfBancariaToMySQL } from '../etl/loaders/transferenciaBancaria.loader';
+import { extractEmpenhoLiquidadoFromExcel } from '../etl/extractors/empenhoLiquidado.extractor';
+import { loadEmpenhoLiquidadoToMySQL } from '../etl/loaders/empenhoLiquidado.loader';
 
 export interface ETLJobData {
   importJobId: number;
@@ -67,6 +69,50 @@ async function processJob({ importJobId, filePath, tipoRelatorio, entidadeId, pe
       logger.info({ importJobId, ...result }, 'TransfBancaria ETL: done');
     } catch (err: any) {
       logger.error({ importJobId, err: err.message }, 'TransfBancaria ETL: failed');
+      await db('import_jobs').where({ id: importJobId }).update({
+        status: 'ERROR',
+        error_log: JSON.stringify([{ row_index: -1, field: 'system', message: err.message, raw_value: '' }]),
+        finished_at: new Date().toISOString(),
+      });
+    }
+    return;
+  }
+
+  // ── Empenho Liquidado (Contas a Pagar): pipeline dedicado ───────────────────
+  if (tipoRelatorio === 'EMPENHO_LIQUIDADO') {
+    try {
+      await db('import_jobs').where({ id: importJobId }).update({
+        status: 'EXTRACTING',
+        started_at: new Date().toISOString(),
+      });
+
+      const rawRows = extractEmpenhoLiquidadoFromExcel(filePath);
+      logger.info({ count: rawRows.length }, 'EmpenhoLiquidado ETL: extracted');
+
+      await db('import_jobs').where({ id: importJobId }).update({
+        status: 'LOADING',
+        total_rows: rawRows.length,
+      });
+
+      const result = await loadEmpenhoLiquidadoToMySQL(
+        db, rawRows, importJobId,
+        entidadeId!,
+        periodoReferencia || '',
+      );
+
+      await db('import_jobs').where({ id: importJobId }).update({
+        status: 'DONE',
+        total_rows: rawRows.length,
+        rows_loaded: result.rows_loaded,
+        rows_skipped: result.rows_skipped,
+        rows_errored: 0,
+        valor_bruto_total: result.valor_total,
+        finished_at: new Date().toISOString(),
+      });
+
+      logger.info({ importJobId, ...result }, `EmpenhoLiquidado ETL: done — ${result.credores_criados} credor(es) criado(s) automaticamente`);
+    } catch (err: any) {
+      logger.error({ importJobId, err: err.message }, 'EmpenhoLiquidado ETL: failed');
       await db('import_jobs').where({ id: importJobId }).update({
         status: 'ERROR',
         error_log: JSON.stringify([{ row_index: -1, field: 'system', message: err.message, raw_value: '' }]),

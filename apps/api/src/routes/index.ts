@@ -15,6 +15,8 @@ import receitasRoutes from './receitas.routes';
 import transferenciasRoutes from './transferencias.routes';
 import indice15Routes from './indice15.routes';
 import metasRoutes from './metas.routes';
+import empenhoLiquidadoRoutes from './empenhoLiquidado.routes';
+import relatorioQuadrimestralRoutes from './relatorioQuadrimestral.routes';
 import { db } from '../config/database';
 import { authMiddleware } from '../middleware/auth.middleware';
 import { backfillEmpenhoBase } from '../controllers/pagamentos.controller';
@@ -37,6 +39,8 @@ router.use('/receitas', receitasRoutes);
 router.use('/transferencias-bancarias', transferenciasRoutes);
 router.use('/indice15', indice15Routes);
 router.use('/metas', metasRoutes);
+router.use('/empenhos-liquidados', empenhoLiquidadoRoutes);
+router.use('/relatorio-quadrimestral', relatorioQuadrimestralRoutes);
 
 router.post('/admin/backfill-empenho-base', backfillEmpenhoBase);
 router.post('/admin/fix-regra-credor', async (_req, res) => {
