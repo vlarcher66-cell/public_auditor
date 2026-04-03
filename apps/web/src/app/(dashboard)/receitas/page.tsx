@@ -5,6 +5,7 @@ import { useSession } from 'next-auth/react';
 import {
   Target, TrendingUp, BarChart2, AlertCircle,
   ChevronRight, Upload, Loader2, Download, InboxIcon,
+  LayoutDashboard, Table2, Banknote,
 } from 'lucide-react';
 import TopBar from '@/components/dashboard/TopBar';
 import { apiRequest } from '@/lib/api';
@@ -58,11 +59,11 @@ interface Grupo    { cod: string; desc: string; meses: number[]; subgrupos: SubG
 const MESES = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
 
 type TabId = 'geral' | 'analitica' | 'sintetica' | 'extra';
-const TABS: { id: TabId; label: string }[] = [
-  { id: 'geral',     label: 'Geral' },
-  { id: 'analitica', label: 'Receita Analítica' },
-  { id: 'sintetica', label: 'Receita Sintética' },
-  { id: 'extra',     label: 'Receita Extra' },
+const TABS: { id: TabId; label: string; icon: React.ReactNode }[] = [
+  { id: 'geral',     label: 'Geral',              icon: <LayoutDashboard size={14} /> },
+  { id: 'analitica', label: 'Receita Analítica',  icon: <Table2 size={14} /> },
+  { id: 'sintetica', label: 'Receita Sintética',  icon: <BarChart2 size={14} /> },
+  { id: 'extra',     label: 'Receita Extra',       icon: <Banknote size={14} /> },
 ];
 
 // ─── Mapeamento de subgrupos ──────────────────────────────────────────────────
@@ -524,9 +525,9 @@ export default function ReceitasPage() {
     <div>
       <TopBar title="Receita Arrecadada" subtitle="Demonstrativo de Execução da Receita Orçamentária" />
 
-      {/* ── Barra de Abas — padrão igual ao dashboard de despesa ── */}
-      <div className="bg-white border-b border-gray-200 px-8">
-        <div className="flex gap-0">
+      {/* ── Barra de Abas — pill style ── */}
+      <div style={{ background: '#fff', borderBottom: '1px solid #e2e8f0', padding: '12px 32px' }}>
+        <div style={{ display: 'flex', background: '#f8fafc', borderRadius: '14px', padding: '4px', border: '1px solid #e2e8f0', gap: '4px', width: 'fit-content' }}>
           {TABS.map(tab => {
             const active = activeTab === tab.id;
             return (
@@ -534,23 +535,15 @@ export default function ReceitasPage() {
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
                 style={{
-                  padding: '14px 20px',
-                  fontSize: '13px',
-                  fontWeight: active ? 600 : 400,
-                  color: active ? '#0F2A4E' : '#6b7280',
-                  background: active ? 'rgba(15,42,78,0.04)' : 'none',
-                  border: 'none',
-                  borderBottom: active ? '2px solid #0F2A4E' : '2px solid transparent',
-                  borderRadius: '6px 6px 0 0',
-                  cursor: 'pointer',
-                  transition: 'color 0.15s, border-color 0.15s, background 0.15s',
+                  display: 'flex', alignItems: 'center', gap: '7px',
+                  padding: '8px 18px', borderRadius: '10px', border: 'none', cursor: 'pointer',
+                  fontSize: '13px', fontWeight: 700, transition: 'all 0.2s',
+                  background: active ? 'linear-gradient(135deg, #0F2A4E, #1e4d95)' : 'transparent',
+                  color: active ? '#fff' : '#64748b',
                   whiteSpace: 'nowrap',
-                  marginBottom: '-1px',
                 }}
-                onMouseEnter={e => { if (!active) { (e.currentTarget as HTMLButtonElement).style.color = '#0F2A4E'; (e.currentTarget as HTMLButtonElement).style.background = 'rgba(15,42,78,0.06)'; } }}
-                onMouseLeave={e => { if (!active) { (e.currentTarget as HTMLButtonElement).style.color = '#6b7280'; (e.currentTarget as HTMLButtonElement).style.background = 'none'; } }}
               >
-                {tab.label}
+                {tab.icon}{tab.label}
               </button>
             );
           })}

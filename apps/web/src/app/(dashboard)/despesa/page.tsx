@@ -3,7 +3,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
 import { useQuery } from '@tanstack/react-query';
-import { DollarSign, TrendingDown, Banknote, FileCheck, ArrowRight, BarChart2, Clock, TrendingUp, ChevronDown, FileDown, Loader2, ChevronRight, Layers2 } from 'lucide-react';
+import { DollarSign, TrendingDown, Banknote, FileCheck, ArrowRight, BarChart2, Clock, TrendingUp, ChevronDown, FileDown, Loader2, ChevronRight, Layers2, LayoutDashboard, Table2, BriefcaseBusiness } from 'lucide-react';
 import Link from 'next/link';
 import TopBar from '@/components/dashboard/TopBar';
 import StatCard from '@/components/dashboard/StatCard';
@@ -30,12 +30,12 @@ const GROUP_COLORS = [
 
 type TabId = 'sintetica' | 'desp_sintetica' | 'analitica' | 'diarias' | 'outros';
 
-const TABS: { id: TabId; label: string }[] = [
-  { id: 'sintetica', label: 'Geral' },
-  { id: 'desp_sintetica', label: 'Despesa Sintética' },
-  { id: 'analitica', label: 'Despesa Analítica' },
-  { id: 'diarias',   label: 'Despesa com Diárias' },
-  { id: 'outros',    label: 'Outros Exercícios' },
+const TABS: { id: TabId; label: string; icon: React.ReactNode }[] = [
+  { id: 'sintetica',     label: 'Geral',                icon: <LayoutDashboard size={14} /> },
+  { id: 'desp_sintetica',label: 'Despesa Sintética',    icon: <BarChart2 size={14} /> },
+  { id: 'analitica',     label: 'Despesa Analítica',    icon: <Table2 size={14} /> },
+  { id: 'diarias',       label: 'Despesa com Diárias',  icon: <BriefcaseBusiness size={14} /> },
+  { id: 'outros',        label: 'Outros Exercícios',    icon: <Clock size={14} /> },
 ];
 
 // ─── Tab: Em Construção ───────────────────────────────────────────────────────
@@ -1508,9 +1508,8 @@ function TabSintetica({
   token: string | undefined;
 }) {
   const anoAtual = new Date().getFullYear();
-  const mesAtual = new Date().getMonth() + 1;
 
-  // Dia do ano até hoje
+  // Dia do ano até hoje (para média diária de OPs)
   const inicio = new Date(anoAtual, 0, 1);
   const hoje = new Date();
   const diasNoAno = Math.floor((hoje.getTime() - inicio.getTime()) / (1000 * 60 * 60 * 24)) + 1;
@@ -1527,6 +1526,14 @@ function TabSintetica({
     enabled: !!token,
   });
 
+  // Último mês com dados lançados no sistema (baseado em totaisMes)
+  const ultimoMesComDados = sinteticaData?.totaisMes
+    ? Math.max(0, ...Object.entries(sinteticaData.totaisMes)
+        .filter(([, v]) => (v as number) > 0)
+        .map(([k]) => Number(k)))
+    : 0;
+  const mesReferencia = ultimoMesComDados || new Date().getMonth() + 1;
+
   // Meses para o gráfico de evolução
   const mesesNomes = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
   const evolucaoData = mesesNomes.map((nome, i) => {
@@ -1540,9 +1547,9 @@ function TabSintetica({
   const totaisValidos = evolucaoData.filter(d => d.total > 0).map(d => d.total);
   const mediaEvolucao = totaisValidos.length ? totaisValidos.reduce((a, b) => a + b, 0) / totaisValidos.length : 0;
 
-  // Últimos 6 meses para sparkline
-  const ultimos6 = mesesNomes.slice(Math.max(0, mesAtual - 6), mesAtual).map((_, i) => {
-    const mes = Math.max(1, mesAtual - 5) + i;
+  // Últimos 6 meses para sparkline (baseado no último mês com dados)
+  const ultimos6 = mesesNomes.slice(Math.max(0, mesReferencia - 6), mesReferencia).map((_, i) => {
+    const mes = Math.max(1, mesReferencia - 5) + i;
     return { v: sinteticaData?.totaisMes?.[mes] ?? 0 };
   });
 
@@ -1590,13 +1597,17 @@ function TabSintetica({
           <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.6)', marginTop: '4px' }}>Exercício {anoAtual} — Visão Geral Consolidada</div>
         </div>
         <div style={{ flex: 1, minWidth: '200px', maxWidth: '340px' }}>
-          <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.7)', marginBottom: '8px', textAlign: 'center' }}>Você está no mês {mesAtual} de 12</div>
+          <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.7)', marginBottom: '8px', textAlign: 'center' }}>
+            {ultimoMesComDados > 0
+              ? `Dados até ${mesesNomes[ultimoMesComDados - 1]} (mês ${ultimoMesComDados} de 12)`
+              : 'Aguardando dados lançados'}
+          </div>
           <div style={{ background: 'rgba(255,255,255,0.1)', borderRadius: '999px', height: '8px', overflow: 'hidden' }}>
-            <div style={{ width: `${(mesAtual / 12) * 100}%`, height: '100%', background: '#C9A84C', borderRadius: '999px', transition: 'width 0.6s ease' }} />
+            <div style={{ width: `${(mesReferencia / 12) * 100}%`, height: '100%', background: '#C9A84C', borderRadius: '999px', transition: 'width 0.6s ease' }} />
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '4px' }}>
             <span style={{ fontSize: '10px', color: 'rgba(255,255,255,0.5)' }}>Jan</span>
-            <span style={{ fontSize: '10px', color: '#C9A84C', fontWeight: 600 }}>{Math.round((mesAtual / 12) * 100)}% do ano</span>
+            <span style={{ fontSize: '10px', color: '#C9A84C', fontWeight: 600 }}>{Math.round((mesReferencia / 12) * 100)}% do ano</span>
             <span style={{ fontSize: '10px', color: 'rgba(255,255,255,0.5)' }}>Dez</span>
           </div>
         </div>
@@ -2621,9 +2632,9 @@ export default function DashboardPage() {
     <div>
       <TopBar title="Dashboard" subtitle="Análise de despesas municipais" />
 
-      {/* Barra de Tabs */}
-      <div className="bg-white border-b border-gray-200 px-8">
-        <div className="flex gap-0">
+      {/* Barra de Tabs — pill style */}
+      <div style={{ background: '#fff', borderBottom: '1px solid #e2e8f0', padding: '12px 32px' }}>
+        <div style={{ display: 'flex', background: '#f8fafc', borderRadius: '14px', padding: '4px', border: '1px solid #e2e8f0', gap: '4px', width: 'fit-content' }}>
           {TABS.map((tab) => {
             const active = activeTab === tab.id;
             return (
@@ -2631,35 +2642,15 @@ export default function DashboardPage() {
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
                 style={{
-                  padding: '14px 20px',
-                  fontSize: '13px',
-                  fontWeight: active ? 600 : 400,
-                  color: active ? '#0F2A4E' : '#6b7280',
-                  background: active ? 'rgba(15,42,78,0.04)' : 'none',
-                  border: 'none',
-                  borderBottom: active ? '2px solid #0F2A4E' : '2px solid transparent',
-                  borderRadius: '6px 6px 0 0',
-                  cursor: 'pointer',
-                  transition: 'color 0.15s, border-color 0.15s, background 0.15s',
+                  display: 'flex', alignItems: 'center', gap: '7px',
+                  padding: '8px 18px', borderRadius: '10px', border: 'none', cursor: 'pointer',
+                  fontSize: '13px', fontWeight: 700, transition: 'all 0.2s',
+                  background: active ? 'linear-gradient(135deg, #0F2A4E, #1e4d95)' : 'transparent',
+                  color: active ? '#fff' : '#64748b',
                   whiteSpace: 'nowrap',
-                  marginBottom: '-1px',
-                }}
-                onMouseEnter={e => {
-                  const btn = e.currentTarget as HTMLButtonElement;
-                  if (!active) {
-                    btn.style.color = '#0F2A4E';
-                    btn.style.background = 'rgba(15,42,78,0.06)';
-                  }
-                }}
-                onMouseLeave={e => {
-                  const btn = e.currentTarget as HTMLButtonElement;
-                  if (!active) {
-                    btn.style.color = '#6b7280';
-                    btn.style.background = 'none';
-                  }
                 }}
               >
-                {tab.label}
+                {tab.icon}{tab.label}
               </button>
             );
           })}
