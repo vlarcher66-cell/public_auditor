@@ -68,7 +68,7 @@ function TabelaPendentes({ token, periodo, entidade }: {
   const [busca, setBusca] = useState('');
   const [expanded, setExpanded] = useState(false);
 
-  const { data: rows = [], isLoading } = useQuery({
+  const { data: rows = [] as any[], isLoading } = useQuery<any[]>({
     queryKey: ['empenhos-pendentes', token, periodo, entidade],
     queryFn: () => {
       const p = new URLSearchParams();
@@ -297,7 +297,7 @@ export default function ContasAPagarPage() {
             <button
               onClick={() => setPeriodoFiltro('')}
               style={{
-                padding: '7px 14px', borderRadius: '9px', border: 'none', cursor: 'pointer', fontSize: '12px', fontWeight: 700, transition: 'all 0.15s',
+                padding: '7px 14px', borderRadius: '9px', cursor: 'pointer', fontSize: '12px', fontWeight: 700, transition: 'all 0.15s',
                 background: !periodoFiltro ? 'linear-gradient(135deg, #0F2A4E, #1e4d95)' : '#fff',
                 color: !periodoFiltro ? '#fff' : '#64748b',
                 boxShadow: !periodoFiltro ? '0 3px 10px rgba(15,42,78,0.25)' : '0 1px 3px rgba(0,0,0,0.08)',

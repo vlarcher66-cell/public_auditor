@@ -237,7 +237,7 @@ export default function RelatorioSaudePage() {
               <div style={{ display: 'flex', gap: '6px' }}>
                 {ANOS.map(a => (
                   <button key={a} onClick={() => setAno(a)} style={{
-                    padding: '7px 14px', borderRadius: '9px', border: 'none', cursor: 'pointer',
+                    padding: '7px 14px', borderRadius: '9px', cursor: 'pointer',
                     fontSize: '12px', fontWeight: 700, transition: 'all 0.15s',
                     background: ano === a ? 'linear-gradient(135deg, #0F2A4E, #1e4d95)' : '#f8fafc',
                     color: ano === a ? '#fff' : '#64748b',
@@ -254,7 +254,7 @@ export default function RelatorioSaudePage() {
               <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
                 {QUAD_INFO.map(qi => (
                   <button key={qi.q} onClick={() => setQuad(qi.q)} style={{
-                    padding: '7px 14px', borderRadius: '9px', border: 'none', cursor: 'pointer',
+                    padding: '7px 14px', borderRadius: '9px', cursor: 'pointer',
                     fontSize: '12px', fontWeight: 700, transition: 'all 0.15s',
                     background: quad === qi.q ? 'linear-gradient(135deg, #C9A84C, #a8852a)' : '#f8fafc',
                     color: quad === qi.q ? '#fff' : '#64748b',

@@ -46,7 +46,7 @@ export default function ConfirmacaoDiariasPage() {
   const [confirmando, setConfirmando] = useState<number | null>(null);
   const [search, setSearch] = useState('');
 
-  const token = session?.user?.token as string;
+  const token = (session?.user as any)?.token as string;
 
   useEffect(() => {
     if (!token) return;
@@ -136,7 +136,7 @@ export default function ConfirmacaoDiariasPage() {
   if (credores.length === 0 && !loading) {
     return (
       <div className="flex flex-col h-screen bg-gray-50">
-        <TopBar />
+        <TopBar title="Confirmação de Diárias" />
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center">
             <Check size={48} className="mx-auto text-green-600 mb-4" />
@@ -153,7 +153,7 @@ export default function ConfirmacaoDiariasPage() {
 
   return (
     <div className="flex flex-col h-screen bg-gray-50">
-      <TopBar />
+      <TopBar title="Confirmação de Diárias" />
 
       <div className="flex-1 overflow-y-auto px-6 py-6">
         <div className="mb-6">
