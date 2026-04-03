@@ -29,7 +29,7 @@ export default function LoginCard() {
       if (result?.error) {
         setError('Email ou senha inválidos. Verifique suas credenciais.');
       } else {
-        router.push('/dashboard');
+        router.push('/dashboard-geral');
       }
     } catch {
       setError('Erro ao conectar. Tente novamente.');

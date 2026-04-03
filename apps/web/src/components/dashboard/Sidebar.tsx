@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { signOut, useSession } from 'next-auth/react';
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import {
   LayoutDashboard, Upload, FileText, LogOut, ChevronRight,
   Building2, Layers, Tag, ChevronDown, UserCog, PanelLeftClose, PanelLeftOpen, Grip, Landmark, CheckCircle, TrendingUp, TrendingDown, BarChart2, ArrowLeftRight, ShieldCheck, Target, Receipt, CreditCard, ClipboardList,
@@ -13,17 +13,17 @@ import { cn } from '@/lib/utils';
 // ─── Estrutura do menu ────────────────────────────────────────────────────────
 
 const cadastrosItems = [
-  { href: '/cadastros/municipio', icon: <Landmark size={16} />, label: 'Cad. Município', superAdminOnly: true },
-  { href: '/cadastros/entidade', icon: <Building2 size={16} />, label: 'Cad. Entidade' },
-  { href: '/cadastros/secretaria', icon: <Landmark size={16} />, label: 'Cad. Secretaria' },
-  { href: '/cadastros/bloco', icon: <Grip size={16} />, label: 'Cad. Bloco' },
-  { href: '/cadastros/setor', icon: <Building2 size={16} />, label: 'Cad. Setor' },
-  { href: '/cadastros/grupo', icon: <Layers size={16} />, label: 'Cad. Grupo' },
-  { href: '/cadastros/subgrupo', icon: <Tag size={16} />, label: 'Cad. Subgrupo' },
+  { href: '/cadastros/municipio', icon: <Landmark size={15} />, label: 'Cad. Município', superAdminOnly: true },
+  { href: '/cadastros/entidade', icon: <Building2 size={15} />, label: 'Cad. Entidade' },
+  { href: '/cadastros/secretaria', icon: <Landmark size={15} />, label: 'Cad. Secretaria' },
+  { href: '/cadastros/bloco', icon: <Grip size={15} />, label: 'Cad. Bloco' },
+  { href: '/cadastros/setor', icon: <Building2 size={15} />, label: 'Cad. Setor' },
+  { href: '/cadastros/grupo', icon: <Layers size={15} />, label: 'Cad. Grupo' },
+  { href: '/cadastros/subgrupo', icon: <Tag size={15} />, label: 'Cad. Subgrupo' },
 ];
 
 const classificacaoItems = [
-  { href: '/cadastros/credor', icon: <Tag size={14} />, label: 'Credores' },
+  { href: '/cadastros/credor', icon: <Tag size={13} />, label: 'Credores' },
 ];
 
 interface SidebarProps {
@@ -31,31 +31,75 @@ interface SidebarProps {
   onToggle: () => void;
 }
 
-// ─── Componente de item simples ───────────────────────────────────────────────
+// ─── Tooltip para modo colapsado ──────────────────────────────────────────────
+
+function CollapsedTooltip({ label, children }: { label: string; children: React.ReactNode }) {
+  const [visible, setVisible] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  const [top, setTop] = useState(0);
+
+  return (
+    <div
+      ref={ref}
+      className="relative"
+      onMouseEnter={() => {
+        if (ref.current) setTop(ref.current.getBoundingClientRect().top + ref.current.offsetHeight / 2);
+        setVisible(true);
+      }}
+      onMouseLeave={() => setVisible(false)}
+    >
+      {children}
+      {visible && (
+        <div
+          className="fixed z-50 pointer-events-none"
+          style={{ top: top - 14, left: 68 }}
+        >
+          <div className="flex items-center gap-1.5">
+            <div className="w-1.5 h-1.5 bg-gold-500 rounded-full opacity-80" />
+            <span className="bg-navy-900 border border-white/10 text-white text-xs font-medium px-3 py-1.5 rounded-lg shadow-xl whitespace-nowrap">
+              {label}
+            </span>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Item simples ─────────────────────────────────────────────────────────────
 
 function NavItem({
   href, icon, label, collapsed, active,
 }: {
   href: string; icon: React.ReactNode; label: string; collapsed: boolean; active: boolean;
 }) {
-  return (
+  const content = (
     <Link
       href={href}
       title={collapsed ? label : undefined}
       className={cn(
-        'flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200',
-        collapsed && 'justify-center px-0',
-        active ? 'bg-white/15 text-white shadow-sm' : 'text-white/60 hover:bg-white/10 hover:text-white',
+        'group flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200',
+        collapsed && 'justify-center px-0 w-10 mx-auto',
+        active
+          ? 'bg-gradient-to-r from-gold-500/20 to-gold-500/5 text-white border border-gold-500/20'
+          : 'text-white/50 hover:bg-white/8 hover:text-white/90 border border-transparent',
       )}
     >
-      <span className={active ? 'text-gold-500' : ''}>{icon}</span>
+      <span className={cn('transition-colors duration-200', active ? 'text-gold-400' : 'group-hover:text-white/80')}>
+        {icon}
+      </span>
       {!collapsed && <span>{label}</span>}
-      {!collapsed && active && <ChevronRight size={14} className="ml-auto text-gold-500" />}
+      {!collapsed && active && (
+        <span className="ml-auto w-1.5 h-1.5 rounded-full bg-gold-400 shadow-[0_0_6px_rgba(201,168,76,0.6)]" />
+      )}
     </Link>
   );
+
+  if (collapsed) return <CollapsedTooltip label={label}>{content}</CollapsedTooltip>;
+  return content;
 }
 
-// ─── Componente de grupo expansível ──────────────────────────────────────────
+// ─── Grupo expansível ─────────────────────────────────────────────────────────
 
 function NavGroup({
   icon, label, collapsed, active, open, onToggle, children,
@@ -66,16 +110,19 @@ function NavGroup({
 }) {
   if (collapsed) {
     return (
-      <button
-        onClick={onToggle}
-        title={label}
-        className={cn(
-          'flex justify-center items-center px-0 py-2.5 w-full rounded-xl text-sm font-medium transition-all duration-200',
-          active ? 'bg-white/15 text-gold-500' : 'text-white/60 hover:bg-white/10 hover:text-white',
-        )}
-      >
-        {icon}
-      </button>
+      <CollapsedTooltip label={label}>
+        <button
+          onClick={onToggle}
+          className={cn(
+            'flex justify-center items-center w-10 mx-auto py-2.5 rounded-xl text-sm font-medium transition-all duration-200',
+            active
+              ? 'bg-gradient-to-r from-gold-500/20 to-gold-500/5 text-gold-400 border border-gold-500/20'
+              : 'text-white/50 hover:bg-white/8 hover:text-white/90 border border-transparent',
+          )}
+        >
+          {icon}
+        </button>
+      </CollapsedTooltip>
     );
   }
 
@@ -84,24 +131,36 @@ function NavGroup({
       <button
         onClick={onToggle}
         className={cn(
-          'flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 w-full',
-          active ? 'bg-white/15 text-white shadow-sm' : 'text-white/60 hover:bg-white/10 hover:text-white',
+          'group flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 w-full',
+          active
+            ? 'bg-gradient-to-r from-gold-500/20 to-gold-500/5 text-white border border-gold-500/20'
+            : 'text-white/50 hover:bg-white/8 hover:text-white/90 border border-transparent',
         )}
       >
-        <span className={active ? 'text-gold-500' : ''}>{icon}</span>
+        <span className={cn('transition-colors duration-200', active ? 'text-gold-400' : 'group-hover:text-white/80')}>
+          {icon}
+        </span>
         <span>{label}</span>
-        <ChevronDown size={14} className={cn('ml-auto transition-transform duration-200', open ? 'rotate-180' : '')} />
+        <ChevronDown
+          size={13}
+          className={cn('ml-auto transition-transform duration-300 opacity-50', open ? 'rotate-180 opacity-80' : '')}
+        />
       </button>
-      {open && (
-        <div className="ml-4 mt-1 space-y-0.5 border-l border-white/10 pl-3">
+      <div
+        className={cn(
+          'overflow-hidden transition-all duration-300 ease-in-out',
+          open ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0',
+        )}
+      >
+        <div className="ml-3 mt-1 mb-1 space-y-0.5 border-l border-white/8 pl-3">
           {children}
         </div>
-      )}
+      </div>
     </div>
   );
 }
 
-// ─── Sub-item dentro de grupo ─────────────────────────────────────────────────
+// ─── Sub-item ─────────────────────────────────────────────────────────────────
 
 function SubItem({
   href, icon, label, active,
@@ -112,14 +171,32 @@ function SubItem({
     <Link
       href={href}
       className={cn(
-        'flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200',
-        active ? 'bg-white/15 text-white' : 'text-white/60 hover:bg-white/10 hover:text-white',
+        'group flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium transition-all duration-150',
+        active
+          ? 'bg-white/10 text-white'
+          : 'text-white/45 hover:bg-white/6 hover:text-white/80',
       )}
     >
-      <span className={active ? 'text-gold-500' : ''}>{icon}</span>
+      <span className={cn('transition-colors', active ? 'text-gold-400' : 'text-white/30 group-hover:text-white/60')}>
+        {icon}
+      </span>
       <span>{label}</span>
-      {active && <ChevronRight size={12} className="ml-auto text-gold-500" />}
+      {active && <span className="ml-auto w-1 h-1 rounded-full bg-gold-400 opacity-80" />}
     </Link>
+  );
+}
+
+// ─── Separador de seção ───────────────────────────────────────────────────────
+
+function SectionLabel({ label, collapsed }: { label: string; collapsed: boolean }) {
+  if (collapsed) {
+    return <div className="mx-auto w-6 h-px bg-white/10 my-2" />;
+  }
+  return (
+    <div className="flex items-center gap-2 px-3 mb-2 mt-4">
+      <span className="text-[10px] font-semibold text-white/25 uppercase tracking-[0.12em]">{label}</span>
+      <div className="flex-1 h-px bg-white/8" />
+    </div>
   );
 }
 
@@ -131,15 +208,13 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
   const { data: session } = useSession();
   const role = (session as any)?.user?.role ?? '';
   const isSuperAdmin = role === 'SUPER_ADMIN';
+  const userName = (session as any)?.user?.name ?? '';
 
-  // Estados dos grupos
-  const isDashboardActive = pathname === '/dashboard' || pathname === '/receitas' || pathname === '/saude-15' || pathname === '/metas' || pathname === '/contas-a-pagar' || pathname === '/relatorio-saude';
   const isImportacaoActive = pathname === '/importacao' || pathname === '/importacao-receita' || pathname === '/importacao-transf-bancaria' || pathname === '/importacao-empenhos';
   const isAnaliseActive = pathname === '/pagamentos' || pathname === '/receitas/listagem' || pathname === '/analise/despesa-a-pagar';
   const isCadastrosActive = pathname.startsWith('/cadastros');
   const isClassificacaoActive = pathname === '/cadastros/credor' || pathname.startsWith('/cadastros/credor/');
 
-  const [dashboardOpen, setDashboardOpen] = useState(isDashboardActive);
   const [importacaoOpen, setImportacaoOpen] = useState(isImportacaoActive);
   const [analiseOpen, setAnaliseOpen] = useState(isAnaliseActive);
   const [cadastrosOpen, setCadastrosOpen] = useState(isCadastrosActive);
@@ -148,167 +223,102 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
   return (
     <aside
       className={cn(
-        'bg-navy-800 text-white flex flex-col min-h-screen fixed left-0 top-0 z-30 shadow-xl transition-all duration-300',
-        collapsed ? 'w-16' : 'w-64',
+        'flex flex-col min-h-screen fixed left-0 top-0 z-30 transition-all duration-300',
+        collapsed ? 'w-[68px]' : 'w-[240px]',
       )}
+      style={{
+        background: 'linear-gradient(180deg, #0c2240 0%, #0F2A4E 40%, #0a1e38 100%)',
+        boxShadow: '4px 0 24px rgba(0,0,0,0.35), inset -1px 0 0 rgba(255,255,255,0.05)',
+      }}
     >
-      {/* Logo + botão toggle */}
-      <div className="px-3 py-4 border-b border-white/10 flex items-center justify-between gap-2">
-        <div className={cn('flex items-center gap-3 overflow-hidden', collapsed && 'justify-center w-full')}>
-          <div className="w-9 h-9 bg-gold-500 rounded-xl flex items-center justify-center shadow-sm flex-shrink-0">
-            <Building2 size={18} className="text-navy-800" />
-          </div>
-          {!collapsed && (
-            <div className="overflow-hidden">
-              <div className="font-bold text-sm leading-tight whitespace-nowrap">GestorPublico</div>
-              <div className="text-xs text-white/50 whitespace-nowrap">Gestão Municipal</div>
-            </div>
-          )}
+      {/* ── Header ────────────────────────────────────────────────────────── */}
+      <div className={cn(
+        'flex items-center border-b border-white/8 flex-shrink-0',
+        collapsed ? 'justify-center py-4 px-0' : 'gap-3 px-4 py-4',
+      )}>
+        {/* Logo mark */}
+        <div
+          className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 shadow-md"
+          style={{ background: 'linear-gradient(135deg, #C9A84C 0%, #e8c84a 100%)' }}
+        >
+          <Building2 size={15} className="text-navy-900" />
         </div>
+
         {!collapsed && (
-          <button
-            onClick={onToggle}
-            title="Recolher menu"
-            className="flex-shrink-0 p-1.5 rounded-lg text-white/40 hover:text-white hover:bg-white/10 transition-colors"
-          >
-            <PanelLeftClose size={16} />
-          </button>
+          <>
+            <div className="flex-1 overflow-hidden">
+              <div className="font-bold text-[13px] text-white leading-tight tracking-tight">GestorPublico</div>
+              <div className="text-[10px] text-white/35 tracking-wide">Gestão Municipal</div>
+            </div>
+            <button
+              onClick={onToggle}
+              title="Recolher menu"
+              className="flex-shrink-0 w-6 h-6 flex items-center justify-center rounded-md text-white/25 hover:text-white/70 hover:bg-white/8 transition-all duration-150"
+            >
+              <PanelLeftClose size={14} />
+            </button>
+          </>
         )}
       </div>
 
-      {/* Botão expandir (colapsado) */}
+      {/* Botão expandir quando colapsado */}
       {collapsed && (
-        <div className="flex justify-center py-2 border-b border-white/10">
-          <button
-            onClick={onToggle}
-            title="Expandir menu"
-            className="p-1.5 rounded-lg text-white/40 hover:text-white hover:bg-white/10 transition-colors"
-          >
-            <PanelLeftOpen size={16} />
-          </button>
-        </div>
+        <button
+          onClick={onToggle}
+          title="Expandir menu"
+          className="flex justify-center py-2.5 text-white/25 hover:text-white/60 transition-colors border-b border-white/8"
+        >
+          <PanelLeftOpen size={14} />
+        </button>
       )}
 
-      {/* Navigation */}
-      <nav className="flex-1 px-2 py-4 space-y-1 overflow-y-auto">
-        {!collapsed && (
-          <p className="text-xs font-semibold text-white/40 uppercase tracking-wider px-3 mb-3">Menu</p>
-        )}
+      {/* ── Navegação ─────────────────────────────────────────────────────── */}
+      <nav className="flex-1 px-2 py-3 overflow-y-auto overflow-x-hidden space-y-0.5 scrollbar-thin">
 
-        {/* ── Dashboard (Receita / Despesa) ─────────────────────────────── */}
-        <NavGroup
-          icon={<LayoutDashboard size={18} />}
-          label="Dashboard"
-          collapsed={collapsed}
-          active={isDashboardActive}
-          open={dashboardOpen}
-          onToggle={() => setDashboardOpen(v => !v)}
-        >
-          <SubItem
-            href="/dashboard"
-            icon={<TrendingDown size={14} />}
-            label="Despesa"
-            active={pathname === '/dashboard'}
-          />
-          <SubItem
-            href="/receitas"
-            icon={<TrendingUp size={14} />}
-            label="Receita"
-            active={pathname === '/receitas'}
-          />
-          <SubItem
-            href="/saude-15"
-            icon={<ShieldCheck size={14} />}
-            label="Índice Saúde 15%"
-            active={pathname === '/saude-15'}
-          />
-          <SubItem
-            href="/metas"
-            icon={<Target size={14} />}
-            label="Metas por Subgrupo"
-            active={pathname === '/metas'}
-          />
-          <SubItem
-            href="/contas-a-pagar"
-            icon={<CreditCard size={14} />}
-            label="Contas a Pagar"
-            active={pathname === '/contas-a-pagar'}
-          />
-          <SubItem
-            href="/relatorio-saude"
-            icon={<ClipboardList size={14} />}
-            label="Rel. Quadrimestral"
-            active={pathname === '/relatorio-saude'}
-          />
-        </NavGroup>
+        <SectionLabel label="Principal" collapsed={collapsed} />
 
-        {/* ── Importação (Despesa / Receita) ────────────────────────────── */}
-        <NavGroup
-          icon={<Upload size={18} />}
-          label="Importação"
-          collapsed={collapsed}
-          active={isImportacaoActive}
-          open={importacaoOpen}
-          onToggle={() => setImportacaoOpen(v => !v)}
-        >
-          <SubItem
-            href="/importacao"
-            icon={<TrendingDown size={14} />}
-            label="Despesa"
-            active={pathname === '/importacao'}
-          />
-          <SubItem
-            href="/importacao-receita"
-            icon={<TrendingUp size={14} />}
-            label="Receita"
-            active={pathname === '/importacao-receita'}
-          />
-          <SubItem
-            href="/importacao-transf-bancaria"
-            icon={<ArrowLeftRight size={14} />}
-            label="Transf. Bancária"
-            active={pathname === '/importacao-transf-bancaria'}
-          />
-          <SubItem
-            href="/importacao-empenhos"
-            icon={<Receipt size={14} />}
-            label="Empenhos Liq."
-            active={pathname === '/importacao-empenhos'}
-          />
-        </NavGroup>
+        <NavItem href="/dashboard-geral" icon={<LayoutDashboard size={16} />} label="Dashboard" collapsed={collapsed} active={pathname === '/dashboard-geral'} />
+        <NavItem href="/despesa" icon={<TrendingDown size={16} />} label="Despesa" collapsed={collapsed} active={pathname === '/despesa'} />
+        <NavItem href="/receitas" icon={<TrendingUp size={16} />} label="Receita" collapsed={collapsed} active={pathname === '/receitas'} />
+        <NavItem href="/saude-15" icon={<ShieldCheck size={16} />} label="Índice Saúde 15%" collapsed={collapsed} active={pathname === '/saude-15'} />
+        <NavItem href="/metas" icon={<Target size={16} />} label="Metas por Subgrupo" collapsed={collapsed} active={pathname === '/metas'} />
+        <NavItem href="/contas-a-pagar" icon={<CreditCard size={16} />} label="Contas a Pagar" collapsed={collapsed} active={pathname === '/contas-a-pagar'} />
+        <NavItem href="/relatorio-saude" icon={<ClipboardList size={16} />} label="Rel. Quadrimestral" collapsed={collapsed} active={pathname === '/relatorio-saude'} />
 
-        {/* ── Análise (Pagamentos / Receitas) ───────────────────────────── */}
+        <SectionLabel label="Operacional" collapsed={collapsed} />
+
+        {/* Análise */}
         <NavGroup
-          icon={<BarChart2 size={18} />}
+          icon={<BarChart2 size={16} />}
           label="Análise"
           collapsed={collapsed}
           active={isAnaliseActive}
           open={analiseOpen}
           onToggle={() => setAnaliseOpen(v => !v)}
         >
-          <SubItem
-            href="/pagamentos"
-            icon={<TrendingDown size={14} />}
-            label="Despesa"
-            active={pathname === '/pagamentos'}
-          />
-          <SubItem
-            href="/receitas/listagem"
-            icon={<TrendingUp size={14} />}
-            label="Receita"
-            active={pathname === '/receitas/listagem'}
-          />
-          <SubItem
-            href="/analise/despesa-a-pagar"
-            icon={<Receipt size={14} />}
-            label="Despesa a Pagar"
-            active={pathname === '/analise/despesa-a-pagar'}
-          />
+          <SubItem href="/pagamentos" icon={<TrendingDown size={13} />} label="Despesa" active={pathname === '/pagamentos'} />
+          <SubItem href="/receitas/listagem" icon={<TrendingUp size={13} />} label="Receita" active={pathname === '/receitas/listagem'} />
+          <SubItem href="/analise/despesa-a-pagar" icon={<Receipt size={13} />} label="Despesa a Pagar" active={pathname === '/analise/despesa-a-pagar'} />
         </NavGroup>
 
-        {/* ── Classificação ─────────────────────────────────────────────── */}
+        {/* Importação */}
         <NavGroup
-          icon={<Tag size={18} />}
+          icon={<Upload size={16} />}
+          label="Importação"
+          collapsed={collapsed}
+          active={isImportacaoActive}
+          open={importacaoOpen}
+          onToggle={() => setImportacaoOpen(v => !v)}
+        >
+          <SubItem href="/importacao" icon={<TrendingDown size={13} />} label="Despesa" active={pathname === '/importacao'} />
+          <SubItem href="/importacao-receita" icon={<TrendingUp size={13} />} label="Receita" active={pathname === '/importacao-receita'} />
+          <SubItem href="/importacao-transf-bancaria" icon={<ArrowLeftRight size={13} />} label="Transf. Bancária" active={pathname === '/importacao-transf-bancaria'} />
+          <SubItem href="/importacao-empenhos" icon={<Receipt size={13} />} label="Empenhos Liq." active={pathname === '/importacao-empenhos'} />
+        </NavGroup>
+
+        {/* Classificação */}
+        <NavGroup
+          icon={<Tag size={16} />}
           label="Classificação"
           collapsed={collapsed}
           active={isClassificacaoActive}
@@ -316,111 +326,118 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
           onToggle={() => setClassificacaoOpen(v => !v)}
         >
           {classificacaoItems.map(item => (
-            <SubItem
-              key={item.href}
-              href={item.href}
-              icon={item.icon}
-              label={item.label}
-              active={pathname === item.href}
-            />
+            <SubItem key={item.href} href={item.href} icon={item.icon} label={item.label} active={pathname === item.href} />
           ))}
           <button
             onClick={() => router.push(`/cadastros/credor?conf=diarias&t=${Date.now()}`)}
-            className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 w-full text-white/60 hover:bg-white/10 hover:text-white"
+            className="group flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium w-full text-white/45 hover:bg-white/6 hover:text-white/80 transition-all duration-150"
           >
-            <CheckCircle size={14} />
+            <CheckCircle size={13} className="text-white/30 group-hover:text-white/60 transition-colors" />
             <span>Conf. Diárias</span>
           </button>
           <button
             onClick={() => router.push(`/cadastros/credor?conf=pessoal&t=${Date.now()}`)}
-            className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 w-full text-white/60 hover:bg-white/10 hover:text-white"
+            className="group flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium w-full text-white/45 hover:bg-white/6 hover:text-white/80 transition-all duration-150"
           >
-            <CheckCircle size={14} />
+            <CheckCircle size={13} className="text-white/30 group-hover:text-white/60 transition-colors" />
             <span>Conf. Pessoal</span>
           </button>
         </NavGroup>
 
-        {/* ── Cadastros ─────────────────────────────────────────────────── */}
-        <div className="pt-2">
-          {!collapsed && (
-            <p className="text-xs font-semibold text-white/40 uppercase tracking-wider px-3 mb-2 mt-1">Configurações</p>
-          )}
+        <SectionLabel label="Configurações" collapsed={collapsed} />
 
-          {collapsed ? (
-            cadastrosItems
-              .filter(item => !item.superAdminOnly || isSuperAdmin)
-              .map((item) => {
-                const active = pathname === item.href || pathname.startsWith(item.href + '/');
-                return (
+        {/* Cadastros */}
+        {collapsed ? (
+          cadastrosItems
+            .filter(item => !item.superAdminOnly || isSuperAdmin)
+            .map((item) => {
+              const active = pathname === item.href || pathname.startsWith(item.href + '/');
+              return (
+                <CollapsedTooltip key={item.href} label={item.label}>
                   <Link
-                    key={item.href}
                     href={item.href}
-                    title={item.label}
                     className={cn(
-                      'flex justify-center items-center px-0 py-2.5 rounded-xl text-sm font-medium transition-all duration-200',
-                      active ? 'bg-white/15 text-gold-500' : 'text-white/60 hover:bg-white/10 hover:text-white',
+                      'flex justify-center items-center w-10 mx-auto py-2.5 rounded-xl transition-all duration-200',
+                      active
+                        ? 'bg-gradient-to-r from-gold-500/20 to-gold-500/5 text-gold-400 border border-gold-500/20'
+                        : 'text-white/45 hover:bg-white/8 hover:text-white/80 border border-transparent',
                     )}
                   >
                     {item.icon}
                   </Link>
-                );
-              })
-          ) : (
-            <>
-              <button
-                onClick={() => setCadastrosOpen(v => !v)}
-                className={cn(
-                  'flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 w-full',
-                  isCadastrosActive ? 'bg-white/15 text-white shadow-sm' : 'text-white/60 hover:bg-white/10 hover:text-white',
-                )}
-              >
-                <span className={isCadastrosActive ? 'text-gold-500' : ''}><Layers size={18} /></span>
-                <span>Cadastros</span>
-                <ChevronDown size={14} className={cn('ml-auto transition-transform duration-200', cadastrosOpen ? 'rotate-180' : '')} />
-              </button>
-              {cadastrosOpen && (
-                <div className="ml-4 mt-1 space-y-0.5 border-l border-white/10 pl-3">
-                  {cadastrosItems
-                    .filter(item => !item.superAdminOnly || isSuperAdmin)
-                    .map((item) => {
-                      const active = pathname === item.href || pathname.startsWith(item.href + '/');
-                      return (
-                        <SubItem
-                          key={item.href}
-                          href={item.href}
-                          icon={item.icon}
-                          label={item.label}
-                          active={active}
-                        />
-                      );
-                    })}
-                </div>
+                </CollapsedTooltip>
+              );
+            })
+        ) : (
+          <div>
+            <button
+              onClick={() => setCadastrosOpen(v => !v)}
+              className={cn(
+                'group flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 w-full',
+                isCadastrosActive
+                  ? 'bg-gradient-to-r from-gold-500/20 to-gold-500/5 text-white border border-gold-500/20'
+                  : 'text-white/50 hover:bg-white/8 hover:text-white/90 border border-transparent',
               )}
-            </>
-          )}
-        </div>
+            >
+              <span className={cn('transition-colors', isCadastrosActive ? 'text-gold-400' : 'group-hover:text-white/80')}>
+                <Layers size={16} />
+              </span>
+              <span>Cadastros</span>
+              <ChevronDown
+                size={13}
+                className={cn('ml-auto transition-transform duration-300 opacity-50', cadastrosOpen ? 'rotate-180 opacity-80' : '')}
+              />
+            </button>
+            <div
+              className={cn(
+                'overflow-hidden transition-all duration-300 ease-in-out',
+                cadastrosOpen ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0',
+              )}
+            >
+              <div className="ml-3 mt-1 mb-1 space-y-0.5 border-l border-white/8 pl-3">
+                {cadastrosItems
+                  .filter(item => !item.superAdminOnly || isSuperAdmin)
+                  .map((item) => {
+                    const active = pathname === item.href || pathname.startsWith(item.href + '/');
+                    return (
+                      <SubItem key={item.href} href={item.href} icon={item.icon} label={item.label} active={active} />
+                    );
+                  })}
+              </div>
+            </div>
+          </div>
+        )}
       </nav>
 
-      {/* Rodapé */}
-      <div className="px-2 pb-4 border-t border-white/10 pt-3 space-y-1">
+      {/* ── Rodapé ────────────────────────────────────────────────────────── */}
+      <div className="flex-shrink-0 border-t border-white/8 px-2 py-3 space-y-0.5">
         <NavItem
           href="/usuarios"
-          icon={<UserCog size={18} />}
+          icon={<UserCog size={16} />}
           label="Usuários"
           collapsed={collapsed}
           active={pathname.startsWith('/usuarios')}
         />
-        <button
-          onClick={() => signOut({ callbackUrl: '/' })}
-          title={collapsed ? 'Sair' : undefined}
-          className={cn(
-            'flex items-center gap-3 px-3 py-2.5 w-full rounded-xl text-sm text-white/60 hover:bg-red-500/20 hover:text-red-300 transition-all duration-200',
-            collapsed && 'justify-center px-0',
-          )}
-        >
-          <LogOut size={18} />
-          {!collapsed && <span>Sair</span>}
-        </button>
+
+        {/* Sair */}
+        {collapsed ? (
+          <CollapsedTooltip label="Sair">
+            <button
+              onClick={() => signOut({ callbackUrl: '/' })}
+              className="flex justify-center items-center w-10 mx-auto py-2.5 rounded-xl text-white/35 hover:bg-red-500/15 hover:text-red-400 transition-all duration-200 border border-transparent"
+            >
+              <LogOut size={16} />
+            </button>
+          </CollapsedTooltip>
+        ) : (
+          <button
+            onClick={() => signOut({ callbackUrl: '/' })}
+            className="group flex items-center gap-3 px-3 py-2.5 w-full rounded-xl text-sm text-white/40 hover:bg-red-500/12 hover:text-red-400 transition-all duration-200 border border-transparent hover:border-red-500/15"
+          >
+            <LogOut size={16} className="group-hover:text-red-400 transition-colors" />
+            <span>Sair</span>
+          </button>
+        )}
       </div>
     </aside>
   );

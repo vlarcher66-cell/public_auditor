@@ -86,7 +86,7 @@ function LoginForm() {
       if (result?.error) {
         setError('Credenciais inválidas. Verifique e tente novamente.');
       } else {
-        router.push('/dashboard');
+        router.push('/dashboard-geral');
       }
     } catch {
       setError('Erro de conexão. Tente novamente.');

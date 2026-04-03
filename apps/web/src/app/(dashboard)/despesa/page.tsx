@@ -1487,111 +1487,355 @@ function TabDespesaSintetica({ token }: { token: string | undefined }) {
   );
 }
 
-// ─── Tab: Visão Geral (antiga Sintética) ─────────────────────────────────────
+// ─── Tab: Visão Geral ─────────────────────────────────────────────────────────
+
+interface SinteticaMensalData {
+  grupos: { id: number; nome: string }[];
+  matrix: Record<string, Record<string, number>>;
+  totaisMes: Record<string, number>;
+  totaisExAnt: Record<string, number>;
+  idsExAnt: number[];
+  ano: string;
+}
 
 function TabSintetica({
-  summary, isLoading,
+  summary, isLoading, token,
 }: {
   summary: OrdemPagamentoSummary | undefined;
   isLoading: boolean;
+  token: string | undefined;
 }) {
+  const anoAtual = new Date().getFullYear();
+  const mesAtual = new Date().getMonth() + 1;
+
+  // Dia do ano até hoje
+  const inicio = new Date(anoAtual, 0, 1);
+  const hoje = new Date();
+  const diasNoAno = Math.floor((hoje.getTime() - inicio.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+
+  const { data: sinteticaData, isLoading: loadingSintetica } = useQuery<SinteticaMensalData>({
+    queryKey: ['sintetica-mensal-geral', anoAtual],
+    queryFn: () => apiRequest(`/pagamentos/sintetica-mensal?ano=${anoAtual}`, { token }),
+    enabled: !!token,
+  });
+
+  const { data: setoresData, isLoading: loadingSetores } = useQuery<{ id: number; nome: string; total: number; qtd: number; pct: number }[]>({
+    queryKey: ['por-setor-geral', anoAtual],
+    queryFn: () => apiRequest(`/pagamentos/por-setor?ano=${anoAtual}`, { token }),
+    enabled: !!token,
+  });
+
+  // Meses para o gráfico de evolução
+  const mesesNomes = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+  const evolucaoData = mesesNomes.map((nome, i) => {
+    const mes = i + 1;
+    const total = sinteticaData?.totaisMes?.[mes] ?? 0;
+    const exAnt = sinteticaData?.totaisExAnt?.[mes] ?? 0;
+    const dea = total - exAnt;
+    return { mes: nome, total, dea: dea > 0 ? dea : 0, rp: exAnt > 0 ? exAnt : 0 };
+  });
+
+  const totaisValidos = evolucaoData.filter(d => d.total > 0).map(d => d.total);
+  const mediaEvolucao = totaisValidos.length ? totaisValidos.reduce((a, b) => a + b, 0) / totaisValidos.length : 0;
+
+  // Últimos 6 meses para sparkline
+  const ultimos6 = mesesNomes.slice(Math.max(0, mesAtual - 6), mesAtual).map((_, i) => {
+    const mes = Math.max(1, mesAtual - 5) + i;
+    return { v: sinteticaData?.totaisMes?.[mes] ?? 0 };
+  });
+
+  // Pie data dos grupos
+  const pieData = (sinteticaData?.grupos ?? []).map((g, i) => {
+    const totalGrupo = Object.values(sinteticaData?.matrix?.[g.id] ?? {}).reduce((a: number, b: number) => a + (b as number), 0);
+    return { name: g.nome, value: totalGrupo, color: GROUP_COLORS[i % GROUP_COLORS.length] };
+  }).filter(d => d.value > 0).sort((a, b) => b.value - a.value).slice(0, 8);
+
+  const totalPie = pieData.reduce((a, d) => a + d.value, 0);
+
+  // Setores para ranking
+  const setores = (setoresData ?? []).slice(0, 10);
+  const maxSetor = setores.length ? Math.max(...setores.map(s => s.total)) : 1;
+  const totalSetores = setores.reduce((a, s) => a + s.total, 0);
+
+  // % retido
+  const pctRetido = summary && summary.totalBruto > 0
+    ? ((summary.totalRetido / summary.totalBruto) * 100).toFixed(1)
+    : '0.0';
+
+  // Tooltip do gráfico de evolução
+  const EvolucaoTooltip = ({ active, payload, label }: any) => {
+    if (!active || !payload?.length) return null;
+    const dea = payload.find((p: any) => p.dataKey === 'dea')?.value ?? 0;
+    const rp = payload.find((p: any) => p.dataKey === 'rp')?.value ?? 0;
+    const total = dea + rp;
+    return (
+      <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '10px 14px', fontSize: '12px', boxShadow: '0 4px 16px rgba(0,0,0,0.12)' }}>
+        <div style={{ fontWeight: 700, color: '#0F2A4E', marginBottom: '6px' }}>{label}</div>
+        <div style={{ color: '#1e4d95' }}>DEA: <strong>{fmtK(dea)}</strong></div>
+        <div style={{ color: '#C9A84C' }}>Restos a Pagar: <strong>{fmtK(rp)}</strong></div>
+        <div style={{ borderTop: '1px solid #e2e8f0', marginTop: '6px', paddingTop: '6px', color: '#0F2A4E', fontWeight: 700 }}>Total: {fmtK(total)}</div>
+      </div>
+    );
+  };
+
   return (
-    <div className="p-8 space-y-8">
+    <div style={{ background: '#f8fafc', padding: '24px', minHeight: '100%' }}>
 
-      {/* KPI Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-5">
-        <StatCard
-          title="Total Bruto"
-          value={isLoading ? '...' : formatCurrency(summary?.totalBruto || 0)}
-          subtitle="Valor total empenhado"
-          icon={<DollarSign size={22} />}
-          color="navy"
-        />
-        <StatCard
-          title="Total Retido"
-          value={isLoading ? '...' : formatCurrency(summary?.totalRetido || 0)}
-          subtitle="Impostos e retenções"
-          icon={<TrendingDown size={22} />}
-          color="red"
-        />
-        <StatCard
-          title="Total Líquido"
-          value={isLoading ? '...' : formatCurrency(summary?.totalLiquido || 0)}
-          subtitle="Valor efetivamente pago"
-          icon={<Banknote size={22} />}
-          color="green"
-        />
-        <StatCard
-          title="Registros"
-          value={isLoading ? '...' : String(summary?.countRegistros || 0)}
-          subtitle="Ordens de pagamento"
-          icon={<FileCheck size={22} />}
-          color="gold"
-        />
-      </div>
-
-      {/* Charts */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Top Credores */}
-        <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-          <div className="flex items-center justify-between mb-6">
-            <h3 className="font-semibold text-navy-800">Top 10 Credores</h3>
-            <Link href="/pagamentos" className="text-xs text-navy-500 hover:text-navy-700 flex items-center gap-1">
-              Ver todos <ArrowRight size={12} />
-            </Link>
-          </div>
-          {isLoading ? (
-            <div className="h-64 flex items-center justify-center text-gray-400">Carregando...</div>
-          ) : (
-            <ResponsiveContainer width="100%" height={260}>
-              <BarChart data={summary?.topCredores || []} layout="vertical" margin={{ left: 0, right: 20 }}>
-                <CartesianGrid strokeDasharray="3 3" horizontal={false} />
-                <XAxis type="number" tickFormatter={(v) => `R$${(v / 1000).toFixed(0)}k`} tick={{ fontSize: 11 }} />
-                <YAxis type="category" dataKey="nome" tick={{ fontSize: 10 }} width={120} />
-                <Tooltip formatter={(v: number) => formatCurrency(v)} />
-                <Bar dataKey="total" radius={[0, 4, 4, 0]}>
-                  {(summary?.topCredores || []).map((_, i) => (
-                    <Cell key={i} fill={i === 0 ? '#C9A84C' : '#0F2A4E'} opacity={1 - i * 0.07} />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-          )}
-        </div>
-
-        {/* Por Elemento de Despesa */}
-        <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-          <h3 className="font-semibold text-navy-800 mb-6">Por Elemento de Despesa</h3>
-          {isLoading ? (
-            <div className="h-64 flex items-center justify-center text-gray-400">Carregando...</div>
-          ) : (
-            <ResponsiveContainer width="100%" height={260}>
-              <BarChart data={summary?.byElementoDespesa || []} margin={{ left: 0, right: 20 }}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                <XAxis dataKey="codigo" tick={{ fontSize: 10 }} />
-                <YAxis tickFormatter={(v) => `R$${(v / 1000).toFixed(0)}k`} tick={{ fontSize: 11 }} />
-                <Tooltip formatter={(v: number) => formatCurrency(v)} />
-                <Bar dataKey="total" fill="#0F2A4E" radius={[4, 4, 0, 0]}>
-                  {(summary?.byElementoDespesa || []).map((_, i) => (
-                    <Cell key={i} fill={i % 2 === 0 ? '#0F2A4E' : '#1e4d95'} />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-          )}
-        </div>
-      </div>
-
-      {/* Quick actions */}
-      <div className="bg-gradient-to-r from-navy-800 to-navy-600 rounded-2xl p-6 text-white flex flex-col sm:flex-row items-center justify-between gap-4">
+      {/* 1. HERO HEADER */}
+      <div style={{ background: 'linear-gradient(135deg, #0c2240 0%, #0F2A4E 100%)', borderRadius: '16px', padding: '24px 32px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '24px', flexWrap: 'wrap' }}>
         <div>
-          <h3 className="font-semibold text-lg mb-1">Importar novo relatório</h3>
-          <p className="text-white/70 text-sm">Carregue um PDF ou Excel do SIAFIC para processar automaticamente</p>
+          <div style={{ fontSize: '22px', fontWeight: 700, color: '#fff', lineHeight: 1.2 }}>Despesa Municipal</div>
+          <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.6)', marginTop: '4px' }}>Exercício {anoAtual} — Visão Geral Consolidada</div>
         </div>
-        <Link
-          href="/importacao"
-          className="bg-gold-500 hover:bg-gold-600 text-navy-800 font-semibold px-6 py-3 rounded-xl transition-colors flex items-center gap-2 whitespace-nowrap shadow-md"
-        >
+        <div style={{ flex: 1, minWidth: '200px', maxWidth: '340px' }}>
+          <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.7)', marginBottom: '8px', textAlign: 'center' }}>Você está no mês {mesAtual} de 12</div>
+          <div style={{ background: 'rgba(255,255,255,0.1)', borderRadius: '999px', height: '8px', overflow: 'hidden' }}>
+            <div style={{ width: `${(mesAtual / 12) * 100}%`, height: '100%', background: '#C9A84C', borderRadius: '999px', transition: 'width 0.6s ease' }} />
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '4px' }}>
+            <span style={{ fontSize: '10px', color: 'rgba(255,255,255,0.5)' }}>Jan</span>
+            <span style={{ fontSize: '10px', color: '#C9A84C', fontWeight: 600 }}>{Math.round((mesAtual / 12) * 100)}% do ano</span>
+            <span style={{ fontSize: '10px', color: 'rgba(255,255,255,0.5)' }}>Dez</span>
+          </div>
+        </div>
+        <div style={{ background: 'rgba(201,168,76,0.15)', border: '1.5px solid #C9A84C', borderRadius: '12px', padding: '10px 20px', textAlign: 'center' }}>
+          <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.6)', letterSpacing: '0.08em', textTransform: 'uppercase' }}>Exercício</div>
+          <div style={{ fontSize: '26px', fontWeight: 800, color: '#C9A84C', lineHeight: 1.1 }}>{anoAtual}</div>
+        </div>
+      </div>
+
+      {/* 2. KPI CARDS */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px', marginTop: '24px' }}>
+        {/* Card 1 — Total Bruto */}
+        <div style={{ background: '#fff', borderRadius: '16px', border: '1px solid #e2e8f0', boxShadow: '0 1px 4px rgba(0,0,0,0.06)', padding: '20px 24px' }}>
+          <div style={{ background: 'rgba(15,42,78,0.08)', borderRadius: '10px', padding: '8px', display: 'inline-flex', marginBottom: '12px' }}>
+            <DollarSign size={18} color="#0F2A4E" />
+          </div>
+          <div style={{ fontSize: '12px', color: '#94a3b8', marginBottom: '4px', fontWeight: 500 }}>Total Bruto</div>
+          {isLoading ? <div style={{ height: '28px', background: '#e2e8f0', borderRadius: '6px' }} /> : (
+            <div style={{ fontSize: '20px', fontWeight: 700, color: '#0F2A4E', lineHeight: 1.2 }}>{formatCurrency(summary?.totalBruto ?? 0)}</div>
+          )}
+          <div style={{ fontSize: '11px', color: '#94a3b8', marginTop: '4px' }}>Valor total empenhado</div>
+          {!loadingSintetica && ultimos6.length > 0 && (
+            <div style={{ marginTop: '12px', height: '32px' }}>
+              <ResponsiveContainer width="100%" height={32}>
+                <LineChart data={ultimos6} margin={{ top: 2, right: 2, left: 2, bottom: 2 }}>
+                  <Line type="monotone" dataKey="v" stroke="#C9A84C" strokeWidth={2} dot={false} />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          )}
+        </div>
+
+        {/* Card 2 — Total Retido */}
+        <div style={{ background: '#fff', borderRadius: '16px', border: '1px solid #e2e8f0', boxShadow: '0 1px 4px rgba(0,0,0,0.06)', padding: '20px 24px' }}>
+          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '12px' }}>
+            <div style={{ background: 'rgba(220,38,38,0.08)', borderRadius: '10px', padding: '8px', display: 'inline-flex' }}>
+              <TrendingDown size={18} color="#dc2626" />
+            </div>
+            {!isLoading && (
+              <span style={{ fontSize: '11px', background: 'rgba(220,38,38,0.08)', color: '#dc2626', borderRadius: '6px', padding: '2px 8px', fontWeight: 600 }}>
+                {pctRetido}% do bruto
+              </span>
+            )}
+          </div>
+          <div style={{ fontSize: '12px', color: '#94a3b8', marginBottom: '4px', fontWeight: 500 }}>Total Retido</div>
+          {isLoading ? <div style={{ height: '28px', background: '#e2e8f0', borderRadius: '6px' }} /> : (
+            <div style={{ fontSize: '20px', fontWeight: 700, color: '#dc2626', lineHeight: 1.2 }}>{formatCurrency(summary?.totalRetido ?? 0)}</div>
+          )}
+          <div style={{ fontSize: '11px', color: '#94a3b8', marginTop: '4px' }}>Impostos e retenções</div>
+        </div>
+
+        {/* Card 3 — Total Líquido */}
+        <div style={{ background: '#fff', borderRadius: '16px', border: '1px solid #e2e8f0', borderLeft: '3px solid #059669', boxShadow: '0 1px 4px rgba(0,0,0,0.06)', padding: '20px 24px' }}>
+          <div style={{ background: 'rgba(5,150,105,0.08)', borderRadius: '10px', padding: '8px', display: 'inline-flex', marginBottom: '12px' }}>
+            <Banknote size={18} color="#059669" />
+          </div>
+          <div style={{ fontSize: '12px', color: '#94a3b8', marginBottom: '4px', fontWeight: 500 }}>Total Líquido</div>
+          {isLoading ? <div style={{ height: '32px', background: '#e2e8f0', borderRadius: '6px' }} /> : (
+            <div style={{ fontSize: '26px', fontWeight: 800, color: '#059669', lineHeight: 1.2 }}>{formatCurrency(summary?.totalLiquido ?? 0)}</div>
+          )}
+          <div style={{ fontSize: '11px', color: '#94a3b8', marginTop: '4px' }}>Valor efetivamente pago</div>
+        </div>
+
+        {/* Card 4 — Ordens de Pagamento */}
+        <div style={{ background: '#fff', borderRadius: '16px', border: '1px solid #e2e8f0', boxShadow: '0 1px 4px rgba(0,0,0,0.06)', padding: '20px 24px' }}>
+          <div style={{ background: 'rgba(201,168,76,0.12)', borderRadius: '10px', padding: '8px', display: 'inline-flex', marginBottom: '12px' }}>
+            <FileCheck size={18} color="#a8832a" />
+          </div>
+          <div style={{ fontSize: '12px', color: '#94a3b8', marginBottom: '4px', fontWeight: 500 }}>Ordens de Pagamento</div>
+          {isLoading ? <div style={{ height: '28px', background: '#e2e8f0', borderRadius: '6px' }} /> : (
+            <div style={{ fontSize: '20px', fontWeight: 700, color: '#0F2A4E', lineHeight: 1.2 }}>{(summary?.countRegistros ?? 0).toLocaleString('pt-BR')}</div>
+          )}
+          <div style={{ fontSize: '11px', color: '#94a3b8', marginTop: '4px' }}>
+            {!isLoading && diasNoAno > 0 && summary?.countRegistros
+              ? `≈ ${(summary.countRegistros / diasNoAno).toFixed(1)} por dia`
+              : 'Registros processados'}
+          </div>
+        </div>
+      </div>
+
+      {/* 3. EVOLUÇÃO MENSAL */}
+      <div style={{ background: '#fff', borderRadius: '16px', border: '1px solid #e2e8f0', boxShadow: '0 1px 4px rgba(0,0,0,0.06)', padding: '24px', marginTop: '16px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px', flexWrap: 'wrap', gap: '12px' }}>
+          <div>
+            <div style={{ fontSize: '15px', fontWeight: 700, color: '#0F2A4E' }}>Evolução Mensal da Despesa {anoAtual}</div>
+            <div style={{ fontSize: '12px', color: '#94a3b8', marginTop: '2px' }}>Despesas do exercício (DEA) + Restos a Pagar (RP) por mês</div>
+          </div>
+          <div style={{ display: 'flex', gap: '16px', fontSize: '11px' }}>
+            {[['#1e4d95','DEA'],['#C9A84C','Restos a Pagar'],['#ef4444','Total']].map(([cor, label]) => (
+              <span key={label} style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                <span style={{ width: label === 'Total' ? '16px' : '10px', height: label === 'Total' ? '2px' : '10px', background: cor, borderRadius: '2px', display: 'inline-block' }} />
+                <span style={{ color: '#64748b' }}>{label}</span>
+              </span>
+            ))}
+          </div>
+        </div>
+        {loadingSintetica ? (
+          <div style={{ height: '260px', background: '#f1f5f9', borderRadius: '10px' }} />
+        ) : (
+          <ResponsiveContainer width="100%" height={260}>
+            <ComposedChart data={evolucaoData} margin={{ left: 8, right: 8, top: 8, bottom: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+              <XAxis dataKey="mes" tick={{ fontSize: 11, fill: '#64748b' }} axisLine={false} tickLine={false} />
+              <YAxis tickFormatter={fmtK} tick={{ fontSize: 10, fill: '#94a3b8' }} axisLine={false} tickLine={false} width={55} />
+              <Tooltip content={<EvolucaoTooltip />} />
+              {mediaEvolucao > 0 && (
+                <ReferenceLine y={mediaEvolucao} stroke="#94a3b8" strokeDasharray="5 4" strokeWidth={1.5}
+                  label={{ value: `Média: ${fmtK(mediaEvolucao)}`, position: 'insideTopRight', fontSize: 10, fill: '#94a3b8' }}
+                />
+              )}
+              <Bar dataKey="dea" stackId="a" fill="#1e4d95" radius={[0,0,0,0]} maxBarSize={40} />
+              <Bar dataKey="rp"  stackId="a" fill="#C9A84C" radius={[4,4,0,0]} maxBarSize={40} />
+              <Line type="monotone" dataKey="total" stroke="#ef4444" strokeWidth={2.5} dot={{ fill: '#ef4444', r: 3, strokeWidth: 0 }} />
+            </ComposedChart>
+          </ResponsiveContainer>
+        )}
+      </div>
+
+      {/* 4. TOP CREDORES + GRUPOS */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginTop: '16px' }}>
+        {/* Top Credores */}
+        <div style={{ background: '#fff', borderRadius: '16px', border: '1px solid #e2e8f0', boxShadow: '0 1px 4px rgba(0,0,0,0.06)', overflow: 'hidden' }}>
+          <div style={{ background: 'linear-gradient(135deg, #0F2A4E, #1e4d95)', padding: '14px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <span style={{ fontSize: '13px', fontWeight: 700, color: '#fff', letterSpacing: '0.04em' }}>Top 10 Credores</span>
+          </div>
+          <div style={{ padding: '16px 20px 20px' }}>
+            {isLoading ? (
+              <div style={{ height: '260px', background: '#f1f5f9', borderRadius: '10px' }} />
+            ) : (
+              <ResponsiveContainer width="100%" height={260}>
+                <BarChart data={summary?.topCredores ?? []} layout="vertical" margin={{ left: 0, right: 60, top: 0, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#f1f5f9" />
+                  <XAxis type="number" tickFormatter={fmtK} tick={{ fontSize: 10, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
+                  <YAxis type="category" dataKey="nome" tick={{ fontSize: 9, fill: '#475569' }} width={110} axisLine={false} tickLine={false} />
+                  <Tooltip formatter={(v: number) => [formatCurrency(v), 'Total']} contentStyle={{ fontSize: '12px', borderRadius: '8px', border: '1px solid #e2e8f0' }} />
+                  <Bar dataKey="total" radius={[0,4,4,0]} maxBarSize={20}>
+                    {(summary?.topCredores ?? []).map((_, i) => (
+                      <Cell key={i} fill={i === 0 ? '#C9A84C' : '#0F2A4E'} opacity={1 - i * 0.07} />
+                    ))}
+                    <LabelList dataKey="total" position="right" formatter={fmtK} style={{ fontSize: '10px', fill: '#475569', fontWeight: 600 }} />
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            )}
+            <div style={{ marginTop: '12px', textAlign: 'right' }}>
+              <Link href="/pagamentos" style={{ fontSize: '12px', color: '#1e4d95', fontWeight: 600, textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                Ver análise completa <ArrowRight size={12} />
+              </Link>
+            </div>
+          </div>
+        </div>
+
+        {/* Distribuição por Grupo */}
+        <div style={{ background: '#fff', borderRadius: '16px', border: '1px solid #e2e8f0', boxShadow: '0 1px 4px rgba(0,0,0,0.06)', overflow: 'hidden' }}>
+          <div style={{ background: 'linear-gradient(135deg, #0F2A4E, #1e4d95)', padding: '14px 20px' }}>
+            <span style={{ fontSize: '13px', fontWeight: 700, color: '#fff', letterSpacing: '0.04em' }}>Distribuição por Grupo</span>
+          </div>
+          <div style={{ padding: '16px 20px 20px', display: 'flex', gap: '16px', alignItems: 'center' }}>
+            {loadingSintetica ? (
+              <div style={{ height: '260px', flex: 1, background: '#f1f5f9', borderRadius: '10px' }} />
+            ) : pieData.length === 0 ? (
+              <div style={{ flex: 1, height: '260px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8', fontSize: '13px' }}>
+                Sem dados para o período
+              </div>
+            ) : (
+              <>
+                <div style={{ flex: '0 0 auto' }}>
+                  <PieChart width={170} height={170}>
+                    <Pie data={pieData} cx={80} cy={80} innerRadius={50} outerRadius={80} dataKey="value" strokeWidth={2}>
+                      {pieData.map((entry, i) => <Cell key={i} fill={entry.color} />)}
+                    </Pie>
+                    <Tooltip formatter={(v: number) => [formatCurrency(v), '']} contentStyle={{ fontSize: '11px', borderRadius: '8px' }} />
+                  </PieChart>
+                </div>
+                <div style={{ flex: 1, maxHeight: '260px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  {pieData.map((d, i) => (
+                    <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <span style={{ width: '10px', height: '10px', borderRadius: '2px', background: d.color, flexShrink: 0 }} />
+                      <span style={{ fontSize: '11px', color: '#475569', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={d.name}>{d.name}</span>
+                      <span style={{ fontSize: '10px', color: '#94a3b8', whiteSpace: 'nowrap' }}>{totalPie > 0 ? ((d.value / totalPie) * 100).toFixed(1) : 0}%</span>
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* 5. RANKING DE SETORES */}
+      <div style={{ background: '#fff', borderRadius: '16px', border: '1px solid #e2e8f0', boxShadow: '0 1px 4px rgba(0,0,0,0.06)', overflow: 'hidden', marginTop: '16px' }}>
+        <div style={{ background: 'linear-gradient(135deg, #0F2A4E, #1e4d95)', padding: '14px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <span style={{ fontSize: '13px', fontWeight: 700, color: '#fff', letterSpacing: '0.04em' }}>Despesas por Setor — {anoAtual}</span>
+          {!loadingSetores && setores.length > 0 && (
+            <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.75)', background: 'rgba(255,255,255,0.12)', borderRadius: '6px', padding: '3px 10px' }}>
+              {setores.length} setores · {fmtK(totalSetores)} total
+            </span>
+          )}
+        </div>
+        <div style={{ padding: '16px 20px 20px' }}>
+          {loadingSetores ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              {[1,2,3,4,5].map(i => <div key={i} style={{ height: '36px', background: '#f1f5f9', borderRadius: '8px' }} />)}
+            </div>
+          ) : setores.length === 0 ? (
+            <div style={{ height: '120px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8', fontSize: '13px' }}>
+              Nenhum setor classificado para {anoAtual}
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', maxHeight: '400px', overflowY: 'auto' }}>
+              {setores.map((setor, i) => (
+                <div key={setor.id} style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <div style={{ flexShrink: 0, width: '28px', height: '28px', background: '#0F2A4E', borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: '11px', fontWeight: 700 }}>
+                    {String(i + 1).padStart(2, '0')}
+                  </div>
+                  <div style={{ flex: '0 0 180px', fontSize: '12px', color: '#334155', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={setor.nome}>
+                    {setor.nome}
+                  </div>
+                  <div style={{ flex: 1, background: '#f1f5f9', borderRadius: '999px', height: '8px', overflow: 'hidden' }}>
+                    <div style={{ width: `${(setor.total / maxSetor) * 100}%`, height: '100%', background: SETOR_COLORS[i % SETOR_COLORS.length], borderRadius: '999px', transition: 'width 0.5s ease' }} />
+                  </div>
+                  <div style={{ flex: '0 0 110px', textAlign: 'right', fontSize: '12px', fontWeight: 700, color: '#0F2A4E', fontVariantNumeric: 'tabular-nums' }}>
+                    {formatCurrency(setor.total)}
+                  </div>
+                  <div style={{ flexShrink: 0, background: 'rgba(15,42,78,0.07)', borderRadius: '6px', padding: '2px 8px', fontSize: '11px', color: '#475569', fontWeight: 500 }}>
+                    {setor.qtd} pag.
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* 6. CTA */}
+      <div style={{ background: 'linear-gradient(135deg, #0c2240 0%, #0F2A4E 100%)', borderRadius: '16px', padding: '24px 32px', marginTop: '16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '24px', flexWrap: 'wrap' }}>
+        <div>
+          <div style={{ fontSize: '16px', fontWeight: 700, color: '#fff', marginBottom: '4px' }}>Importar novo relatório de despesa</div>
+          <div style={{ fontSize: '13px', color: 'rgba(255,255,255,0.65)' }}>Carregue um PDF ou Excel do SIAFIC para processar automaticamente</div>
+        </div>
+        <Link href="/importacao" style={{ background: '#C9A84C', color: '#0F2A4E', fontWeight: 700, padding: '12px 28px', borderRadius: '12px', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '8px', fontSize: '14px', boxShadow: '0 4px 12px rgba(0,0,0,0.2)', whiteSpace: 'nowrap' }}>
           <ArrowRight size={16} />
           Importar Agora
         </Link>
@@ -2419,7 +2663,7 @@ export default function DashboardPage() {
       </div>
 
       {/* Conteúdo da aba */}
-      {activeTab === 'sintetica'      && <TabSintetica summary={summary} isLoading={isLoading} />}
+      {activeTab === 'sintetica'      && <TabSintetica summary={summary} isLoading={isLoading} token={token} />}
       {activeTab === 'desp_sintetica' && <TabDespesaSintetica token={token} />}
       {activeTab === 'analitica'      && <TabDespesaAnalitica token={token} />}
       {activeTab === 'diarias'        && <TabDespesaDiarias token={token} />}
