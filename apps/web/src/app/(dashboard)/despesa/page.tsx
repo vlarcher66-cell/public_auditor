@@ -72,6 +72,8 @@ function TabDespesaAnalitica({ token }: { token: string | undefined }) {
     setores:     { id: number; descricao: string }[];
     blocos:      { id: number; descricao: string }[];
     fontes:      string[];
+    grupos:      { id: number; nome: string }[];
+    subgrupos:   { id: number; nome: string; fk_grupo: number }[];
   }>({
     queryKey: ['sintetica-filtros', ano],
     queryFn: () => apiRequest(`/pagamentos/sintetica-filtros?ano=${ano}`, { token }),
@@ -2040,6 +2042,8 @@ function TabDespesaDiarias({ token }: { token: string | undefined }) {
     setores:     { id: number; descricao: string }[];
     blocos:      { id: number; descricao: string }[];
     fontes:      string[];
+    grupos:      { id: number; nome: string }[];
+    subgrupos:   { id: number; nome: string; fk_grupo: number }[];
   }>({
     queryKey: ['sintetica-filtros', ano],
     queryFn: () => apiRequest(`/pagamentos/sintetica-filtros?ano=${ano}`, { token }),
