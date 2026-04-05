@@ -182,7 +182,7 @@ export default function TopBar({ title, subtitle }: TopBarProps) {
             <SeletorDropdown<Municipio>
               valor={municipioSelecionado}
               opcoes={municipios}
-              onChange={setMunicipioSelecionado}
+              onChange={(v) => { if (v) setMunicipioSelecionado(v); }}
               placeholder="Selecione o município"
               icon={<MapPin size={14} />}
             />
@@ -260,7 +260,7 @@ export default function TopBar({ title, subtitle }: TopBarProps) {
               <SeletorDropdown<Municipio>
                 valor={municipioSelecionado}
                 opcoes={municipios}
-                onChange={setMunicipioSelecionado}
+                onChange={(v) => { if (v) setMunicipioSelecionado(v); }}
                 placeholder="Selecione o município"
                 icon={<MapPin size={14} />}
               />
