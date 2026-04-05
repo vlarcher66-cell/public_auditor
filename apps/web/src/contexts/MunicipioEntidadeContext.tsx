@@ -63,8 +63,8 @@ export function MunicipioEntidadeProvider({ children }: { children: React.ReactN
   // ── Carrega municípios (só SUPER_ADMIN precisa da lista) ──────────────────
   useEffect(() => {
     if (!token || role !== 'SUPER_ADMIN') return;
-    apiRequest('/municipios/list', { token })
-      .then((rows: Municipio[]) => setMunicipios(rows))
+    apiRequest<Municipio[]>('/municipios/list', { token })
+      .then((rows) => setMunicipios(rows))
       .catch(() => {});
   }, [token, role]);
 
