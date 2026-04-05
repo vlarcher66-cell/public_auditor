@@ -584,7 +584,7 @@ export default function UsuariosPage() {
   const { data: session } = useSession();
   const token = (session as any)?.accessToken ?? '';
   const role = (session as any)?.user?.role ?? '';
-  const isSuperAdmin = role === 'SUPER_ADMIN';
+  const isSuperAdmin = role === 'SUPER_ADMIN' || role === 'ADMIN';
 
   const [usuarios, setUsuarios] = useState<Usuario[]>([]);
   const [municipios, setMunicipios] = useState<Municipio[]>([]);
