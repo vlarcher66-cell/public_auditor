@@ -1,8 +1,9 @@
 import { Request, Response } from 'express';
 import { db } from '../config/database';
+import { isSuperAdmin } from '../config/roles';
 
 function applyRBAC(q: any, user: any) {
-  if (user?.role !== 'SUPER_ADMIN' && user?.fk_municipio) {
+  if (!isSuperAdmin(user?.role) && user?.fk_municipio) {
     q.where('f.fk_municipio', user.fk_municipio);
   }
   return q;
@@ -118,7 +119,7 @@ export async function getMetas(req: Request, res: Response): Promise<void> {
     .where('m.ano', ano)
     .select('m.*', 's.nome as subgrupo_nome', 'g.id as grupo_id', 'g.nome as grupo_nome');
 
-  if (user?.role !== 'SUPER_ADMIN' && user?.fk_municipio) {
+  if (!isSuperAdmin(user?.role) && user?.fk_municipio) {
     q.where('m.fk_municipio', user.fk_municipio);
   }
 
@@ -205,7 +206,7 @@ export async function getExecutado(req: Request, res: Response): Promise<void> {
 export async function getEntidadesFiltro(req: Request, res: Response): Promise<void> {
   const user = (req as any).user;
   const q = db('dim_entidade').select('id', 'nome').orderBy('nome');
-  if (user?.role !== 'SUPER_ADMIN' && user?.fk_municipio) {
+  if (!isSuperAdmin(user?.role) && user?.fk_municipio) {
     q.where('fk_municipio', user.fk_municipio);
   }
   res.json(await q);
@@ -226,7 +227,7 @@ export async function saveMetas(req: Request, res: Response): Promise<void> {
     return;
   }
 
-  const fk_municipio = user?.role !== 'SUPER_ADMIN' ? (user?.fk_municipio ?? null) : null;
+  const fk_municipio = !isSuperAdmin(user?.role) ? (user?.fk_municipio ?? null) : null;
 
   for (const m of metas) {
     const existing = await db('planejamento_metas')

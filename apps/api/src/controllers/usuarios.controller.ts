@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import bcrypt from 'bcryptjs';
 import { db } from '../config/database';
+import { isSuperAdmin } from '../config/roles';
 
 const ROLES_VALIDOS = ['SUPER_ADMIN', 'GESTOR', 'CONTADOR', 'AUDITOR', 'VEREADOR', 'VIEWER', 'ADMIN'];
 
@@ -38,7 +39,7 @@ export async function listUsuarios(req: Request, res: Response): Promise<void> {
       )
       .orderBy('u.nome');
 
-    if (user.role !== 'SUPER_ADMIN' && user.fk_municipio) {
+    if (!isSuperAdmin(user.role) && user.fk_municipio) {
       query.where('u.fk_municipio', user.fk_municipio);
     }
   } else {
@@ -61,7 +62,7 @@ export async function createUsuario(req: Request, res: Response): Promise<void> 
     res.status(400).json({ error: 'Perfil inválido' });
     return;
   }
-  if (role === 'SUPER_ADMIN' && user.role !== 'SUPER_ADMIN') {
+  if (isSuperAdmin(role) && !isSuperAdmin(user.role)) {
     res.status(403).json({ error: 'Apenas o Super Admin pode criar outro Super Admin' });
     return;
   }
@@ -70,7 +71,7 @@ export async function createUsuario(req: Request, res: Response): Promise<void> 
   if (exists) { res.status(409).json({ error: 'Email já cadastrado' }); return; }
 
   const temColuna = await colunaExiste('usuarios', 'fk_municipio');
-  const municipioFinal = user.role === 'SUPER_ADMIN' ? (fk_municipio || null) : (user.fk_municipio || null);
+  const municipioFinal = isSuperAdmin(user.role) ? (fk_municipio || null) : (user.fk_municipio || null);
 
   const senha_hash = await bcrypt.hash(senha, 12);
   const insert: Record<string, any> = {
@@ -97,7 +98,7 @@ export async function updateUsuario(req: Request, res: Response): Promise<void> 
 
   const temColuna = await colunaExiste('usuarios', 'fk_municipio');
 
-  if (temColuna && user.role !== 'SUPER_ADMIN') {
+  if (temColuna && !isSuperAdmin(user.role)) {
     const alvo = await db('usuarios').where({ id }).first();
     if (alvo?.fk_municipio && alvo.fk_municipio !== user.fk_municipio) {
       res.status(403).json({ error: 'Acesso negado' });
@@ -110,7 +111,7 @@ export async function updateUsuario(req: Request, res: Response): Promise<void> 
   if (email !== undefined) update.email = email.trim().toLowerCase();
   if (role !== undefined && ROLES_VALIDOS.includes(role)) update.role = role;
   if (ativo !== undefined) update.ativo = ativo;
-  if (temColuna && fk_municipio !== undefined && user.role === 'SUPER_ADMIN') update.fk_municipio = fk_municipio || null;
+  if (temColuna && fk_municipio !== undefined && isSuperAdmin(user.role)) update.fk_municipio = fk_municipio || null;
   if (temColuna && fk_entidade !== undefined) update.fk_entidade = fk_entidade || null;
 
   await db('usuarios').where({ id }).update(update);
@@ -178,7 +179,7 @@ export async function deleteUsuario(req: Request, res: Response): Promise<void> 
   if (!target) { res.status(404).json({ error: 'Usuário não encontrado' }); return; }
 
   const temColuna = await colunaExiste('usuarios', 'fk_municipio');
-  if (temColuna && user.role !== 'SUPER_ADMIN' && target.fk_municipio && target.fk_municipio !== user.fk_municipio) {
+  if (temColuna && !isSuperAdmin(user.role) && target.fk_municipio && target.fk_municipio !== user.fk_municipio) {
     res.status(403).json({ error: 'Acesso negado' }); return;
   }
 

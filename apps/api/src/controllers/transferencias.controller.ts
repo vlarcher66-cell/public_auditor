@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { db } from '../config/database';
+import { isSuperAdmin } from '../config/roles';
 
 const ALLOWED_SORT = new Set([
   'data_transf', 'valor', 'conta_origem_nome', 'conta_destino_nome',
@@ -36,7 +37,7 @@ export async function listTransferencias(req: Request, res: Response): Promise<v
   if (user.role === 'GESTOR' && user.fk_municipio) {
     query      = query.where('f.fk_municipio', user.fk_municipio);
     countQuery = countQuery.where('f.fk_municipio', user.fk_municipio);
-  } else if (user.role !== 'SUPER_ADMIN' && user.fk_entidade) {
+  } else if (!isSuperAdmin(user.role) && user.fk_entidade) {
     query      = query.where('f.fk_entidade', user.fk_entidade);
     countQuery = countQuery.where('f.fk_entidade', user.fk_entidade);
   }
@@ -74,7 +75,7 @@ export async function getTransferenciaDRE(req: Request, res: Response): Promise<
       if (entidadeId)  q.where('f.fk_entidade', parseInt(entidadeId));
       if (municipioId) q.where('f.fk_municipio', parseInt(municipioId));
       if (user.role === 'GESTOR' && user.fk_municipio) q.where('f.fk_municipio', user.fk_municipio);
-      else if (user.role !== 'SUPER_ADMIN' && user.fk_entidade) q.where('f.fk_entidade', user.fk_entidade);
+      else if (!isSuperAdmin(user.role) && user.fk_entidade) q.where('f.fk_entidade', user.fk_entidade);
     })
     .select(
       'f.tipo_lancamento',
@@ -96,7 +97,7 @@ export async function getTransferenciaSummary(req: Request, res: Response): Prom
 
   if (user.role === 'GESTOR' && user.fk_municipio) {
     base = base.where('f.fk_municipio', user.fk_municipio);
-  } else if (user.role !== 'SUPER_ADMIN' && user.fk_entidade) {
+  } else if (!isSuperAdmin(user.role) && user.fk_entidade) {
     base = base.where('f.fk_entidade', user.fk_entidade);
   }
 

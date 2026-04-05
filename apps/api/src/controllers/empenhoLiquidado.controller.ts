@@ -1,8 +1,9 @@
 import { Request, Response } from 'express';
 import { db } from '../config/database';
+import { isSuperAdmin } from '../config/roles';
 
 function applyRBAC(q: any, user: any) {
-  if (user?.role !== 'SUPER_ADMIN' && user?.fk_municipio) {
+  if (!isSuperAdmin(user?.role) && user?.fk_municipio) {
     q.where('f.fk_municipio', user.fk_municipio);
   }
   return q;

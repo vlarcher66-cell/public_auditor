@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import { env } from '../config/env';
+import { isSuperAdmin } from '../config/roles';
 
 export interface JwtPayload {
   sub: number;
@@ -43,7 +44,13 @@ export function authMiddleware(req: Request, res: Response, next: NextFunction):
 
 export function requireRole(...roles: string[]) {
   return (req: Request, res: Response, next: NextFunction): void => {
-    if (!req.user || !roles.includes(req.user.role)) {
+    if (!req.user) {
+      res.status(403).json({ error: 'Acesso negado' });
+      return;
+    }
+    // ADMIN e SUPER_ADMIN são equivalentes
+    const effectiveRoles = roles.flatMap(r => r === 'SUPER_ADMIN' ? ['SUPER_ADMIN', 'ADMIN'] : [r]);
+    if (!effectiveRoles.includes(req.user.role)) {
       res.status(403).json({ error: 'Acesso negado' });
       return;
     }
@@ -53,12 +60,12 @@ export function requireRole(...roles: string[]) {
 
 /**
  * Retorna o filtro de tenant para uso nas queries Knex.
- * SUPER_ADMIN não tem filtro (vê tudo).
+ * SUPER_ADMIN/ADMIN não têm filtro (veem tudo).
  * GESTOR filtra por município.
  * CONTADOR/AUDITOR/VIEWER filtra por entidade (se tiver) ou município.
  */
 export function getTenantFilter(user: JwtPayload): { fk_municipio?: number; fk_entidade?: number } {
-  if (user.role === 'SUPER_ADMIN') return {};
+  if (isSuperAdmin(user.role)) return {};
   if (user.fk_entidade) return { fk_entidade: user.fk_entidade };
   if (user.fk_municipio) return { fk_municipio: user.fk_municipio };
   return {};

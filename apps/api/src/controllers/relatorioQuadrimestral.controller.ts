@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { db } from '../config/database';
+import { isSuperAdmin } from '../config/roles';
 
 const BASE_PREFIXES = [
   '1.1.1', '1.7.1.1.51', '1.7.1.1.52', '1.7.1.9.58',
@@ -28,7 +29,7 @@ export async function getRelatorioQuadrimestral(req: Request, res: Response): Pr
   const meses = qInfo.meses;
 
   const applyRBAC = (q: any, alias = 'r') => {
-    if (user?.role !== 'SUPER_ADMIN' && user?.fk_municipio)
+    if (!isSuperAdmin(user?.role) && user?.fk_municipio)
       q.where(`${alias}.fk_municipio`, user.fk_municipio);
     return q;
   };

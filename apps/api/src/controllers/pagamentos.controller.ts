@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import * as XLSX from 'xlsx';
 import { db } from '../config/database';
+import { isSuperAdmin } from '../config/roles';
 import { getTenantFilter } from '../middleware/auth.middleware';
 
 export async function listPagamentos(req: Request, res: Response): Promise<void> {

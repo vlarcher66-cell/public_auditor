@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { db } from '../config/database';
+import { isSuperAdmin } from '../config/roles';
 
 // Prefixos de rubricas que compõem a base de cálculo dos 15% (LC 141/2012)
 const BASE_PREFIXES = [
@@ -43,7 +44,7 @@ export async function getIndice15(req: Request, res: Response): Promise<void> {
   const user = (req as any).user;
 
   const applyRBAC = (q: any) => {
-    if (user?.role !== 'SUPER_ADMIN' && user?.fk_municipio) q.where('r.fk_municipio', user.fk_municipio);
+    if (!isSuperAdmin(user?.role) && user?.fk_municipio) q.where('r.fk_municipio', user.fk_municipio);
     return q;
   };
 
