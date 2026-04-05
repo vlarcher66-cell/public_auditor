@@ -5,12 +5,15 @@ import { useSession } from 'next-auth/react';
 import {
   UserCog, Plus, Pencil, Trash2, KeyRound, X, Check,
   ShieldCheck, Eye, Crown, BarChart3, BookOpen, Landmark,
+  LayoutDashboard, TrendingDown, TrendingUp, Target, CreditCard,
+  ClipboardList, Upload, BarChart2, Tag, Layers, Building2, ChevronDown,
 } from 'lucide-react';
 import { SearchSelect } from '@/components/SearchSelect';
 
 const API = `${process.env.NEXT_PUBLIC_API_URL}/api`;
 
 interface Municipio { id: number; nome: string; uf: string | null; }
+interface Entidade { id: number; nome: string; tipo: string; fk_municipio: number; }
 
 interface Usuario {
   id: number;
@@ -44,6 +47,91 @@ const ROLES = [
   { id: 'VIEWER',      nome: '👁️ Visualizador', desc: 'Somente dashboard da entidade' },
 ];
 
+// ─── Estrutura das permissões ─────────────────────────────────────────────────
+
+interface PermGroup {
+  key: string;
+  label: string;
+  icon: React.ReactNode;
+  children?: { key: string; label: string }[];
+}
+
+const PERM_STRUCTURE: PermGroup[] = [
+  {
+    key: 'menu.dashboard',
+    label: 'Dashboard',
+    icon: <LayoutDashboard size={13} />,
+  },
+  {
+    key: 'menu.despesa',
+    label: 'Despesa',
+    icon: <TrendingDown size={13} />,
+  },
+  {
+    key: 'menu.receita',
+    label: 'Receita',
+    icon: <TrendingUp size={13} />,
+  },
+  {
+    key: 'menu.saude15',
+    label: 'Índice Saúde 15%',
+    icon: <ShieldCheck size={13} />,
+  },
+  {
+    key: 'menu.metas',
+    label: 'Meta Despesa',
+    icon: <Target size={13} />,
+  },
+  {
+    key: 'menu.contas_pagar',
+    label: 'Contas a Pagar',
+    icon: <CreditCard size={13} />,
+  },
+  {
+    key: 'menu.rel_quadrimestral',
+    label: 'Rel. Quadrimestral',
+    icon: <ClipboardList size={13} />,
+  },
+];
+
+const OPER_STRUCTURE: PermGroup[] = [
+  {
+    key: 'analise',
+    label: 'Análise',
+    icon: <BarChart2 size={13} />,
+    children: [
+      { key: 'analise.despesa', label: 'Despesa' },
+      { key: 'analise.receita', label: 'Receita' },
+    ],
+  },
+  {
+    key: 'importacao',
+    label: 'Importação',
+    icon: <Upload size={13} />,
+    children: [
+      { key: 'importacao.despesa', label: 'Despesa' },
+      { key: 'importacao.receita', label: 'Receita' },
+    ],
+  },
+  {
+    key: 'classificacao',
+    label: 'Classificação',
+    icon: <Tag size={13} />,
+    children: [
+      { key: 'classificacao.credores', label: 'Credores' },
+      { key: 'classificacao.setores', label: 'Setores' },
+    ],
+  },
+];
+
+const CONF_STRUCTURE: PermGroup[] = [
+  { key: 'cadastros.municipio', label: 'Cad. Município', icon: <Landmark size={13} /> },
+  { key: 'cadastros.entidade',  label: 'Cad. Entidade',  icon: <Building2 size={13} /> },
+  { key: 'cadastros.usuarios',  label: 'Usuários',       icon: <UserCog size={13} /> },
+];
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
 function roleBadge(role: string) {
   const map: Record<string, { label: string; cls: string; icon: React.ReactNode }> = {
     SUPER_ADMIN: { label: 'Super Admin', cls: 'bg-purple-100 text-purple-700', icon: <Crown size={11} /> },
@@ -61,6 +149,116 @@ function roleBadge(role: string) {
   );
 }
 
+function Checkbox({ checked, onChange, label, icon }: { checked: boolean; onChange: (v: boolean) => void; label: string; icon?: React.ReactNode }) {
+  return (
+    <label className="flex items-center gap-2 cursor-pointer group select-none">
+      <div
+        onClick={() => onChange(!checked)}
+        className={`w-4 h-4 rounded flex items-center justify-center border transition-all ${
+          checked ? 'bg-blue-600 border-blue-600' : 'border-gray-300 bg-white group-hover:border-blue-400'
+        }`}
+      >
+        {checked && <Check size={10} className="text-white" strokeWidth={3} />}
+      </div>
+      {icon && <span className="text-gray-400">{icon}</span>}
+      <span className="text-xs text-gray-700">{label}</span>
+    </label>
+  );
+}
+
+// ─── Seção de permissões ──────────────────────────────────────────────────────
+
+function PermSection({
+  title, icon, perms, checked, onChange,
+}: {
+  title: string;
+  icon: React.ReactNode;
+  perms: PermGroup[];
+  checked: Set<string>;
+  onChange: (key: string, val: boolean) => void;
+}) {
+  const [open, setOpen] = useState(true);
+
+  // Verifica se todos os filhos de um grupo estão marcados
+  function allChildrenChecked(group: PermGroup) {
+    return group.children?.every(c => checked.has(c.key)) ?? false;
+  }
+  function someChildrenChecked(group: PermGroup) {
+    return group.children?.some(c => checked.has(c.key)) ?? false;
+  }
+
+  function toggleGroup(group: PermGroup, val: boolean) {
+    if (group.children) {
+      group.children.forEach(c => onChange(c.key, val));
+    } else {
+      onChange(group.key, val);
+    }
+  }
+
+  return (
+    <div className="border rounded-xl overflow-hidden">
+      <button
+        type="button"
+        onClick={() => setOpen(v => !v)}
+        className="w-full flex items-center gap-2 px-3 py-2.5 bg-gray-50 hover:bg-gray-100 transition-colors"
+      >
+        <span className="text-gray-500">{icon}</span>
+        <span className="text-xs font-semibold text-gray-700 uppercase tracking-wider flex-1 text-left">{title}</span>
+        <ChevronDown size={13} className={`text-gray-400 transition-transform ${open ? 'rotate-180' : ''}`} />
+      </button>
+      {open && (
+        <div className="p-3 space-y-3">
+          {perms.map(group => (
+            <div key={group.key}>
+              {group.children ? (
+                <div>
+                  {/* Grupo com submenus */}
+                  <div className="flex items-center gap-2 mb-2">
+                    <div
+                      onClick={() => toggleGroup(group, !allChildrenChecked(group))}
+                      className={`w-4 h-4 rounded flex items-center justify-center border cursor-pointer transition-all ${
+                        allChildrenChecked(group)
+                          ? 'bg-blue-600 border-blue-600'
+                          : someChildrenChecked(group)
+                          ? 'bg-blue-200 border-blue-400'
+                          : 'border-gray-300 bg-white hover:border-blue-400'
+                      }`}
+                    >
+                      {allChildrenChecked(group) && <Check size={10} className="text-white" strokeWidth={3} />}
+                      {!allChildrenChecked(group) && someChildrenChecked(group) && (
+                        <div className="w-2 h-0.5 bg-blue-600 rounded" />
+                      )}
+                    </div>
+                    <span className="text-gray-400">{group.icon}</span>
+                    <span className="text-xs font-medium text-gray-700">{group.label}</span>
+                  </div>
+                  <div className="ml-6 space-y-2 pl-3 border-l border-gray-100">
+                    {group.children.map(child => (
+                      <Checkbox
+                        key={child.key}
+                        checked={checked.has(child.key)}
+                        onChange={(v) => onChange(child.key, v)}
+                        label={child.label}
+                      />
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <Checkbox
+                  checked={checked.has(group.key)}
+                  onChange={(v) => onChange(group.key, v)}
+                  label={group.label}
+                  icon={group.icon}
+                />
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Modal Usuário ─────────────────────────────────────────────────────────────
 
 function UsuarioModal({
@@ -73,6 +271,7 @@ function UsuarioModal({
   onClose: () => void;
   onSaved: () => void;
 }) {
+  const [tab, setTab] = useState<'dados' | 'acesso'>('dados');
   const [nome, setNome] = useState(usuario?.nome ?? '');
   const [email, setEmail] = useState(usuario?.email ?? '');
   const [senha, setSenha] = useState('');
@@ -81,7 +280,53 @@ function UsuarioModal({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
+  // Permissões e entidades
+  const [permChecked, setPermChecked] = useState<Set<string>>(new Set());
+  const [entidades, setEntidades] = useState<Entidade[]>([]);
+  const [entidadesChecked, setEntidadesChecked] = useState<Set<number>>(new Set());
+  const [loadingPerms, setLoadingPerms] = useState(false);
+
   const rolesDisponiveis = isSuperAdmin ? ROLES : ROLES.filter(r => r.id !== 'SUPER_ADMIN');
+
+  // Carrega entidades do município selecionado
+  useEffect(() => {
+    const muni = fkMunicipio;
+    if (!muni) { setEntidades([]); return; }
+    fetch(`${API}/entidades/list?municipioId=${muni}`, { headers: authHeader(token) })
+      .then(r => r.ok ? r.json() : [])
+      .then(data => setEntidades(Array.isArray(data) ? data : []))
+      .catch(() => setEntidades([]));
+  }, [fkMunicipio, token]);
+
+  // Se editando, carrega permissões existentes
+  useEffect(() => {
+    if (!usuario) return;
+    setLoadingPerms(true);
+    fetch(`${API}/usuarios/${usuario.id}/permissoes`, { headers: authHeader(token) })
+      .then(r => r.ok ? r.json() : { permissoes: [], entidades_ids: [] })
+      .then(data => {
+        setPermChecked(new Set(data.permissoes ?? []));
+        setEntidadesChecked(new Set(data.entidades_ids ?? []));
+      })
+      .catch(() => {})
+      .finally(() => setLoadingPerms(false));
+  }, [usuario, token]);
+
+  function togglePerm(key: string, val: boolean) {
+    setPermChecked(prev => {
+      const next = new Set(prev);
+      if (val) next.add(key); else next.delete(key);
+      return next;
+    });
+  }
+
+  function toggleEntidade(id: number, val: boolean) {
+    setEntidadesChecked(prev => {
+      const next = new Set(prev);
+      if (val) next.add(id); else next.delete(id);
+      return next;
+    });
+  }
 
   async function handleSave() {
     if (!nome.trim() || !email.trim()) { setError('Nome e email são obrigatórios'); return; }
@@ -92,77 +337,187 @@ function UsuarioModal({
       const body: any = { nome, email, role };
       if (!usuario) body.senha = senha;
       if (isSuperAdmin) body.fk_municipio = fkMunicipio;
+
       const res = await fetch(url, { method: usuario ? 'PUT' : 'POST', headers: authHeader(token), body: JSON.stringify(body) });
       const data = await res.json();
       if (!res.ok) { setError(data.error || 'Erro ao salvar'); setSaving(false); return; }
+
+      const userId = usuario?.id ?? data.id;
+
+      // Salva permissões
+      await fetch(`${API}/usuarios/${userId}/permissoes`, {
+        method: 'PUT',
+        headers: authHeader(token),
+        body: JSON.stringify({
+          permissoes: Array.from(permChecked),
+          entidades_ids: Array.from(entidadesChecked),
+        }),
+      });
+
       onSaved();
     } catch { setSaving(false); }
   }
 
   return (
     <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-md">
-        <div className="flex items-center justify-between px-6 py-4 border-b">
+      <div className="bg-white rounded-2xl shadow-xl w-[95vw] md:w-full md:max-w-xl flex flex-col max-h-[90vh]">
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 py-4 border-b flex-shrink-0">
           <h2 className="font-semibold text-gray-800">{usuario ? 'Editar Usuário' : 'Novo Usuário'}</h2>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600"><X size={20} /></button>
         </div>
-        <div className="p-6 space-y-4">
-          {error && <p className="text-sm text-red-600 bg-red-50 px-3 py-2 rounded-lg">{error}</p>}
 
-          <div>
-            <label className="block text-xs font-medium text-gray-500 mb-1">Nome *</label>
-            <input autoFocus className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Nome completo" />
-          </div>
+        {/* Tabs */}
+        <div className="flex border-b flex-shrink-0 overflow-x-auto">
+          <button
+            onClick={() => setTab('dados')}
+            className={`px-5 py-2.5 text-sm font-medium border-b-2 transition-colors ${
+              tab === 'dados' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            Dados do Usuário
+          </button>
+          <button
+            onClick={() => setTab('acesso')}
+            className={`px-5 py-2.5 text-sm font-medium border-b-2 transition-colors ${
+              tab === 'acesso' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            Controle de Acesso
+          </button>
+        </div>
 
-          <div>
-            <label className="block text-xs font-medium text-gray-500 mb-1">Email *</label>
-            <input type="email" className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              value={email} onChange={(e) => setEmail(e.target.value)} placeholder="email@prefeitura.gov.br" />
-          </div>
+        {/* Conteúdo */}
+        <div className="overflow-y-auto flex-1 p-6">
+          {error && <p className="text-sm text-red-600 bg-red-50 px-3 py-2 rounded-lg mb-4">{error}</p>}
 
-          {!usuario && (
-            <div>
-              <label className="block text-xs font-medium text-gray-500 mb-1">Senha *</label>
-              <input type="password" className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                value={senha} onChange={(e) => setSenha(e.target.value)} placeholder="Mínimo 6 caracteres" />
+          {tab === 'dados' && (
+            <div className="space-y-4">
+              <div>
+                <label className="block text-xs font-medium text-gray-500 mb-1">Nome *</label>
+                <input autoFocus className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Nome completo" />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-500 mb-1">Email *</label>
+                <input type="email" className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  value={email} onChange={(e) => setEmail(e.target.value)} placeholder="email@prefeitura.gov.br" />
+              </div>
+              {!usuario && (
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 mb-1">Senha *</label>
+                  <input type="password" className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    value={senha} onChange={(e) => setSenha(e.target.value)} placeholder="Mínimo 6 caracteres" />
+                </div>
+              )}
+              <div>
+                <label className="block text-xs font-medium text-gray-500 mb-1">Perfil *</label>
+                <SearchSelect
+                  value={role}
+                  onChange={(val) => setRole(val as string)}
+                  options={rolesDisponiveis.map(r => ({ id: r.id, nome: r.nome }))}
+                  placeholder="Selecione o perfil"
+                  required
+                />
+                {role && (
+                  <p className="text-xs text-gray-400 mt-1">{ROLES.find(r => r.id === role)?.desc}</p>
+                )}
+              </div>
+              {isSuperAdmin && (
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 mb-1">Município</label>
+                  <SearchSelect
+                    value={fkMunicipio ?? ''}
+                    onChange={(val) => setFkMunicipio(val ? Number(val) : null)}
+                    options={[{ id: '', nome: '— Nenhum (Super Admin global) —' }, ...municipios.map(m => ({ id: m.id, nome: `${m.nome}${m.uf ? ` (${m.uf})` : ''}` }))]}
+                    placeholder="Selecione o município"
+                  />
+                </div>
+              )}
             </div>
           )}
 
-          <div>
-            <label className="block text-xs font-medium text-gray-500 mb-1">Perfil *</label>
-            <SearchSelect
-              value={role}
-              onChange={(val) => setRole(val as string)}
-              options={rolesDisponiveis.map(r => ({ id: r.id, nome: r.nome }))}
-              placeholder="Selecione o perfil"
-              required
-            />
-            {role && (
-              <p className="text-xs text-gray-400 mt-1">
-                {ROLES.find(r => r.id === role)?.desc}
-              </p>
-            )}
-          </div>
+          {tab === 'acesso' && (
+            <div className="space-y-4">
+              {loadingPerms ? (
+                <p className="text-sm text-gray-400 text-center py-8">Carregando permissões...</p>
+              ) : (
+                <>
+                  {/* Menu Principal */}
+                  <PermSection
+                    title="Menu Principal"
+                    icon={<LayoutDashboard size={14} />}
+                    perms={PERM_STRUCTURE}
+                    checked={permChecked}
+                    onChange={togglePerm}
+                  />
 
-          {isSuperAdmin && (
-            <div>
-              <label className="block text-xs font-medium text-gray-500 mb-1">Município</label>
-              <SearchSelect
-                value={fkMunicipio ?? ''}
-                onChange={(val) => setFkMunicipio(val ? Number(val) : null)}
-                options={[{ id: '', nome: '— Nenhum (Super Admin global) —' }, ...municipios.map(m => ({ id: m.id, nome: `${m.nome}${m.uf ? ` (${m.uf})` : ''}` }))]}
-                placeholder="Selecione o município"
-              />
+                  {/* Operacional */}
+                  <PermSection
+                    title="Operacional"
+                    icon={<Layers size={14} />}
+                    perms={OPER_STRUCTURE}
+                    checked={permChecked}
+                    onChange={togglePerm}
+                  />
+
+                  {/* Configurações */}
+                  <PermSection
+                    title="Configurações"
+                    icon={<UserCog size={14} />}
+                    perms={CONF_STRUCTURE}
+                    checked={permChecked}
+                    onChange={togglePerm}
+                  />
+
+                  {/* Entidades acessíveis */}
+                  {entidades.length > 0 && (
+                    <div className="border rounded-xl overflow-hidden">
+                      <div className="flex items-center gap-2 px-3 py-2.5 bg-gray-50">
+                        <Building2 size={14} className="text-gray-500" />
+                        <span className="text-xs font-semibold text-gray-700 uppercase tracking-wider">Entidades com Acesso</span>
+                      </div>
+                      <div className="p-3 space-y-2">
+                        {entidades.map(ent => (
+                          <Checkbox
+                            key={ent.id}
+                            checked={entidadesChecked.has(ent.id)}
+                            onChange={(v) => toggleEntidade(ent.id, v)}
+                            label={ent.nome}
+                            icon={<Building2 size={12} />}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {entidades.length === 0 && fkMunicipio && (
+                    <p className="text-xs text-gray-400 text-center py-4">Nenhuma entidade cadastrada para este município.</p>
+                  )}
+
+                  {!fkMunicipio && isSuperAdmin && (
+                    <p className="text-xs text-amber-600 bg-amber-50 px-3 py-2 rounded-lg">
+                      Selecione um município na aba "Dados do Usuário" para ver as entidades disponíveis.
+                    </p>
+                  )}
+                </>
+              )}
             </div>
           )}
         </div>
-        <div className="flex justify-end gap-2 px-6 py-4 border-t">
-          <button onClick={onClose} className="px-4 py-2 text-sm rounded-lg border hover:bg-gray-50">Cancelar</button>
-          <button onClick={handleSave} disabled={saving}
-            className="px-4 py-2 text-sm rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-60">
-            {saving ? 'Salvando...' : 'Salvar'}
-          </button>
+
+        {/* Footer */}
+        <div className="flex justify-between items-center gap-2 px-6 py-4 border-t flex-shrink-0">
+          <div className="text-xs text-gray-400">
+            {permChecked.size > 0 && `${permChecked.size} permissão${permChecked.size !== 1 ? 'ões' : ''} selecionada${permChecked.size !== 1 ? 's' : ''}`}
+          </div>
+          <div className="flex gap-2">
+            <button onClick={onClose} className="px-4 py-2 text-sm rounded-lg border hover:bg-gray-50">Cancelar</button>
+            <button onClick={handleSave} disabled={saving}
+              className="px-4 py-2 text-sm rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-60">
+              {saving ? 'Salvando...' : 'Salvar'}
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -284,9 +639,9 @@ export default function UsuariosPage() {
     : usuarios;
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-3 md:p-6 space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 bg-indigo-100 rounded-xl flex items-center justify-center">
             <UserCog size={20} className="text-indigo-600" />
@@ -327,8 +682,8 @@ export default function UsuariosPage() {
       )}
 
       {/* Tabela */}
-      <div className="bg-white rounded-2xl border overflow-hidden">
-        <table className="w-full text-sm">
+      <div className="bg-white rounded-2xl border overflow-hidden overflow-x-auto">
+        <table className="w-full min-w-[700px] text-sm">
           <thead className="bg-gray-50 text-xs text-gray-500 uppercase tracking-wider">
             <tr>
               <th className="px-4 py-3 text-left">Nome</th>

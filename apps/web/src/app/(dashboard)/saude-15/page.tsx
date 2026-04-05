@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import TopBar from '@/components/dashboard/TopBar';
 import { apiRequest } from '@/lib/api';
+import { useMunicipioEntidade } from '@/contexts/MunicipioEntidadeContext';
 import {
   ComposedChart, Bar, Line, XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer, ReferenceLine, Legend,
@@ -63,11 +64,11 @@ function fmtM(v: number) {
 function fmtPct(v: number) { return v.toFixed(2) + '%'; }
 
 function statusConfig(pct: number) {
-  if (pct === 0)    return { color: '#94a3b8', bg: '#f1f5f9', label: 'Sem dados',      icon: '—' };
-  if (pct >= META_IDEAL) return { color: '#059669', bg: '#ecfdf5', label: 'Excelente',     icon: '✦' };
-  if (pct >= LIMITE)     return { color: '#0F2A4E', bg: '#eff6ff', label: 'Cumprido',      icon: '✓' };
-  if (pct >= 12)         return { color: '#d97706', bg: '#fffbeb', label: 'Atenção',        icon: '⚠' };
-  return                        { color: '#dc2626', bg: '#fef2f2', label: 'Déficit',        icon: '✕' };
+  if (pct === 0)    return { color: '#94a3b8', bg: '#f1f5f9', label: 'Sem dados',  icon: '—' };
+  if (pct >= META_IDEAL) return { color: '#10b981', bg: '#ecfdf5', label: 'Excelente', icon: '✦' };
+  if (pct >= LIMITE)     return { color: '#0F2A4E', bg: '#eff6ff', label: 'Cumprido',  icon: '✓' };
+  if (pct >= 12)         return { color: '#f59e0b', bg: '#fffbeb', label: 'Atenção',   icon: '⚠' };
+  return                        { color: '#ff2d2d', bg: '#fff1f1', label: 'Déficit',   icon: '✕' };
 }
 
 // ─── Tooltip customizado ──────────────────────────────────────────────────────
@@ -105,22 +106,41 @@ function GaugeMeter({ pct }: { pct: number }) {
 
   return (
     <svg viewBox="0 0 200 120" style={{ width: '100%', maxWidth: '280px' }}>
+      <defs>
+        <linearGradient id="arcRed" x1="0%" y1="0%" x2="100%" y2="0%">
+          <stop offset="0%" stopColor="#ff2d2d" />
+          <stop offset="100%" stopColor="#ff6b00" />
+        </linearGradient>
+        <linearGradient id="arcYellow" x1="0%" y1="0%" x2="100%" y2="0%">
+          <stop offset="0%" stopColor="#f59e0b" />
+          <stop offset="100%" stopColor="#fbbf24" />
+        </linearGradient>
+        <linearGradient id="arcGreen" x1="0%" y1="0%" x2="100%" y2="0%">
+          <stop offset="0%" stopColor="#10b981" />
+          <stop offset="100%" stopColor="#34d399" />
+        </linearGradient>
+        <filter id="glow">
+          <feGaussianBlur stdDeviation="2.5" result="blur" />
+          <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
+        </filter>
+      </defs>
       {/* Arco fundo */}
-      <path d="M 20 100 A 80 80 0 0 1 180 100" fill="none" stroke="#e2e8f0" strokeWidth="14" strokeLinecap="round" />
+      <path d="M 20 100 A 80 80 0 0 1 180 100" fill="none" stroke="#e8edf5" strokeWidth="16" strokeLinecap="round" />
       {/* Arco vermelho 0-15% */}
-      <path d="M 20 100 A 80 80 0 0 1 100 20" fill="none" stroke="#fca5a5" strokeWidth="14" strokeLinecap="round" strokeDasharray="125.6 251.2" strokeDashoffset="0" />
+      <path d="M 20 100 A 80 80 0 0 1 100 20" fill="none" stroke="url(#arcRed)" strokeWidth="14" strokeLinecap="round" strokeDasharray="125.6 251.2" strokeDashoffset="0" />
       {/* Arco amarelo 15-20% */}
-      <path d="M 20 100 A 80 80 0 0 1 180 100" fill="none" stroke="#fde68a" strokeWidth="14" strokeLinecap="round" strokeDasharray="62.8 251.2" strokeDashoffset="-125.6" />
+      <path d="M 20 100 A 80 80 0 0 1 180 100" fill="none" stroke="url(#arcYellow)" strokeWidth="14" strokeLinecap="round" strokeDasharray="62.8 251.2" strokeDashoffset="-125.6" />
       {/* Arco verde 20%+ */}
-      <path d="M 20 100 A 80 80 0 0 1 180 100" fill="none" stroke="#6ee7b7" strokeWidth="14" strokeLinecap="round" strokeDasharray="62.8 251.2" strokeDashoffset="-188.4" />
+      <path d="M 20 100 A 80 80 0 0 1 180 100" fill="none" stroke="url(#arcGreen)" strokeWidth="14" strokeLinecap="round" strokeDasharray="62.8 251.2" strokeDashoffset="-188.4" />
       {/* Marcador 15% */}
       <line x1="100" y1="22" x2="100" y2="34" stroke="#0F2A4E" strokeWidth="2" />
       <text x="100" y="44" textAnchor="middle" fontSize="8" fill="#0F2A4E" fontWeight="700">15%</text>
-      {/* Agulha */}
+      {/* Agulha com brilho */}
       {pct > 0 && (
         <>
-          <line x1={cx} y1={cy} x2={needleX} y2={needleY} stroke={status.color} strokeWidth="3" strokeLinecap="round" />
-          <circle cx={cx} cy={cy} r="6" fill={status.color} />
+          <line x1={cx} y1={cy} x2={needleX} y2={needleY} stroke={status.color} strokeWidth="3.5" strokeLinecap="round" filter="url(#glow)" />
+          <circle cx={cx} cy={cy} r="7" fill={status.color} filter="url(#glow)" />
+          <circle cx={cx} cy={cy} r="4" fill="#fff" />
         </>
       )}
       {/* Valor */}
@@ -139,6 +159,7 @@ function GaugeMeter({ pct }: { pct: number }) {
 export default function Indice15Page() {
   const { data: session } = useSession();
   const token = (session as any)?.accessToken as string | undefined;
+  const { entidadeSelecionada, municipioSelecionado } = useMunicipioEntidade();
 
   const [ano, setAno]       = useState(String(new Date().getFullYear()));
   const [data, setData]     = useState<Indice15Data | null>(null);
@@ -149,11 +170,14 @@ export default function Indice15Page() {
     if (!token) return;
     setLoading(true);
     try {
-      const res = await apiRequest<Indice15Data>('/indice15', { token, params: { ano } });
+      const params: Record<string, string> = { ano };
+      if (entidadeSelecionada?.id) params.entidadeId = String(entidadeSelecionada.id);
+      else if (municipioSelecionado?.id) params.municipioId = String(municipioSelecionado.id);
+      const res = await apiRequest<Indice15Data>('/indice15', { token, params });
       setData(res);
     } catch { setData(null); }
     finally { setLoading(false); }
-  }, [token, ano]);
+  }, [token, ano, entidadeSelecionada, municipioSelecionado]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -191,7 +215,7 @@ export default function Indice15Page() {
       <TopBar title="Índice Constitucional de Saúde" subtitle="Acompanhamento do mínimo de 15% — Lei Complementar nº 141/2012" />
 
       {/* ── Barra de abas / controles ── */}
-      <div style={{ background: '#fff', borderBottom: '1px solid #e2e8f0', padding: '0 32px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+      <div className="px-3 md:px-8" style={{ background: '#fff', borderBottom: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <div style={{ display: 'flex', gap: 0 }}>
           {['Painel', 'Evolução', 'Matriz'].map((tab, i) => {
             const isActive = (i === 0 && showMatriz === true && false) || false; // controlled separately
@@ -212,7 +236,7 @@ export default function Indice15Page() {
         </div>
       </div>
 
-      <div style={{ background: '#f8fafc', minHeight: '100vh', padding: '28px 32px', display: 'flex', flexDirection: 'column', gap: '24px' }}>
+      <div className="p-3 md:p-8" style={{ background: '#f8fafc', minHeight: '100vh', display: 'flex', flexDirection: 'column', gap: '24px' }}>
 
         {loading ? (
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '400px', gap: '12px', color: '#94a3b8' }}>
@@ -228,7 +252,7 @@ export default function Indice15Page() {
         ) : (
           <>
             {/* ── LINHA 1: Gauge + Cards grandes ── */}
-            <div style={{ display: 'grid', gridTemplateColumns: '280px 1fr', gap: '20px' }}>
+            <div className="grid grid-cols-1 md:grid-cols-[280px_1fr] gap-5">
 
               {/* Gauge acumulado */}
               <div style={{ background: '#fff', borderRadius: '20px', border: '1px solid #e2e8f0', overflow: 'hidden', boxShadow: '0 2px 8px rgba(0,0,0,0.04)', display: 'flex', flexDirection: 'column' }}>
@@ -268,10 +292,10 @@ export default function Indice15Page() {
                 <div style={{ padding: '16px 24px', background: 'linear-gradient(135deg, #0F2A4E, #1e4d95)', display: 'flex', alignItems: 'center', gap: '10px' }}>
                   <ShieldCheck size={16} color="rgba(255,255,255,0.7)" />
                   <span style={{ fontWeight: 700, fontSize: '13px', color: '#fff' }}>Situação por Mês — {ano}</span>
-                  <span style={{ marginLeft: 'auto', fontSize: '10px', color: 'rgba(255,255,255,0.45)' }}>
-                    <span style={{ background: '#ecfdf5', color: '#059669', borderRadius: '4px', padding: '1px 6px', fontSize: '9px', fontWeight: 800, marginRight: '6px' }}>✦ ≥20% Excelente</span>
-                    <span style={{ background: '#eff6ff', color: '#0F2A4E', borderRadius: '4px', padding: '1px 6px', fontSize: '9px', fontWeight: 800, marginRight: '6px' }}>✓ ≥15% Cumprido</span>
-                    <span style={{ background: '#fffbeb', color: '#d97706', borderRadius: '4px', padding: '1px 6px', fontSize: '9px', fontWeight: 800, marginRight: '6px' }}>⚠ Atenção</span>
+                  <span className="hidden md:flex ml-auto flex-wrap gap-1" style={{ fontSize: '10px', color: 'rgba(255,255,255,0.45)' }}>
+                    <span style={{ background: '#ecfdf5', color: '#059669', borderRadius: '4px', padding: '1px 6px', fontSize: '9px', fontWeight: 800 }}>✦ ≥20% Excelente</span>
+                    <span style={{ background: '#eff6ff', color: '#0F2A4E', borderRadius: '4px', padding: '1px 6px', fontSize: '9px', fontWeight: 800 }}>✓ ≥15% Cumprido</span>
+                    <span style={{ background: '#fffbeb', color: '#d97706', borderRadius: '4px', padding: '1px 6px', fontSize: '9px', fontWeight: 800 }}>⚠ Atenção</span>
                     <span style={{ background: '#fef2f2', color: '#dc2626', borderRadius: '4px', padding: '1px 6px', fontSize: '9px', fontWeight: 800 }}>✕ Déficit</span>
                   </span>
                 </div>

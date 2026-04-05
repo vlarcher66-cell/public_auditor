@@ -269,7 +269,7 @@ export default function ImportacaoReceitaPage() {
     <div>
       <TopBar title="Importação de Receita" subtitle="Importe listagens de receita arrecadada do SIAFIC" />
 
-      <div className="p-8 space-y-8">
+      <div className="p-4 md:p-8 space-y-8">
 
         {/* ── Upload area ──────────────────────────────────────────────────── */}
         <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 space-y-5">

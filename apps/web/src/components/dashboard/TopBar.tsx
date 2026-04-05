@@ -1,42 +1,317 @@
 'use client';
 
 import { useSession } from 'next-auth/react';
-import { Bell, User } from 'lucide-react';
+import { Bell, ChevronDown, Building2, MapPin, Layers, Menu } from 'lucide-react';
+import { useState, useRef, useEffect } from 'react';
+import { useMunicipioEntidade, Municipio, Entidade } from '@/contexts/MunicipioEntidadeContext';
+import { useSidebar } from '@/contexts/SidebarContext';
 
 interface TopBarProps {
   title: string;
   subtitle?: string;
 }
 
+// ─── Badge de tipo de entidade ────────────────────────────────────────────────
+function EntidadeTipoBadge({ tipo }: { tipo: string }) {
+  const map: Record<string, { bg: string; color: string; label: string }> = {
+    PREFEITURA: { bg: '#e0eaff', color: '#1e4d95', label: 'PREFEITURA' },
+    FUNDO:      { bg: '#dcfce7', color: '#16a34a', label: 'FUNDO' },
+    AUTARQUIA:  { bg: '#fef3c7', color: '#d97706', label: 'AUTARQUIA' },
+  };
+  const s = map[tipo] ?? { bg: '#f1f5f9', color: '#64748b', label: tipo };
+  return (
+    <span style={{
+      fontSize: '10px', fontWeight: 700, padding: '2px 7px', borderRadius: '999px',
+      background: s.bg, color: s.color, letterSpacing: '0.04em',
+    }}>
+      {s.label}
+    </span>
+  );
+}
+
+// ─── Dropdown genérico ────────────────────────────────────────────────────────
+function SeletorDropdown<T extends { id: number; nome: string }>({
+  valor, opcoes, onChange, placeholder, icon, extraBadge,
+}: {
+  valor: T | null;
+  opcoes: T[];
+  onChange: (v: T | null) => void;
+  placeholder: string;
+  icon: React.ReactNode;
+  extraBadge?: (item: T) => React.ReactNode;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    }
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, []);
+
+  return (
+    <div ref={ref} style={{ position: 'relative' }}>
+      <button
+        onClick={() => setOpen(v => !v)}
+        style={{
+          display: 'flex', alignItems: 'center', gap: '6px',
+          padding: '6px 12px', borderRadius: '10px', border: '1.5px solid #e2e8f0',
+          background: '#f8fafc', cursor: 'pointer', fontSize: '13px', fontWeight: 600,
+          color: '#0F2A4E', transition: 'all 0.15s', minWidth: '160px',
+          boxShadow: open ? '0 0 0 3px rgba(15,42,78,0.08)' : 'none',
+        }}
+      >
+        <span style={{ color: '#C9A84C' }}>{icon}</span>
+        <span style={{ flex: 1, textAlign: 'left', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          {valor ? valor.nome : placeholder}
+        </span>
+        <ChevronDown size={14} style={{ color: '#94a3b8', transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }} />
+      </button>
+
+      {open && (
+        <div style={{
+          position: 'absolute', top: 'calc(100% + 6px)', left: 0, zIndex: 9999,
+          background: '#fff', borderRadius: '12px', border: '1px solid #e2e8f0',
+          boxShadow: '0 8px 30px rgba(0,0,0,0.12)', minWidth: '220px', overflow: 'hidden',
+        }}>
+          {/* Opção consolidado (só para entidade) */}
+          {placeholder === 'Consolidado' && (
+            <button
+              onClick={() => { onChange(null); setOpen(false); }}
+              style={{
+                width: '100%', textAlign: 'left', padding: '10px 14px',
+                display: 'flex', alignItems: 'center', gap: '8px',
+                background: valor === null ? '#f0f4ff' : 'transparent',
+                border: 'none', cursor: 'pointer', fontSize: '13px', fontWeight: valor === null ? 700 : 400,
+                color: valor === null ? '#0F2A4E' : '#374151',
+              }}
+            >
+              <Layers size={14} style={{ color: '#C9A84C' }} />
+              Consolidado (todas)
+              {valor === null && <span style={{ marginLeft: 'auto', color: '#C9A84C', fontSize: '10px' }}>✓</span>}
+            </button>
+          )}
+
+          {opcoes.map(op => (
+            <button
+              key={op.id}
+              onClick={() => { onChange(op); setOpen(false); }}
+              style={{
+                width: '100%', textAlign: 'left', padding: '10px 14px',
+                display: 'flex', alignItems: 'center', gap: '8px',
+                background: valor?.id === op.id ? '#f0f4ff' : 'transparent',
+                border: 'none', cursor: 'pointer', fontSize: '13px',
+                fontWeight: valor?.id === op.id ? 700 : 400,
+                color: valor?.id === op.id ? '#0F2A4E' : '#374151',
+                borderTop: '1px solid #f1f5f9',
+              }}
+            >
+              <span style={{ flex: 1 }}>{op.nome}</span>
+              {extraBadge?.(op)}
+              {valor?.id === op.id && <span style={{ color: '#C9A84C', fontSize: '10px' }}>✓</span>}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── TopBar principal ─────────────────────────────────────────────────────────
 export default function TopBar({ title, subtitle }: TopBarProps) {
   const { data: session } = useSession();
   const userName = session?.user?.name || 'Usuário';
-  const initials = userName
-    .split(' ')
-    .slice(0, 2)
-    .map((n) => n[0])
-    .join('')
-    .toUpperCase();
+  const role     = (session?.user as any)?.role as string || 'VIEWER';
+  const initials = userName.split(' ').slice(0, 2).map((n: string) => n[0]).join('').toUpperCase();
+
+  const { openMobileSidebar } = useSidebar();
+  const [ctxOpen, setCtxOpen] = useState(false);
+  const ctxRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (ctxRef.current && !ctxRef.current.contains(e.target as Node)) setCtxOpen(false);
+    }
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, []);
+
+  const {
+    municipios, entidades,
+    municipioSelecionado, entidadeSelecionada,
+    setMunicipioSelecionado, setEntidadeSelecionada,
+    podeEscolherMunicipio, podeEscolherEntidade,
+    loading,
+  } = useMunicipioEntidade();
 
   return (
-    <header className="h-16 bg-white border-b border-gray-100 flex items-center justify-between px-8 sticky top-0 z-20 shadow-sm">
-      <div>
-        <h1 className="text-lg font-bold text-navy-800">{title}</h1>
-        {subtitle && <p className="text-xs text-gray-500">{subtitle}</p>}
+    <header style={{
+      height: '64px', background: '#fff', borderBottom: '1px solid #f1f5f9',
+      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+      padding: '0 12px', position: 'sticky', top: 0, zIndex: 20,
+      boxShadow: '0 1px 4px rgba(0,0,0,0.04)',
+    }}>
+      {/* Lado esquerdo: hamburger (mobile) + título */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+        {/* Hamburger — visível apenas em mobile */}
+        <button
+          onClick={openMobileSidebar}
+          className="md:hidden"
+          style={{
+            padding: '8px', color: '#0F2A4E', background: 'none',
+            border: 'none', cursor: 'pointer', borderRadius: '8px',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}
+        >
+          <Menu size={20} />
+        </button>
+        <div>
+          <h1 style={{ fontSize: '15px', fontWeight: 700, color: '#0F2A4E', margin: 0 }}>{title}</h1>
+          {subtitle && <p style={{ fontSize: '11px', color: '#94a3b8', margin: 0 }}>{subtitle}</p>}
+        </div>
       </div>
 
-      <div className="flex items-center gap-4">
-        <button className="relative p-2 text-gray-400 hover:text-navy-800 transition-colors rounded-lg hover:bg-gray-50">
+      {/* Seletores de contexto — ocultos em mobile */}
+      {!loading && (
+        <div className="hidden md:flex" style={{ alignItems: 'center', gap: '8px' }}>
+
+          {/* Município — só SUPER_ADMIN vê o dropdown */}
+          {podeEscolherMunicipio ? (
+            <SeletorDropdown<Municipio>
+              valor={municipioSelecionado}
+              opcoes={municipios}
+              onChange={setMunicipioSelecionado}
+              placeholder="Selecione o município"
+              icon={<MapPin size={14} />}
+            />
+          ) : municipioSelecionado ? (
+            <div style={{
+              display: 'flex', alignItems: 'center', gap: '6px',
+              padding: '6px 12px', borderRadius: '10px',
+              background: '#f8fafc', border: '1.5px solid #e2e8f0',
+              fontSize: '13px', fontWeight: 600, color: '#0F2A4E',
+            }}>
+              <MapPin size={14} style={{ color: '#C9A84C' }} />
+              {municipioSelecionado.nome}
+            </div>
+          ) : null}
+
+          {/* Separador */}
+          {municipioSelecionado && <span style={{ color: '#e2e8f0', fontSize: '18px' }}>›</span>}
+
+          {/* Entidade — SUPER_ADMIN e GESTOR veem dropdown */}
+          {podeEscolherEntidade ? (
+            <SeletorDropdown<Entidade>
+              valor={entidadeSelecionada}
+              opcoes={entidades}
+              onChange={setEntidadeSelecionada}
+              placeholder="Consolidado"
+              icon={<Building2 size={14} />}
+              extraBadge={(e) => <EntidadeTipoBadge tipo={e.tipo} />}
+            />
+          ) : entidadeSelecionada ? (
+            <div style={{
+              display: 'flex', alignItems: 'center', gap: '6px',
+              padding: '6px 12px', borderRadius: '10px',
+              background: '#f8fafc', border: '1.5px solid #e2e8f0',
+              fontSize: '13px', fontWeight: 600, color: '#0F2A4E',
+            }}>
+              <Building2 size={14} style={{ color: '#C9A84C' }} />
+              {entidadeSelecionada.nome}
+              <EntidadeTipoBadge tipo={entidadeSelecionada.tipo} />
+            </div>
+          ) : null}
+        </div>
+      )}
+
+      {/* Usuário */}
+      <div ref={ctxRef} style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+        {/* Botão de contexto — visível apenas no mobile */}
+        {!loading && (
+          <button
+            onClick={() => setCtxOpen(v => !v)}
+            className="md:hidden"
+            style={{
+              padding: '7px', color: ctxOpen ? '#0F2A4E' : '#9ca3af',
+              background: ctxOpen ? '#f0f4ff' : 'none',
+              border: '1.5px solid ' + (ctxOpen ? '#c7d7f8' : 'transparent'),
+              cursor: 'pointer', borderRadius: '8px',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}
+          >
+            <Building2 size={18} />
+          </button>
+        )}
+
+        <button style={{
+          position: 'relative', padding: '8px', color: '#9ca3af',
+          background: 'none', border: 'none', cursor: 'pointer', borderRadius: '8px',
+        }}>
           <Bell size={18} />
         </button>
 
-        <div className="flex items-center gap-3 pl-4 border-l border-gray-100">
-          <div className="w-8 h-8 bg-navy-800 rounded-full flex items-center justify-center text-xs font-bold text-gold-500">
+        {/* Painel de contexto mobile */}
+        {ctxOpen && !loading && (
+          <div className="md:hidden fixed top-[64px] left-0 right-0 z-50 bg-white border-b border-gray-100 shadow-lg p-4 flex flex-col gap-3">
+            {/* Município */}
+            {podeEscolherMunicipio ? (
+              <SeletorDropdown<Municipio>
+                valor={municipioSelecionado}
+                opcoes={municipios}
+                onChange={setMunicipioSelecionado}
+                placeholder="Selecione o município"
+                icon={<MapPin size={14} />}
+              />
+            ) : municipioSelecionado ? (
+              <div style={{
+                display: 'flex', alignItems: 'center', gap: '6px',
+                padding: '6px 12px', borderRadius: '10px',
+                background: '#f8fafc', border: '1.5px solid #e2e8f0',
+                fontSize: '13px', fontWeight: 600, color: '#0F2A4E',
+              }}>
+                <MapPin size={14} style={{ color: '#C9A84C' }} />
+                {municipioSelecionado.nome}
+              </div>
+            ) : null}
+
+            {/* Entidade */}
+            {podeEscolherEntidade ? (
+              <SeletorDropdown<Entidade>
+                valor={entidadeSelecionada}
+                opcoes={entidades}
+                onChange={setEntidadeSelecionada}
+                placeholder="Consolidado"
+                icon={<Building2 size={14} />}
+                extraBadge={(e) => <EntidadeTipoBadge tipo={e.tipo} />}
+              />
+            ) : entidadeSelecionada ? (
+              <div style={{
+                display: 'flex', alignItems: 'center', gap: '6px',
+                padding: '6px 12px', borderRadius: '10px',
+                background: '#f8fafc', border: '1.5px solid #e2e8f0',
+                fontSize: '13px', fontWeight: 600, color: '#0F2A4E',
+              }}>
+                <Building2 size={14} style={{ color: '#C9A84C' }} />
+                {entidadeSelecionada.nome}
+                <EntidadeTipoBadge tipo={entidadeSelecionada.tipo} />
+              </div>
+            ) : null}
+          </div>
+        )}
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', paddingLeft: '16px', borderLeft: '1px solid #f1f5f9' }}>
+          <div style={{
+            width: '32px', height: '32px', borderRadius: '50%',
+            background: '#0F2A4E', display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontSize: '11px', fontWeight: 700, color: '#C9A84C',
+          }}>
             {initials}
           </div>
           <div className="hidden md:block">
-            <div className="text-sm font-medium text-gray-700">{userName}</div>
-            <div className="text-xs text-gray-400">{(session?.user as any)?.role || 'VIEWER'}</div>
+            <div style={{ fontSize: '13px', fontWeight: 600, color: '#374151' }}>{userName}</div>
+            <div style={{ fontSize: '11px', color: '#94a3b8' }}>{role}</div>
           </div>
         </div>
       </div>

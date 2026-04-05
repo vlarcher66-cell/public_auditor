@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { useSession } from 'next-auth/react';
+import { useMunicipioEntidade } from '@/contexts/MunicipioEntidadeContext';
 import TopBar from '@/components/dashboard/TopBar';
 import {
   Target, TrendingDown, TrendingUp, ChevronDown, ChevronRight,
@@ -72,6 +73,7 @@ function ajusteBadge(pct: number) {
 export default function MetasPage() {
   const { data: session } = useSession();
   const token = (session as any)?.accessToken ?? '';
+  const { entidadeSelecionada, municipioSelecionado } = useMunicipioEntidade();
 
   const anoBase = new Date().getFullYear() - 1; // ano da despesa real
   const anoMeta = anoBase + 1;                  // ano da meta
@@ -103,9 +105,13 @@ export default function MetasPage() {
     if (!token) return;
     setLoading(true);
     try {
+      const ctxParams = new URLSearchParams();
+      if (entidadeSelecionada?.id) ctxParams.set('entidadeId', String(entidadeSelecionada.id));
+      else if (municipioSelecionado?.id) ctxParams.set('municipioId', String(municipioSelecionado.id));
+      const ctxStr = ctxParams.toString() ? `&${ctxParams}` : '';
       const [drRes, metasRes] = await Promise.all([
-        fetch(`${API}/metas/despesa-real?ano=${anoBase}`, { headers: authH }),
-        fetch(`${API}/metas?ano=${anoMeta}`, { headers: authH }),
+        fetch(`${API}/metas/despesa-real?ano=${anoBase}${ctxStr}`, { headers: authH }),
+        fetch(`${API}/metas?ano=${anoMeta}${ctxStr}`, { headers: authH }),
       ]);
       const dr = await drRes.json();
       const metasSalvas: MetaSalva[] = await metasRes.json();
@@ -143,7 +149,7 @@ export default function MetasPage() {
     } finally {
       setLoading(false);
     }
-  }, [token, anoBase, anoMeta]);
+  }, [token, anoBase, anoMeta, entidadeSelecionada, municipioSelecionado]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -233,11 +239,11 @@ export default function MetasPage() {
     <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', background: '#f0f4f8' }}>
       <TopBar title="Planejamento de Metas" subtitle={`Despesa Real ${anoBase} → Metas ${anoMeta}`} />
 
-      <div style={{ padding: '24px', maxWidth: '1600px', margin: '0 auto', width: '100%', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+      <div className="p-3 md:p-6" style={{ maxWidth: '1600px', margin: '0 auto', width: '100%', display: 'flex', flexDirection: 'column', gap: '20px' }}>
 
         {/* ── Tabs + ações ── */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap' }}>
-          <div style={{ display: 'flex', background: '#fff', borderRadius: '14px', padding: '4px', border: '1px solid #e2e8f0', gap: '4px' }}>
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 flex-wrap">
+          <div className="overflow-x-auto" style={{ display: 'flex', background: '#fff', borderRadius: '14px', padding: '4px', border: '1px solid #e2e8f0', gap: '4px' }}>
             {([
               { key: 'matriz', label: `Despesa Real ${anoBase}`, icon: <BarChart3 size={14} /> },
               { key: 'metas', label: `Definir Metas ${anoMeta}`, icon: <Target size={14} /> },
@@ -259,7 +265,7 @@ export default function MetasPage() {
             ))}
           </div>
 
-          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+          <div className="flex gap-2 items-center flex-wrap">
             {tab === 'acompanhamento' && (
               <button
                 onClick={() => setShowFiltros(v => !v)}
@@ -526,7 +532,8 @@ export default function MetasPage() {
 
                       {/* Subgrupos */}
                       {g.expanded && (
-                        <div style={{ padding: '12px 20px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                        <div className="overflow-x-auto" style={{ padding: '12px 20px' }}>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', minWidth: '720px' }}>
                           {/* Header colunas */}
                           <div style={{ display: 'grid', gridTemplateColumns: '1fr 150px 100px 150px 150px 110px', gap: '8px', padding: '6px 12px', background: '#f8fafc', borderRadius: '10px' }}>
                             {['Subgrupo', `Real ${anoBase}`, 'Ajuste %', `Meta Anual ${anoMeta}`, `Meta Mensal ${anoMeta}`, 'Status'].map(h => (
@@ -601,6 +608,7 @@ export default function MetasPage() {
                               <span style={{ color: bGrupo.color }}>{bGrupo.icon}</span>
                               <span style={{ fontSize: '11px', fontWeight: 800, color: bGrupo.color }}>{fmtPct(varGrupo)}</span>
                             </div>
+                          </div>
                           </div>
                         </div>
                       )}
@@ -942,7 +950,7 @@ export default function MetasPage() {
                       )}
 
                       {/* ── Linha 1: Termômetro + Evolução Mensal lado a lado ── */}
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.5fr', gap: '16px' }}>
+                      <div className="grid grid-cols-1 md:grid-cols-[1fr_1.5fr] gap-4">
 
                         {/* Termômetro */}
                         <div style={{ background: '#fff', borderRadius: '20px', border: '1px solid #e2e8f0', overflow: 'hidden', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>

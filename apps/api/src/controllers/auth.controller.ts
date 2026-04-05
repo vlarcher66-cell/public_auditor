@@ -28,6 +28,20 @@ export async function login(req: Request, res: Response): Promise<void> {
 
   await db('usuarios').where({ id: user.id }).update({ ultimo_acesso: new Date() });
 
+  // Carrega permissões do usuário
+  const permissoesRows = await db('usuario_permissoes')
+    .where('fk_usuario', user.id)
+    .select('permissao')
+    .catch(() => []);
+  const permissoes = permissoesRows.map((r: any) => r.permissao);
+
+  // Carrega entidades acessíveis
+  const entidadesRows = await db('usuario_entidades')
+    .where('fk_usuario', user.id)
+    .select('fk_entidade')
+    .catch(() => []);
+  const entidades_ids = entidadesRows.map((r: any) => r.fk_entidade);
+
   const token = jwt.sign(
     {
       sub: user.id,
@@ -35,6 +49,8 @@ export async function login(req: Request, res: Response): Promise<void> {
       role: user.role,
       fk_municipio: user.fk_municipio ?? null,
       fk_entidade: user.fk_entidade ?? null,
+      permissoes,
+      entidades_ids,
     },
     env.JWT_SECRET,
     { expiresIn: env.JWT_EXPIRES_IN } as jwt.SignOptions,
@@ -51,6 +67,8 @@ export async function login(req: Request, res: Response): Promise<void> {
       role: user.role,
       fk_municipio: user.fk_municipio ?? null,
       fk_entidade: user.fk_entidade ?? null,
+      permissoes,
+      entidades_ids,
     },
   });
 }

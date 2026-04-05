@@ -1,14 +1,16 @@
 import { Request, Response } from 'express';
 import { executarMM, aplicarSugestoesMM } from '../services/mmService';
+import { getTenantFilter } from '../middleware/auth.middleware';
 import { logger } from '../config/logger';
 
 /**
  * GET /api/mm/sugestoes
  * Executa o MM e retorna sugestões de classificação para credores sem grupo
  */
-export async function getSugestoesMM(_req: Request, res: Response): Promise<void> {
+export async function getSugestoesMM(req: Request, res: Response): Promise<void> {
   try {
-    const resultado = await executarMM();
+    const tf = getTenantFilter(req.user!);
+    const resultado = await executarMM(tf.fk_municipio);
     res.json(resultado);
   } catch (err: any) {
     logger.error({ err: err?.message }, 'getSugestoesMM failed');

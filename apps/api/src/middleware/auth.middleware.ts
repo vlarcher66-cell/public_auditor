@@ -8,6 +8,8 @@ export interface JwtPayload {
   role: string;
   fk_municipio: number | null;
   fk_entidade: number | null;
+  permissoes: string[];
+  entidades_ids: number[];
   iat?: number;
   exp?: number;
 }

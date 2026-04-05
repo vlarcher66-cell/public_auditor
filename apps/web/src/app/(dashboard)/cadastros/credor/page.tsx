@@ -103,7 +103,7 @@ function HistoricoModal({
 
   return (
     <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4" onClick={(e) => e.target === e.currentTarget && onClose()}>
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-xl overflow-hidden">
+      <div className="bg-white rounded-2xl shadow-2xl w-[95vw] max-w-xl overflow-hidden">
 
         {/* Header com gradiente */}
         <div style={{ background: 'linear-gradient(135deg, #0F2A4E 0%, #1a3a6b 60%, #0F2A4E 100%)' }} className="px-6 py-5">
@@ -155,7 +155,7 @@ function HistoricoModal({
           {/* Classificação */}
           <div>
             <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Classificação</label>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <div>
                 <label className="block text-xs text-gray-400 mb-1">Grupo</label>
                 <select
@@ -818,7 +818,7 @@ export default function CredorPage() {
   }
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-3 md:p-6 space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">

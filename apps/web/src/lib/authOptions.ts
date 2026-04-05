@@ -29,6 +29,10 @@ export const authOptions: NextAuthOptions = {
             name: data.user.nome,
             email: data.user.email,
             role: data.user.role,
+            fk_municipio: data.user.fk_municipio ?? null,
+            fk_entidade: data.user.fk_entidade ?? null,
+            permissoes: data.user.permissoes ?? [],
+            entidades_ids: data.user.entidades_ids ?? [],
             accessToken: data.token,
           };
         } catch {
@@ -40,14 +44,22 @@ export const authOptions: NextAuthOptions = {
   callbacks: {
     async jwt({ token, user }) {
       if (user) {
-        token.role = (user as any).role;
-        token.accessToken = (user as any).accessToken;
+        token.role         = (user as any).role;
+        token.accessToken  = (user as any).accessToken;
+        token.fk_municipio = (user as any).fk_municipio ?? null;
+        token.fk_entidade  = (user as any).fk_entidade  ?? null;
+        token.permissoes   = (user as any).permissoes   ?? [];
+        token.entidades_ids = (user as any).entidades_ids ?? [];
       }
       return token;
     },
     async session({ session, token }) {
-      (session.user as any).role = token.role;
-      (session as any).accessToken = token.accessToken;
+      (session.user as any).role          = token.role;
+      (session.user as any).fk_municipio  = token.fk_municipio ?? null;
+      (session.user as any).fk_entidade   = token.fk_entidade  ?? null;
+      (session.user as any).permissoes    = token.permissoes    ?? [];
+      (session.user as any).entidades_ids = token.entidades_ids ?? [];
+      (session as any).accessToken        = token.accessToken;
       return session;
     },
   },

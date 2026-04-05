@@ -247,7 +247,7 @@ export default function ImportacaoPage() {
   return (
     <div>
       <TopBar title="Importação de Dados" subtitle="Importe relatórios PDF ou Excel do SIAFIC" />
-      <div className="p-8 space-y-8">
+      <div className="p-4 md:p-8 space-y-8">
 
         {/* Upload area */}
         <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 space-y-5">

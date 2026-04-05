@@ -3,14 +3,19 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { signOut } from 'next-auth/react';
 import Sidebar from './Sidebar';
+import { MunicipioEntidadeProvider } from '@/contexts/MunicipioEntidadeContext';
+import { SidebarProvider, useSidebar } from '@/contexts/SidebarContext';
 
 const TIMEOUT_MS = 5 * 60 * 1000;   // 5 minutos
 const WARNING_MS = 1 * 60 * 1000;   // aviso 1 minuto antes
 
-export default function DashboardShell({ children }: { children: React.ReactNode }) {
+// Componente interno que consome o SidebarContext
+function ShellInner({ children }: { children: React.ReactNode }) {
   const [collapsed, setCollapsed] = useState(true);
   const [showWarning, setShowWarning] = useState(false);
   const [countdown, setCountdown] = useState(60);
+
+  const { mobileOpen, closeMobileSidebar } = useSidebar();
 
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const warningRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -58,10 +63,25 @@ export default function DashboardShell({ children }: { children: React.ReactNode
 
   return (
     <div className="flex min-h-screen bg-slate-50">
-      <Sidebar collapsed={collapsed} onToggle={() => setCollapsed((v) => !v)} />
+      {/* Sidebar — desktop: sempre visível; mobile: drawer overlay */}
+      <Sidebar
+        collapsed={collapsed}
+        onToggle={() => setCollapsed((v) => !v)}
+        mobileOpen={mobileOpen}
+        onMobileClose={closeMobileSidebar}
+      />
+
+      {/* Overlay escuro ao abrir sidebar no mobile */}
+      {mobileOpen && (
+        <div
+          className="fixed inset-0 z-40 bg-black/50 md:hidden"
+          onClick={closeMobileSidebar}
+        />
+      )}
+
       <main
         className={`flex-1 min-h-screen overflow-x-auto transition-all duration-300 ${
-          collapsed ? 'ml-16' : 'ml-64'
+          collapsed ? 'md:ml-[68px]' : 'md:ml-[240px]'
         }`}
       >
         {children}
@@ -111,5 +131,15 @@ export default function DashboardShell({ children }: { children: React.ReactNode
         </div>
       )}
     </div>
+  );
+}
+
+export default function DashboardShell({ children }: { children: React.ReactNode }) {
+  return (
+    <SidebarProvider>
+      <MunicipioEntidadeProvider>
+        <ShellInner>{children}</ShellInner>
+      </MunicipioEntidadeProvider>
+    </SidebarProvider>
   );
 }

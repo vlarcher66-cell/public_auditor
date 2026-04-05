@@ -5,8 +5,9 @@ import { useSession } from 'next-auth/react';
 import {
   Target, TrendingUp, BarChart2, AlertCircle,
   ChevronRight, Upload, Loader2, Download, InboxIcon,
-  LayoutDashboard, Table2, Banknote,
+  LayoutDashboard, Table2, Banknote, Activity, Calendar,
 } from 'lucide-react';
+import { useMunicipioEntidade } from '@/contexts/MunicipioEntidadeContext';
 import TopBar from '@/components/dashboard/TopBar';
 import { apiRequest } from '@/lib/api';
 import Link from 'next/link';
@@ -476,11 +477,278 @@ function TabelaSintetica({ grupos, titulo, ano }: { grupos: Grupo[]; titulo: str
   );
 }
 
+// ─── Aba Geral ────────────────────────────────────────────────────────────────
+
+function TabGeralReceita({
+  dreRows, transfRows, summary, ano,
+}: {
+  dreRows: DRERow[];
+  transfRows: TransfDRERow[];
+  summary: Summary | null;
+  ano: string;
+}) {
+  const orcRows   = dreRows.filter(r => r.tipo_receita === 'ORC');
+  const extraRows = dreRows.filter(r => r.tipo_receita === 'EXTRA');
+
+  const totalOrc    = summary ? Number(summary.valor_orc)   : 0;
+  const totalExtra  = summary ? Number(summary.valor_extra) : 0;
+  const totalTransf = transfRows.reduce((s, r) => s + Number(r.total), 0);
+  const totalGeral  = totalOrc + totalExtra + totalTransf;
+
+  // Evolução mensal (ORC + Transf)
+  const mensal = MESES.map((_, i) => {
+    const orc   = orcRows.filter(r => r.mes === i + 1).reduce((s, r) => s + Number(r.total), 0);
+    const transf = transfRows.filter(r => r.mes === i + 1).reduce((s, r) => s + Number(r.total), 0);
+    return orc + transf;
+  });
+  const maxMensal = Math.max(...mensal, 1);
+  const ultimoMesIdx = mensal.map((v, i) => v > 0 ? i : -1).filter(i => i >= 0).pop() ?? -1;
+
+  // Breakdown por subgrupo (top 6)
+  const sgMap = new Map<string, number>();
+  for (const r of orcRows) {
+    const key = getSubgrupoDesc(getSubgrupoKey(r.codigo_rubrica));
+    sgMap.set(key, (sgMap.get(key) ?? 0) + Number(r.total));
+  }
+  const topSubgrupos = Array.from(sgMap.entries())
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 6);
+  const maxSg = topSubgrupos[0]?.[1] ?? 1;
+
+  // Média mensal (só meses com dados)
+  const mesesComDados = mensal.filter(v => v > 0);
+  const mediaMensal   = mesesComDados.length ? mesesComDados.reduce((a, v) => a + v, 0) / mesesComDados.length : 0;
+
+  // Acumulado mensal para o gráfico de linha
+  const acumulado = mensal.map((_, i) => mensal.slice(0, i + 1).reduce((a, v) => a + v, 0));
+  const maxAcum   = acumulado[ultimoMesIdx >= 0 ? ultimoMesIdx : acumulado.length - 1] || 1;
+  const mesesAtivos = ultimoMesIdx >= 0 ? ultimoMesIdx + 1 : 12;
+
+  const cores = [
+    '#3b82f6','#10b981','#f59e0b','#8b5cf6','#ef4444','#06b6d4',
+  ];
+
+  return (
+    <div className="space-y-5">
+
+      <div className="grid grid-cols-1 md:grid-cols-1 lg:grid-cols-5 gap-4">
+
+        {/* ── Evolução Mensal ── */}
+        <div className="lg:col-span-3 bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h3 className="text-sm font-bold text-[#0F2A4E]">Evolução Mensal</h3>
+              <p className="text-[11px] text-gray-400 mt-0.5">Receita arrecadada por mês — {ano}</p>
+            </div>
+            <div className="flex items-center gap-1.5 text-[11px] text-gray-400">
+              <Calendar size={12} />
+              {ultimoMesIdx >= 0 ? `Até ${MESES[ultimoMesIdx]}` : ano}
+            </div>
+          </div>
+
+          {/* Barras */}
+          <div className="flex items-end gap-1.5 h-36">
+            {mensal.map((v, i) => {
+              const pct = maxMensal > 0 ? (v / maxMensal) * 100 : 0;
+              const isAtual = i === ultimoMesIdx;
+              return (
+                <div key={i} className="flex-1 flex flex-col items-center gap-1 group relative">
+                  {/* Tooltip */}
+                  {v > 0 && (
+                    <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 bg-[#0F2A4E] text-white text-[10px] rounded-lg px-2 py-1 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10 shadow-lg">
+                      {fmtFull(v)}
+                    </div>
+                  )}
+                  <div className="w-full relative" style={{ height: '112px', display: 'flex', alignItems: 'flex-end' }}>
+                    <div
+                      className="w-full rounded-t-lg transition-all duration-500"
+                      style={{
+                        height: pct > 0 ? `${Math.max(pct, 4)}%` : '3px',
+                        background: isAtual
+                          ? 'linear-gradient(180deg, #C9A84C, #e8c84a)'
+                          : v > 0
+                          ? 'linear-gradient(180deg, #3b82f6, #1d4ed8)'
+                          : '#f1f5f9',
+                        opacity: v > 0 ? 1 : 0.5,
+                      }}
+                    />
+                  </div>
+                  <span className={`text-[9px] font-medium ${isAtual ? 'text-[#C9A84C]' : 'text-gray-400'}`}>
+                    {MESES[i]}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Gráfico de linha — crescimento acumulado */}
+          {mesesAtivos >= 1 && acumulado[ultimoMesIdx >= 0 ? ultimoMesIdx : 0] > 0 && (
+            <div className="mt-4 pt-4 border-t border-gray-100">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-[11px] font-semibold text-gray-500">Crescimento Acumulado</span>
+                <span className="text-[11px] font-bold text-emerald-600">
+                  R$ {fmtFull(acumulado[ultimoMesIdx >= 0 ? ultimoMesIdx : 0])}
+                </span>
+              </div>
+              <svg width="100%" height="64" viewBox="0 0 440 64" preserveAspectRatio="none" className="overflow-visible">
+                <defs>
+                  <linearGradient id="lineGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#10b981" stopOpacity="0.3" />
+                    <stop offset="100%" stopColor="#10b981" stopOpacity="0.02" />
+                  </linearGradient>
+                </defs>
+                {(() => {
+                  const W = 440;
+                  const H = 64;
+                  const pad = 10;
+                  const pts = acumulado.map((v, i) => {
+                    const x = pad + (i / 11) * (W - pad * 2);
+                    const y = v > 0 ? (H - pad) - (v / maxAcum) * (H - pad * 2) : H - pad;
+                    return { x, y, v, hasData: mensal[i] > 0 };
+                  });
+                  // só pontos até o último mês com dados
+                  const activePts = pts.slice(0, Math.max(ultimoMesIdx + 1, 1));
+                  const pathD = [
+                    `M ${activePts[0].x} ${H - pad}`,
+                    ...activePts.map(p => `L ${p.x} ${p.y}`),
+                    `L ${activePts[activePts.length - 1].x} ${H - pad}`,
+                    'Z',
+                  ].join(' ');
+                  const lineD = activePts.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ');
+                  return (
+                    <>
+                      <path d={pathD} fill="url(#lineGrad)" />
+                      <path d={lineD} fill="none" stroke="#10b981" strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round" />
+                      {activePts.map((p, i) => p.hasData && (
+                        <g key={i}>
+                          <circle cx={p.x} cy={p.y} r={i === ultimoMesIdx ? 5 : 3} fill={i === ultimoMesIdx ? '#C9A84C' : '#10b981'} />
+                          {i === ultimoMesIdx && <circle cx={p.x} cy={p.y} r={9} fill="none" stroke="#C9A84C" strokeWidth="1.5" strokeOpacity="0.35" />}
+                        </g>
+                      ))}
+                    </>
+                  );
+                })()}
+              </svg>
+              <div className="flex justify-between mt-1">
+                {MESES.map((m, i) => (
+                  <span key={i} className={`text-[9px] ${i === ultimoMesIdx ? 'text-[#C9A84C] font-semibold' : 'text-gray-300'}`}>
+                    {m}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Legenda */}
+          <div className="flex items-center gap-4 mt-3 pt-3 border-t border-gray-100">
+            <div className="flex items-center gap-1.5">
+              <div className="w-3 h-3 rounded-sm bg-blue-500" />
+              <span className="text-[10px] text-gray-400">Meses anteriores</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <div className="w-3 h-3 rounded-sm bg-[#C9A84C]" />
+              <span className="text-[10px] text-gray-400">Último mês com dados</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <div className="w-3 h-2 rounded-sm bg-emerald-500" />
+              <span className="text-[10px] text-gray-400">Acumulado</span>
+            </div>
+          </div>
+        </div>
+
+        {/* ── Composição da Receita ── */}
+        <div className="lg:col-span-2 bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+          <div className="mb-4">
+            <h3 className="text-sm font-bold text-[#0F2A4E]">Composição da Receita</h3>
+            <p className="text-[11px] text-gray-400 mt-0.5">Participação de cada fonte</p>
+          </div>
+
+          <div className="space-y-1.5">
+            {[
+              { label: 'Orçamentária', value: totalOrc, color: '#3b82f6' },
+              { label: 'Transf. Bancárias', value: totalTransf, color: '#f59e0b' },
+              { label: 'Extra-Orçamentária', value: totalExtra, color: '#8b5cf6' },
+            ].map((item) => {
+              const pct = totalGeral > 0 ? (item.value / totalGeral) * 100 : 0;
+              return (
+                <div key={item.label}>
+                  <div className="flex items-center justify-between mb-1">
+                    <div className="flex items-center gap-1.5">
+                      <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: item.color }} />
+                      <span className="text-[11px] text-gray-600">{item.label}</span>
+                    </div>
+                    <span className="text-[11px] font-semibold text-gray-700">{pct.toFixed(1)}%</span>
+                  </div>
+                  <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                    <div
+                      className="h-full rounded-full transition-all duration-700"
+                      style={{ width: `${pct}%`, background: item.color }}
+                    />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          <div className="mt-4 pt-4 border-t border-gray-100">
+            <p className="text-[10px] text-gray-400 mb-1">Total consolidado</p>
+            <p className="text-base font-bold text-[#0F2A4E]">R$ {fmtFull(totalGeral)}</p>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Top Subgrupos ── */}
+      {topSubgrupos.length > 0 && (
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h3 className="text-sm font-bold text-[#0F2A4E]">Principais Fontes de Receita</h3>
+              <p className="text-[11px] text-gray-400 mt-0.5">Top {topSubgrupos.length} subgrupos por valor arrecadado</p>
+            </div>
+            <span className="text-[11px] text-gray-400">{ano}</span>
+          </div>
+          <div className="space-y-3">
+            {topSubgrupos.map(([desc, valor], i) => {
+              const pct = (valor / maxSg) * 100;
+              const share = totalGeral > 0 ? ((valor / totalGeral) * 100).toFixed(1) : '0';
+              return (
+                <div key={desc} className="flex items-center gap-3">
+                  <div className="w-5 h-5 rounded-lg flex items-center justify-center text-[10px] font-bold text-white flex-shrink-0"
+                    style={{ background: cores[i] }}>
+                    {i + 1}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-[11px] font-medium text-gray-700 truncate pr-2">{desc}</span>
+                      <div className="flex items-center gap-2 flex-shrink-0">
+                        <span className="text-[10px] text-gray-400">{share}%</span>
+                        <span className="text-[11px] font-semibold text-[#0F2A4E]">{fmtFull(valor)}</span>
+                      </div>
+                    </div>
+                    <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                      <div
+                        className="h-full rounded-full transition-all duration-700"
+                        style={{ width: `${pct}%`, background: cores[i], opacity: 0.85 }}
+                      />
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+    </div>
+  );
+}
+
 // ─── Página Principal ─────────────────────────────────────────────────────────
 
 export default function ReceitasPage() {
   const { data: session } = useSession();
   const token = (session as any)?.accessToken as string | undefined;
+  const { entidadeSelecionada, municipioSelecionado } = useMunicipioEntidade();
 
   const [ano,     setAno]     = useState(String(new Date().getFullYear()));
   const [activeTab, setActiveTab] = useState<TabId>('geral');
@@ -494,6 +762,8 @@ export default function ReceitasPage() {
     setLoading(true);
     try {
       const params: Record<string, string> = { ano };
+      if (entidadeSelecionada?.id) params.entidadeId = String(entidadeSelecionada.id);
+      else if (municipioSelecionado?.id) params.municipioId = String(municipioSelecionado.id);
       const [dreData, sumData, transfData] = await Promise.all([
         apiRequest<{ rows: DRERow[] }>('/receitas/dre', { token, params }),
         apiRequest<{ totais: Summary }>('/receitas/summary', { token, params }),
@@ -509,7 +779,7 @@ export default function ReceitasPage() {
     } finally {
       setLoading(false);
     }
-  }, [token, ano]);
+  }, [token, ano, entidadeSelecionada, municipioSelecionado]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -526,7 +796,7 @@ export default function ReceitasPage() {
       <TopBar title="Receita Arrecadada" subtitle="Demonstrativo de Execução da Receita Orçamentária" />
 
       {/* ── Barra de Abas — pill style ── */}
-      <div style={{ background: '#fff', borderBottom: '1px solid #e2e8f0', padding: '12px 32px' }}>
+      <div className="bg-white border-b border-slate-200 px-3 md:px-8 py-3 overflow-x-auto">
         <div style={{ display: 'flex', background: '#f8fafc', borderRadius: '14px', padding: '4px', border: '1px solid #e2e8f0', gap: '4px', width: 'fit-content' }}>
           {TABS.map(tab => {
             const active = activeTab === tab.id;
@@ -553,13 +823,13 @@ export default function ReceitasPage() {
       {/* ── Conteúdo das abas ── */}
       <div className="bg-slate-50 min-h-screen">
         {/* Cards + botões */}
-        <div className="px-8 py-5 space-y-4">
-          <div className="flex items-center justify-between gap-4 flex-wrap">
+        <div className="px-3 md:px-8 py-4 md:py-5 space-y-4">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
             <div>
-              <h1 className="text-xl font-bold text-[#0F2A4E]">Receita Arrecadada</h1>
+              <h1 className="text-lg md:text-xl font-bold text-[#0F2A4E]">Receita Arrecadada</h1>
               <p className="text-sm text-gray-400 mt-0.5">Demonstrativo de Execução da Receita Orçamentária</p>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               <select
                 value={ano}
                 onChange={e => setAno(e.target.value)}
@@ -583,7 +853,7 @@ export default function ReceitasPage() {
           <SummaryCards summary={summary} loading={loading} ano={ano} totalTransf={transfRows.reduce((s, r) => s + Number(r.total), 0)} />
         </div>
 
-        <div className="px-6 pb-6 space-y-5">
+        <div className="px-3 md:px-6 pb-4 md:pb-6 space-y-5">
           {loading ? (
             <LoadingState />
           ) : isEmpty ? (
@@ -591,13 +861,12 @@ export default function ReceitasPage() {
           ) : (
             <>
               {activeTab === 'geral' && (
-                <div className="flex flex-col items-center justify-center py-24 text-center">
-                  <div className="w-16 h-16 bg-amber-50 rounded-2xl flex items-center justify-center mb-4">
-                    <BarChart2 size={28} className="text-[#C9A84C]" />
-                  </div>
-                  <h3 className="text-base font-semibold text-gray-600 mb-1">Relatório Geral</h3>
-                  <p className="text-sm text-gray-400">Em construção — em breve disponível.</p>
-                </div>
+                <TabGeralReceita
+                  dreRows={dreRows}
+                  transfRows={transfRows}
+                  summary={summary}
+                  ano={ano}
+                />
               )}
               {activeTab === 'analitica' && (
                 <TabelaDRE grupos={analiticaGrupos} titulo="Receita Analítica" ano={ano} showFonte />

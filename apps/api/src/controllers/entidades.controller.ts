@@ -87,6 +87,16 @@ export async function deleteEntidade(req: Request, res: Response): Promise<void>
   }
 }
 
+export async function getEntidade(req: Request, res: Response): Promise<void> {
+  try {
+    const row = await db('dim_entidade').where('id', req.params.id).first();
+    if (!row) { res.status(404).json({ error: 'Entidade não encontrada' }); return; }
+    res.json(row);
+  } catch (err: any) {
+    res.status(500).json({ error: err?.message ?? 'Erro ao buscar entidade' });
+  }
+}
+
 // Lista simples para dropdowns
 export async function listEntidadesSimples(req: Request, res: Response): Promise<void> {
   try {

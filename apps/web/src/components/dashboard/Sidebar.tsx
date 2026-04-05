@@ -29,6 +29,8 @@ const classificacaoItems = [
 interface SidebarProps {
   collapsed: boolean;
   onToggle: () => void;
+  mobileOpen?: boolean;
+  onMobileClose?: () => void;
 }
 
 // ─── Tooltip para modo colapsado ──────────────────────────────────────────────
@@ -69,13 +71,14 @@ function CollapsedTooltip({ label, children }: { label: string; children: React.
 // ─── Item simples ─────────────────────────────────────────────────────────────
 
 function NavItem({
-  href, icon, label, collapsed, active,
+  href, icon, label, collapsed, active, onNavigate,
 }: {
-  href: string; icon: React.ReactNode; label: string; collapsed: boolean; active: boolean;
+  href: string; icon: React.ReactNode; label: string; collapsed: boolean; active: boolean; onNavigate?: () => void;
 }) {
   const content = (
     <Link
       href={href}
+      onClick={onNavigate}
       title={collapsed ? label : undefined}
       className={cn(
         'group flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200',
@@ -134,6 +137,8 @@ function NavGroup({
           'group flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 w-full',
           active
             ? 'bg-gradient-to-r from-gold-500/20 to-gold-500/5 text-white border border-gold-500/20'
+            : open
+            ? 'text-white/70 border border-transparent'
             : 'text-white/50 hover:bg-white/8 hover:text-white/90 border border-transparent',
         )}
       >
@@ -143,7 +148,7 @@ function NavGroup({
         <span>{label}</span>
         <ChevronDown
           size={13}
-          className={cn('ml-auto transition-transform duration-300 opacity-50', open ? 'rotate-180 opacity-80' : '')}
+          className={cn('ml-auto transition-transform duration-300 opacity-50', open ? 'rotate-180' : '')}
         />
       </button>
       <div
@@ -152,7 +157,7 @@ function NavGroup({
           open ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0',
         )}
       >
-        <div className="ml-3 mt-1 mb-1 space-y-0.5 border-l border-white/8 pl-3">
+        <div className="ml-3 mb-1 mt-0.5 space-y-0.5 border-l-2 border-gold-500/70 pl-3">
           {children}
         </div>
       </div>
@@ -163,13 +168,14 @@ function NavGroup({
 // ─── Sub-item ─────────────────────────────────────────────────────────────────
 
 function SubItem({
-  href, icon, label, active,
+  href, icon, label, active, groupOpen, onNavigate,
 }: {
-  href: string; icon: React.ReactNode; label: string; active: boolean;
+  href: string; icon: React.ReactNode; label: string; active: boolean; groupOpen?: boolean; onNavigate?: () => void;
 }) {
   return (
     <Link
       href={href}
+      onClick={onNavigate}
       className={cn(
         'group flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium transition-all duration-150',
         active
@@ -177,10 +183,10 @@ function SubItem({
           : 'text-white/45 hover:bg-white/6 hover:text-white/80',
       )}
     >
-      <span className={cn('transition-colors', active ? 'text-gold-400' : 'text-white/30 group-hover:text-white/60')}>
+      <span className={cn('transition-colors', active ? 'text-gold-400' : groupOpen ? 'text-gold-500/50 group-hover:text-gold-400/80' : 'text-white/30 group-hover:text-white/60')}>
         {icon}
       </span>
-      <span>{label}</span>
+      <span className={cn('transition-colors', active ? '' : groupOpen ? 'text-gold-500/50 group-hover:text-gold-400/80' : '')}>{label}</span>
       {active && <span className="ml-auto w-1 h-1 rounded-full bg-gold-400 opacity-80" />}
     </Link>
   );
@@ -202,29 +208,49 @@ function SectionLabel({ label, collapsed }: { label: string; collapsed: boolean 
 
 // ─── Sidebar principal ────────────────────────────────────────────────────────
 
-export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
+export default function Sidebar({ collapsed, onToggle, mobileOpen = false, onMobileClose }: SidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
   const { data: session } = useSession();
   const role = (session as any)?.user?.role ?? '';
   const isSuperAdmin = role === 'SUPER_ADMIN';
+  const isGestor = role === 'GESTOR';
   const userName = (session as any)?.user?.name ?? '';
+  const permissoes: string[] = (session as any)?.user?.permissoes ?? [];
+
+  // SUPER_ADMIN e GESTOR têm acesso total; outros dependem das permissões
+  const fullAccess = isSuperAdmin || isGestor;
+  function hasPerm(key: string) { return fullAccess || permissoes.includes(key); }
 
   const isImportacaoActive = pathname === '/importacao' || pathname === '/importacao-receita' || pathname === '/importacao-transf-bancaria' || pathname === '/importacao-empenhos';
   const isAnaliseActive = pathname === '/pagamentos' || pathname === '/receitas/listagem' || pathname === '/analise/despesa-a-pagar';
   const isCadastrosActive = pathname.startsWith('/cadastros');
   const isClassificacaoActive = pathname === '/cadastros/credor' || pathname.startsWith('/cadastros/credor/');
 
-  const [importacaoOpen, setImportacaoOpen] = useState(isImportacaoActive);
-  const [analiseOpen, setAnaliseOpen] = useState(isAnaliseActive);
-  const [cadastrosOpen, setCadastrosOpen] = useState(isCadastrosActive);
-  const [classificacaoOpen, setClassificacaoOpen] = useState(isClassificacaoActive);
+  const defaultOpen = isImportacaoActive ? 'importacao'
+    : isAnaliseActive ? 'analise'
+    : isCadastrosActive ? 'cadastros'
+    : isClassificacaoActive ? 'classificacao'
+    : null;
+  const [openGroup, setOpenGroup] = useState<string | null>(defaultOpen);
+
+  // No mobile o drawer sempre mostra expandido, independente do estado collapsed do desktop
+  const effectiveCollapsed = mobileOpen ? false : collapsed;
+  // Fecha o drawer ao navegar no mobile
+  const handleNav = mobileOpen ? onMobileClose : undefined;
+
+  function toggleGroup(name: string) {
+    setOpenGroup(prev => prev === name ? null : name);
+  }
 
   return (
     <aside
       className={cn(
-        'flex flex-col min-h-screen fixed left-0 top-0 z-30 transition-all duration-300',
-        collapsed ? 'w-[68px]' : 'w-[240px]',
+        'flex flex-col h-screen fixed left-0 top-0 z-50 transition-all duration-300 w-[240px]',
+        // Desktop: sempre visível, largura baseada em collapsed
+        collapsed ? 'md:w-[68px]' : 'md:w-[240px]',
+        // Mobile: drawer — fora da tela por padrão, desliza quando mobileOpen
+        mobileOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0',
       )}
       style={{
         background: 'linear-gradient(180deg, #0c2240 0%, #0F2A4E 40%, #0a1e38 100%)',
@@ -234,7 +260,7 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
       {/* ── Header ────────────────────────────────────────────────────────── */}
       <div className={cn(
         'flex items-center border-b border-white/8 flex-shrink-0',
-        collapsed ? 'justify-center py-4 px-0' : 'gap-3 px-4 py-4',
+        collapsed && !mobileOpen ? 'justify-center py-4 px-0' : 'gap-3 px-4 py-4',
       )}>
         {/* Logo mark */}
         <div
@@ -244,15 +270,16 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
           <Building2 size={15} className="text-navy-900" />
         </div>
 
-        {!collapsed && (
+        {(!collapsed || mobileOpen) && (
           <>
             <div className="flex-1 overflow-hidden">
               <div className="font-bold text-[13px] text-white leading-tight tracking-tight">GestorPublico</div>
               <div className="text-[10px] text-white/35 tracking-wide">Gestão Municipal</div>
             </div>
+            {/* Mobile: botão fechar; Desktop: botão recolher */}
             <button
-              onClick={onToggle}
-              title="Recolher menu"
+              onClick={mobileOpen ? onMobileClose : onToggle}
+              title={mobileOpen ? 'Fechar menu' : 'Recolher menu'}
               className="flex-shrink-0 w-6 h-6 flex items-center justify-center rounded-md text-white/25 hover:text-white/70 hover:bg-white/8 transition-all duration-150"
             >
               <PanelLeftClose size={14} />
@@ -261,96 +288,116 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
         )}
       </div>
 
-      {/* Botão expandir quando colapsado */}
-      {collapsed && (
+      {/* Botão expandir quando colapsado (apenas desktop) */}
+      {collapsed && !mobileOpen && (
         <button
           onClick={onToggle}
           title="Expandir menu"
-          className="flex justify-center py-2.5 text-white/25 hover:text-white/60 transition-colors border-b border-white/8"
+          className="flex-shrink-0 flex justify-center py-2.5 text-white/25 hover:text-white/60 transition-colors border-b border-white/8 md:flex hidden"
         >
           <PanelLeftOpen size={14} />
         </button>
       )}
 
       {/* ── Navegação ─────────────────────────────────────────────────────── */}
-      <nav className="flex-1 px-2 py-3 overflow-y-auto overflow-x-hidden space-y-0.5 scrollbar-thin">
+      <nav className="flex-1 px-2 py-3 overflow-y-auto overflow-x-hidden space-y-0.5 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
 
-        <SectionLabel label="Principal" collapsed={collapsed} />
+        <SectionLabel label="Principal" collapsed={effectiveCollapsed} />
 
-        <NavItem href="/dashboard-geral" icon={<LayoutDashboard size={16} />} label="Dashboard" collapsed={collapsed} active={pathname === '/dashboard-geral'} />
-        <NavItem href="/despesa" icon={<TrendingDown size={16} />} label="Despesa" collapsed={collapsed} active={pathname === '/despesa'} />
-        <NavItem href="/receitas" icon={<TrendingUp size={16} />} label="Receita" collapsed={collapsed} active={pathname === '/receitas'} />
-        <NavItem href="/saude-15" icon={<ShieldCheck size={16} />} label="Índice Saúde 15%" collapsed={collapsed} active={pathname === '/saude-15'} />
-        <NavItem href="/metas" icon={<Target size={16} />} label="Metas por Subgrupo" collapsed={collapsed} active={pathname === '/metas'} />
-        <NavItem href="/contas-a-pagar" icon={<CreditCard size={16} />} label="Contas a Pagar" collapsed={collapsed} active={pathname === '/contas-a-pagar'} />
-        <NavItem href="/relatorio-saude" icon={<ClipboardList size={16} />} label="Rel. Quadrimestral" collapsed={collapsed} active={pathname === '/relatorio-saude'} />
+        {hasPerm('menu.dashboard') && <NavItem href="/dashboard-geral" icon={<LayoutDashboard size={16} />} label="Dashboard" collapsed={effectiveCollapsed} active={pathname === '/dashboard-geral'} onNavigate={handleNav} />}
+        {hasPerm('menu.despesa') && <NavItem href="/despesa" icon={<TrendingDown size={16} />} label="Despesa" collapsed={effectiveCollapsed} active={pathname === '/despesa'} onNavigate={handleNav} />}
+        {hasPerm('menu.receita') && <NavItem href="/receitas" icon={<TrendingUp size={16} />} label="Receita" collapsed={effectiveCollapsed} active={pathname === '/receitas'} onNavigate={handleNav} />}
+        {hasPerm('menu.saude15') && <NavItem href="/saude-15" icon={<ShieldCheck size={16} />} label="Índice Saúde 15%" collapsed={effectiveCollapsed} active={pathname === '/saude-15'} onNavigate={handleNav} />}
+        {hasPerm('menu.metas') && <NavItem href="/metas" icon={<Target size={16} />} label="Meta Despesa" collapsed={effectiveCollapsed} active={pathname === '/metas'} onNavigate={handleNav} />}
+        {hasPerm('menu.contas_pagar') && <NavItem href="/contas-a-pagar" icon={<CreditCard size={16} />} label="Contas a Pagar" collapsed={effectiveCollapsed} active={pathname === '/contas-a-pagar'} onNavigate={handleNav} />}
+        {hasPerm('menu.rel_quadrimestral') && <NavItem href="/relatorio-saude" icon={<ClipboardList size={16} />} label="Rel. Quadrimestral" collapsed={effectiveCollapsed} active={pathname === '/relatorio-saude'} onNavigate={handleNav} />}
 
-        <SectionLabel label="Operacional" collapsed={collapsed} />
+        {/* Operacional — só mostra se tiver pelo menos uma permissão */}
+        {(hasPerm('analise.despesa') || hasPerm('analise.receita') || hasPerm('importacao.despesa') || hasPerm('importacao.receita') || hasPerm('classificacao.credores') || hasPerm('classificacao.setores')) && (
+          <SectionLabel label="Operacional" collapsed={effectiveCollapsed} />
+        )}
 
         {/* Análise */}
-        <NavGroup
-          icon={<BarChart2 size={16} />}
-          label="Análise"
-          collapsed={collapsed}
-          active={isAnaliseActive}
-          open={analiseOpen}
-          onToggle={() => setAnaliseOpen(v => !v)}
-        >
-          <SubItem href="/pagamentos" icon={<TrendingDown size={13} />} label="Despesa" active={pathname === '/pagamentos'} />
-          <SubItem href="/receitas/listagem" icon={<TrendingUp size={13} />} label="Receita" active={pathname === '/receitas/listagem'} />
-          <SubItem href="/analise/despesa-a-pagar" icon={<Receipt size={13} />} label="Despesa a Pagar" active={pathname === '/analise/despesa-a-pagar'} />
-        </NavGroup>
+        {(hasPerm('analise.despesa') || hasPerm('analise.receita')) && (
+          <NavGroup
+            icon={<BarChart2 size={16} />}
+            label="Análise"
+            collapsed={effectiveCollapsed}
+            active={isAnaliseActive}
+            open={openGroup === 'analise'}
+            onToggle={() => toggleGroup('analise')}
+          >
+            {hasPerm('analise.despesa') && <SubItem href="/pagamentos" icon={<TrendingDown size={13} />} label="Despesa" active={pathname === '/pagamentos'} groupOpen={openGroup === 'analise'} onNavigate={handleNav} />}
+            {hasPerm('analise.receita') && <SubItem href="/receitas/listagem" icon={<TrendingUp size={13} />} label="Receita" active={pathname === '/receitas/listagem'} groupOpen={openGroup === 'analise'} onNavigate={handleNav} />}
+            {hasPerm('analise.despesa') && <SubItem href="/analise/despesa-a-pagar" icon={<Receipt size={13} />} label="Despesa a Pagar" active={pathname === '/analise/despesa-a-pagar'} groupOpen={openGroup === 'analise'} onNavigate={handleNav} />}
+          </NavGroup>
+        )}
 
         {/* Importação */}
-        <NavGroup
-          icon={<Upload size={16} />}
-          label="Importação"
-          collapsed={collapsed}
-          active={isImportacaoActive}
-          open={importacaoOpen}
-          onToggle={() => setImportacaoOpen(v => !v)}
-        >
-          <SubItem href="/importacao" icon={<TrendingDown size={13} />} label="Despesa" active={pathname === '/importacao'} />
-          <SubItem href="/importacao-receita" icon={<TrendingUp size={13} />} label="Receita" active={pathname === '/importacao-receita'} />
-          <SubItem href="/importacao-transf-bancaria" icon={<ArrowLeftRight size={13} />} label="Transf. Bancária" active={pathname === '/importacao-transf-bancaria'} />
-          <SubItem href="/importacao-empenhos" icon={<Receipt size={13} />} label="Empenhos Liq." active={pathname === '/importacao-empenhos'} />
-        </NavGroup>
+        {(hasPerm('importacao.despesa') || hasPerm('importacao.receita')) && (
+          <NavGroup
+            icon={<Upload size={16} />}
+            label="Importação"
+            collapsed={effectiveCollapsed}
+            active={isImportacaoActive}
+            open={openGroup === 'importacao'}
+            onToggle={() => toggleGroup('importacao')}
+          >
+            {hasPerm('importacao.despesa') && <SubItem href="/importacao" icon={<TrendingDown size={13} />} label="Despesa" active={pathname === '/importacao'} groupOpen={openGroup === 'importacao'} onNavigate={handleNav} />}
+            {hasPerm('importacao.receita') && <SubItem href="/importacao-receita" icon={<TrendingUp size={13} />} label="Receita" active={pathname === '/importacao-receita'} groupOpen={openGroup === 'importacao'} onNavigate={handleNav} />}
+            {hasPerm('importacao.despesa') && <SubItem href="/importacao-transf-bancaria" icon={<ArrowLeftRight size={13} />} label="Transf. Bancária" active={pathname === '/importacao-transf-bancaria'} groupOpen={openGroup === 'importacao'} onNavigate={handleNav} />}
+            {hasPerm('importacao.despesa') && <SubItem href="/importacao-empenhos" icon={<Receipt size={13} />} label="Empenhos Liq." active={pathname === '/importacao-empenhos'} groupOpen={openGroup === 'importacao'} onNavigate={handleNav} />}
+          </NavGroup>
+        )}
 
         {/* Classificação */}
-        <NavGroup
-          icon={<Tag size={16} />}
-          label="Classificação"
-          collapsed={collapsed}
-          active={isClassificacaoActive}
-          open={classificacaoOpen}
-          onToggle={() => setClassificacaoOpen(v => !v)}
-        >
-          {classificacaoItems.map(item => (
-            <SubItem key={item.href} href={item.href} icon={item.icon} label={item.label} active={pathname === item.href} />
-          ))}
-          <button
-            onClick={() => router.push(`/cadastros/credor?conf=diarias&t=${Date.now()}`)}
-            className="group flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium w-full text-white/45 hover:bg-white/6 hover:text-white/80 transition-all duration-150"
+        {(hasPerm('classificacao.credores') || hasPerm('classificacao.setores')) && (
+          <NavGroup
+            icon={<Tag size={16} />}
+            label="Classificação"
+            collapsed={effectiveCollapsed}
+            active={isClassificacaoActive}
+            open={openGroup === 'classificacao'}
+            onToggle={() => toggleGroup('classificacao')}
           >
-            <CheckCircle size={13} className="text-white/30 group-hover:text-white/60 transition-colors" />
-            <span>Conf. Diárias</span>
-          </button>
-          <button
-            onClick={() => router.push(`/cadastros/credor?conf=pessoal&t=${Date.now()}`)}
-            className="group flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium w-full text-white/45 hover:bg-white/6 hover:text-white/80 transition-all duration-150"
-          >
-            <CheckCircle size={13} className="text-white/30 group-hover:text-white/60 transition-colors" />
-            <span>Conf. Pessoal</span>
-          </button>
-        </NavGroup>
+            {hasPerm('classificacao.credores') && classificacaoItems.map(item => (
+              <SubItem key={item.href} href={item.href} icon={item.icon} label={item.label} active={pathname === item.href} groupOpen={openGroup === 'classificacao'} onNavigate={handleNav} />
+            ))}
+            {hasPerm('classificacao.credores') && (
+              <button
+                onClick={() => router.push(`/cadastros/credor?conf=diarias&t=${Date.now()}`)}
+                className="group flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium w-full text-white/45 hover:bg-white/6 hover:text-white/80 transition-all duration-150"
+              >
+                <CheckCircle size={13} className="text-white/30 group-hover:text-white/60 transition-colors" />
+                <span>Conf. Diárias</span>
+              </button>
+            )}
+            {hasPerm('classificacao.credores') && (
+              <button
+                onClick={() => router.push(`/cadastros/credor?conf=pessoal&t=${Date.now()}`)}
+                className="group flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium w-full text-white/45 hover:bg-white/6 hover:text-white/80 transition-all duration-150"
+              >
+                <CheckCircle size={13} className="text-white/30 group-hover:text-white/60 transition-colors" />
+                <span>Conf. Pessoal</span>
+              </button>
+            )}
+          </NavGroup>
+        )}
 
-        <SectionLabel label="Configurações" collapsed={collapsed} />
+        {(hasPerm('cadastros.municipio') || hasPerm('cadastros.entidade') || hasPerm('cadastros.usuarios')) && (
+          <SectionLabel label="Configurações" collapsed={effectiveCollapsed} />
+        )}
 
-        {/* Cadastros */}
-        {collapsed ? (
-          cadastrosItems
-            .filter(item => !item.superAdminOnly || isSuperAdmin)
-            .map((item) => {
+        {/* Cadastros — filtra por permissão */}
+        {(hasPerm('cadastros.municipio') || hasPerm('cadastros.entidade')) && (() => {
+          const visibleItems = cadastrosItems.filter(item => {
+            if (item.superAdminOnly && !isSuperAdmin) return false;
+            if (item.href === '/cadastros/municipio') return hasPerm('cadastros.municipio');
+            return hasPerm('cadastros.entidade');
+          });
+          if (visibleItems.length === 0) return null;
+          return effectiveCollapsed ? (
+            visibleItems.map((item) => {
               const active = pathname === item.href || pathname.startsWith(item.href + '/');
               return (
                 <CollapsedTooltip key={item.href} label={item.label}>
@@ -368,63 +415,66 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
                 </CollapsedTooltip>
               );
             })
-        ) : (
-          <div>
-            <button
-              onClick={() => setCadastrosOpen(v => !v)}
-              className={cn(
-                'group flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 w-full',
-                isCadastrosActive
-                  ? 'bg-gradient-to-r from-gold-500/20 to-gold-500/5 text-white border border-gold-500/20'
-                  : 'text-white/50 hover:bg-white/8 hover:text-white/90 border border-transparent',
-              )}
-            >
-              <span className={cn('transition-colors', isCadastrosActive ? 'text-gold-400' : 'group-hover:text-white/80')}>
-                <Layers size={16} />
-              </span>
-              <span>Cadastros</span>
-              <ChevronDown
-                size={13}
-                className={cn('ml-auto transition-transform duration-300 opacity-50', cadastrosOpen ? 'rotate-180 opacity-80' : '')}
-              />
-            </button>
-            <div
-              className={cn(
-                'overflow-hidden transition-all duration-300 ease-in-out',
-                cadastrosOpen ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0',
-              )}
-            >
-              <div className="ml-3 mt-1 mb-1 space-y-0.5 border-l border-white/8 pl-3">
-                {cadastrosItems
-                  .filter(item => !item.superAdminOnly || isSuperAdmin)
-                  .map((item) => {
+          ) : (
+            <div>
+              <button
+                onClick={() => toggleGroup('cadastros')}
+                className={cn(
+                  'group flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 w-full',
+                  isCadastrosActive
+                    ? 'bg-gradient-to-r from-gold-500/20 to-gold-500/5 text-white border border-gold-500/20'
+                    : 'text-white/50 hover:bg-white/8 hover:text-white/90 border border-transparent',
+                )}
+              >
+                <span className={cn('transition-colors', isCadastrosActive ? 'text-gold-400' : 'group-hover:text-white/80')}>
+                  <Layers size={16} />
+                </span>
+                <span>Cadastros</span>
+                <ChevronDown
+                  size={13}
+                  className={cn('ml-auto transition-transform duration-300 opacity-50', openGroup === 'cadastros' ? 'rotate-180 opacity-80' : '')}
+                />
+              </button>
+              <div
+                className={cn(
+                  'overflow-hidden transition-all duration-300 ease-in-out',
+                  openGroup === 'cadastros' ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0',
+                )}
+              >
+                <div className="ml-3 mt-1 mb-1 space-y-0.5 border-l border-white/8 pl-3">
+                  {visibleItems.map((item) => {
                     const active = pathname === item.href || pathname.startsWith(item.href + '/');
                     return (
-                      <SubItem key={item.href} href={item.href} icon={item.icon} label={item.label} active={active} />
+                      <SubItem key={item.href} href={item.href} icon={item.icon} label={item.label} active={active} groupOpen={openGroup === 'cadastros'} onNavigate={handleNav} />
                     );
                   })}
+                </div>
               </div>
             </div>
-          </div>
+          );
+        })()}
+
+        {/* Usuários — dentro do nav, junto com Configurações */}
+        {hasPerm('cadastros.usuarios') && (
+          <NavItem
+            href="/usuarios"
+            icon={<UserCog size={16} />}
+            label="Usuários"
+            collapsed={effectiveCollapsed}
+            active={pathname.startsWith('/usuarios')}
+          onNavigate={handleNav}
+          />
         )}
+
       </nav>
 
-      {/* ── Rodapé ────────────────────────────────────────────────────────── */}
-      <div className="flex-shrink-0 border-t border-white/8 px-2 py-3 space-y-0.5">
-        <NavItem
-          href="/usuarios"
-          icon={<UserCog size={16} />}
-          label="Usuários"
-          collapsed={collapsed}
-          active={pathname.startsWith('/usuarios')}
-        />
-
-        {/* Sair */}
-        {collapsed ? (
+      {/* ── Rodapé — só botão Sair ────────────────────────────────────────── */}
+      <div className="flex-shrink-0 border-t border-white/8 px-2 py-2" style={{ background: 'linear-gradient(180deg, #0F2A4E 0%, #0a1e38 100%)' }}>
+        {effectiveCollapsed ? (
           <CollapsedTooltip label="Sair">
             <button
               onClick={() => signOut({ callbackUrl: '/' })}
-              className="flex justify-center items-center w-10 mx-auto py-2.5 rounded-xl text-white/35 hover:bg-red-500/15 hover:text-red-400 transition-all duration-200 border border-transparent"
+              className="flex justify-center items-center w-10 mx-auto py-2 rounded-xl text-white/35 hover:bg-red-500/15 hover:text-red-400 transition-all duration-200 border border-transparent"
             >
               <LogOut size={16} />
             </button>
@@ -432,7 +482,7 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
         ) : (
           <button
             onClick={() => signOut({ callbackUrl: '/' })}
-            className="group flex items-center gap-3 px-3 py-2.5 w-full rounded-xl text-sm text-white/40 hover:bg-red-500/12 hover:text-red-400 transition-all duration-200 border border-transparent hover:border-red-500/15"
+            className="group flex items-center gap-3 px-3 py-2 w-full rounded-xl text-sm text-white/40 hover:bg-red-500/12 hover:text-red-400 transition-all duration-200 border border-transparent hover:border-red-500/15"
           >
             <LogOut size={16} className="group-hover:text-red-400 transition-colors" />
             <span>Sair</span>

@@ -258,7 +258,7 @@ export default function ImportacaoTransfBancariaPage() {
         subtitle="Importe a Listagem de Transferência Bancária / Financeira do sistema FATOR"
       />
 
-      <div className="p-8 space-y-8">
+      <div className="p-4 md:p-8 space-y-8">
 
         {/* ── Upload area ──────────────────────────────────────────────────── */}
         <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 space-y-5">

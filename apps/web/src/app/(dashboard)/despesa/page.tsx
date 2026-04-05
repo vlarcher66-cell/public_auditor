@@ -8,6 +8,7 @@ import Link from 'next/link';
 import TopBar from '@/components/dashboard/TopBar';
 import StatCard from '@/components/dashboard/StatCard';
 import { apiRequest } from '@/lib/api';
+import { useMunicipioEntidade } from '@/contexts/MunicipioEntidadeContext';
 import { formatCurrency } from '@/lib/utils';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell,
@@ -53,7 +54,7 @@ interface AnaliticaData {
   ano: string;
 }
 
-function TabDespesaAnalitica({ token }: { token: string | undefined }) {
+function TabDespesaAnalitica({ token, entidadeId, municipioId }: { token: string | undefined; entidadeId?: number; municipioId?: number }) {
   const anoAtual = new Date().getFullYear();
   const [ano, setAno] = useState(anoAtual);
   const anos = Array.from({ length: 5 }, (_, i) => anoAtual - i);
@@ -154,7 +155,7 @@ function TabDespesaAnalitica({ token }: { token: string | undefined }) {
   };
 
   return (
-    <div className="p-6 space-y-4" style={{ background: '#fff', minHeight: '100vh' }}>
+    <div className="p-3 md:p-6 space-y-4" style={{ background: '#fff', minHeight: '100vh' }}>
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
@@ -423,7 +424,7 @@ function TabDespesaAnalitica({ token }: { token: string | undefined }) {
 
 function TabEmConstrucao({ title }: { title: string }) {
   return (
-    <div className="p-8">
+    <div className="p-3 md:p-8">
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm flex flex-col items-center justify-center py-24 gap-5">
         <div className="w-16 h-16 rounded-2xl bg-navy-50 flex items-center justify-center">
           <BarChart2 size={32} className="text-navy-300" />
@@ -485,7 +486,7 @@ interface OutrosExerciciosData {
 
 const MESES_SHORT = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
 
-function TabOutrosExercicios({ token }: { token: string | undefined }) {
+function TabOutrosExercicios({ token, entidadeId, municipioId }: { token: string | undefined; entidadeId?: number; municipioId?: number }) {
   const anoAtual = new Date().getFullYear();
   const [ano, setAno] = useState(anoAtual);
   const anos = Array.from({ length: 5 }, (_, i) => anoAtual - i);
@@ -613,7 +614,7 @@ function TabOutrosExercicios({ token }: { token: string | undefined }) {
   );
 
   return (
-    <div ref={printRef} className="p-6 space-y-5" style={{ background: '#f8fafc', minHeight: '100vh' }}>
+    <div ref={printRef} className="p-3 md:p-6 space-y-5" style={{ background: '#f8fafc', minHeight: '100vh' }}>
 
       {/* ── HEADER ── */}
       <div style={{ background: 'linear-gradient(135deg, #0F2A4E 0%, #1a3a6b 60%, #0F2A4E 100%)', borderRadius: '16px', padding: '24px 28px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', boxShadow: '0 4px 20px rgba(15,42,78,0.25)' }}>
@@ -671,7 +672,7 @@ function TabOutrosExercicios({ token }: { token: string | undefined }) {
       </div>
 
       {/* ── KPI CARDS ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px' }}>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {[
           { label: 'Total Outros Exercícios', value: totalGeral, color: '#0F2A4E', bg: 'linear-gradient(135deg,#0F2A4E,#1e4d95)', icon: '⚖', sub: '100% do período' },
           { label: 'Restos a Pagar (RP)', value: totalRP, color: '#1e4d95', bg: 'linear-gradient(135deg,#1e4d95,#2563eb)', icon: '📋', sub: fmtPct(totalRP, totalGeral) + ' do total' },
@@ -692,7 +693,7 @@ function TabOutrosExercicios({ token }: { token: string | undefined }) {
       </div>
 
       {/* ── GRÁFICOS LINHA 1: ComposedChart + Pie ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 340px', gap: '16px' }}>
+      <div className="grid grid-cols-1 md:grid-cols-[1fr_340px] gap-4">
         {/* ComposedChart — Evolução RP vs DEA */}
         <div style={{ background: '#fff', borderRadius: '14px', border: '1px solid #e2e8f0', overflow: 'hidden', boxShadow: '0 1px 4px rgba(0,0,0,0.05)' }}>
           <div style={{ background: 'linear-gradient(135deg, #0F2A4E 0%, #1a3a6b 60%, #0F2A4E 100%)', padding: '12px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -764,7 +765,7 @@ function TabOutrosExercicios({ token }: { token: string | undefined }) {
       </div>
 
       {/* ── GRÁFICOS LINHA 2: Subgrupos + Setores ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {/* Top subgrupos */}
         <div style={{ background: '#fff', borderRadius: '14px', border: '1px solid #e2e8f0', overflow: 'hidden', boxShadow: '0 1px 4px rgba(0,0,0,0.05)' }}>
           <div style={{ background: 'linear-gradient(135deg, #0F2A4E 0%, #1a3a6b 60%, #0F2A4E 100%)', padding: '12px 16px' }}>
@@ -1015,7 +1016,7 @@ function fmtK(v: number) {
 
 // ─── Tab: Despesa Sintética ───────────────────────────────────────────────────
 
-function TabDespesaSintetica({ token }: { token: string | undefined }) {
+function TabDespesaSintetica({ token, entidadeId, municipioId }: { token: string | undefined; entidadeId?: number; municipioId?: number }) {
   const anoAtual = new Date().getFullYear();
   const [ano, setAno] = useState(anoAtual);
   const anos = Array.from({ length: 5 }, (_, i) => anoAtual - i);
@@ -1188,7 +1189,7 @@ function TabDespesaSintetica({ token }: { token: string | undefined }) {
   };
 
   return (
-    <div ref={printRef} className="p-6 space-y-4" style={{ background: '#fff', minHeight: '100vh' }}>
+    <div ref={printRef} className="p-3 md:p-6 space-y-4" style={{ background: '#fff', minHeight: '100vh' }}>
 
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
@@ -1501,11 +1502,13 @@ interface SinteticaMensalData {
 }
 
 function TabSintetica({
-  summary, isLoading, token,
+  summary, isLoading, token, entidadeId, municipioId,
 }: {
   summary: OrdemPagamentoSummary | undefined;
   isLoading: boolean;
   token: string | undefined;
+  entidadeId?: number;
+  municipioId?: number;
 }) {
   const anoAtual = new Date().getFullYear();
 
@@ -1514,15 +1517,19 @@ function TabSintetica({
   const hoje = new Date();
   const diasNoAno = Math.floor((hoje.getTime() - inicio.getTime()) / (1000 * 60 * 60 * 24)) + 1;
 
+  const contextParams = new URLSearchParams();
+  contextParams.set('ano', String(anoAtual));
+  if (entidadeId) contextParams.set('entidadeId', String(entidadeId));
+
   const { data: sinteticaData, isLoading: loadingSintetica } = useQuery<SinteticaMensalData>({
-    queryKey: ['sintetica-mensal-geral', anoAtual],
-    queryFn: () => apiRequest(`/pagamentos/sintetica-mensal?ano=${anoAtual}`, { token }),
+    queryKey: ['sintetica-mensal-geral', anoAtual, entidadeId, municipioId],
+    queryFn: () => apiRequest(`/pagamentos/sintetica-mensal?${contextParams}`, { token }),
     enabled: !!token,
   });
 
   const { data: setoresData, isLoading: loadingSetores } = useQuery<{ id: number; nome: string; total: number; qtd: number; pct: number }[]>({
-    queryKey: ['por-setor-geral', anoAtual],
-    queryFn: () => apiRequest(`/pagamentos/por-setor?ano=${anoAtual}`, { token }),
+    queryKey: ['por-setor-geral', anoAtual, entidadeId, municipioId],
+    queryFn: () => apiRequest(`/pagamentos/por-setor?${contextParams}`, { token }),
     enabled: !!token,
   });
 
@@ -1588,10 +1595,10 @@ function TabSintetica({
   };
 
   return (
-    <div style={{ background: '#f8fafc', padding: '24px', minHeight: '100%' }}>
+    <div className="p-3 md:p-6" style={{ background: '#f8fafc', minHeight: '100%' }}>
 
       {/* 1. HERO HEADER */}
-      <div style={{ background: 'linear-gradient(135deg, #0c2240 0%, #0F2A4E 100%)', borderRadius: '16px', padding: '24px 32px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '24px', flexWrap: 'wrap' }}>
+      <div className="p-4 md:px-8 md:py-6" style={{ background: 'linear-gradient(135deg, #0c2240 0%, #0F2A4E 100%)', borderRadius: '16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '24px', flexWrap: 'wrap' }}>
         <div>
           <div style={{ fontSize: '22px', fontWeight: 700, color: '#fff', lineHeight: 1.2 }}>Despesa Municipal</div>
           <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.6)', marginTop: '4px' }}>Exercício {anoAtual} — Visão Geral Consolidada</div>
@@ -1618,7 +1625,7 @@ function TabSintetica({
       </div>
 
       {/* 2. KPI CARDS */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px', marginTop: '24px' }}>
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6">
         {/* Card 1 — Total Bruto */}
         <div style={{ background: '#fff', borderRadius: '16px', border: '1px solid #e2e8f0', boxShadow: '0 1px 4px rgba(0,0,0,0.06)', padding: '20px 24px' }}>
           <div style={{ background: 'rgba(15,42,78,0.08)', borderRadius: '10px', padding: '8px', display: 'inline-flex', marginBottom: '12px' }}>
@@ -1727,7 +1734,7 @@ function TabSintetica({
       </div>
 
       {/* 4. TOP CREDORES + GRUPOS */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginTop: '16px' }}>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
         {/* Top Credores */}
         <div style={{ background: '#fff', borderRadius: '16px', border: '1px solid #e2e8f0', boxShadow: '0 1px 4px rgba(0,0,0,0.06)', overflow: 'hidden' }}>
           <div style={{ background: 'linear-gradient(135deg, #0F2A4E, #1e4d95)', padding: '14px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -1979,7 +1986,7 @@ interface DiariasData {
   ano: string;
 }
 
-function TabDespesaDiarias({ token }: { token: string | undefined }) {
+function TabDespesaDiarias({ token, entidadeId, municipioId }: { token: string | undefined; entidadeId?: number; municipioId?: number }) {
   const anoAtual = new Date().getFullYear();
   const [ano, setAno] = useState(anoAtual);
   const anos = Array.from({ length: 5 }, (_, i) => anoAtual - i);
@@ -2126,7 +2133,7 @@ function TabDespesaDiarias({ token }: { token: string | undefined }) {
   const percColor = (v: number) => v > 0 ? '#dc2626' : v < 0 ? '#16a34a' : '#94a3b8';
 
   return (
-    <div ref={printRef} className="p-6 space-y-4" style={{ background: '#fff', minHeight: '100vh' }}>
+    <div ref={printRef} className="p-3 md:p-6 space-y-4" style={{ background: '#fff', minHeight: '100vh' }}>
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
@@ -2620,20 +2627,27 @@ export default function DashboardPage() {
   const { data: session } = useSession();
   const token = (session as any)?.accessToken as string | undefined;
   const [activeTab, setActiveTab] = useState<TabId>('sintetica');
+  const { entidadeSelecionada, municipioSelecionado } = useMunicipioEntidade();
+  const entidadeId = entidadeSelecionada?.id;
+  const municipioId = municipioSelecionado?.id;
 
   const { data: summary, isLoading } = useQuery<OrdemPagamentoSummary>({
-    queryKey: ['summary'],
-    queryFn: () => apiRequest('/pagamentos/summary', { token }),
+    queryKey: ['summary', entidadeId, municipioId],
+    queryFn: () => {
+      const params = new URLSearchParams();
+      if (entidadeId) params.set('entidadeId', String(entidadeId));
+      return apiRequest(`/pagamentos/summary?${params}`, { token });
+    },
     enabled: !!token,
     refetchInterval: 60_000,
   });
 
   return (
     <div>
-      <TopBar title="Dashboard" subtitle="Análise de despesas municipais" />
+      <TopBar title="Despesa" subtitle="Análise de despesas municipais" />
 
       {/* Barra de Tabs — pill style */}
-      <div style={{ background: '#fff', borderBottom: '1px solid #e2e8f0', padding: '12px 32px' }}>
+      <div className="bg-white border-b border-slate-200 px-3 md:px-8 py-3 overflow-x-auto">
         <div style={{ display: 'flex', background: '#f8fafc', borderRadius: '14px', padding: '4px', border: '1px solid #e2e8f0', gap: '4px', width: 'fit-content' }}>
           {TABS.map((tab) => {
             const active = activeTab === tab.id;
@@ -2658,11 +2672,11 @@ export default function DashboardPage() {
       </div>
 
       {/* Conteúdo da aba */}
-      {activeTab === 'sintetica'      && <TabSintetica summary={summary} isLoading={isLoading} token={token} />}
-      {activeTab === 'desp_sintetica' && <TabDespesaSintetica token={token} />}
-      {activeTab === 'analitica'      && <TabDespesaAnalitica token={token} />}
-      {activeTab === 'diarias'        && <TabDespesaDiarias token={token} />}
-      {activeTab === 'outros'         && <TabOutrosExercicios token={token} />}
+      {activeTab === 'sintetica'      && <TabSintetica summary={summary} isLoading={isLoading} token={token} entidadeId={entidadeId} municipioId={municipioId} />}
+      {activeTab === 'desp_sintetica' && <TabDespesaSintetica token={token} entidadeId={entidadeId} municipioId={municipioId} />}
+      {activeTab === 'analitica'      && <TabDespesaAnalitica token={token} entidadeId={entidadeId} municipioId={municipioId} />}
+      {activeTab === 'diarias'        && <TabDespesaDiarias token={token} entidadeId={entidadeId} municipioId={municipioId} />}
+      {activeTab === 'outros'         && <TabOutrosExercicios token={token} entidadeId={entidadeId} municipioId={municipioId} />}
     </div>
   );
 }

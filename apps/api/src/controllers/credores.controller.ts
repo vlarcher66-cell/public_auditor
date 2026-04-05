@@ -1,14 +1,17 @@
 import { Request, Response } from 'express';
 import { db } from '../config/database';
 import { logger } from '../config/logger';
+import { getTenantFilter } from '../middleware/auth.middleware';
 import { classificarTodosCredoresDiarias, classificarCredorDiarias } from '../services/diariasClassificacao.service';
 import { classificarPorHistorico, listarCredoresParaConfirmar } from '../services/classificacaoHistorico.service';
 
 // ── Grupos ────────────────────────────────────────────────────────────────────
 
-export async function listGrupos(_req: Request, res: Response): Promise<void> {
-  const rows = await db('dim_grupo_despesa').orderBy('nome');
-  res.json(rows);
+export async function listGrupos(req: Request, res: Response): Promise<void> {
+  const tf = getTenantFilter(req.user!);
+  const q = db('dim_grupo_despesa').orderBy('nome');
+  if (tf.fk_municipio) q.where('fk_municipio', tf.fk_municipio);
+  res.json(await q);
 }
 
 export async function createGrupo(req: Request, res: Response): Promise<void> {
@@ -52,10 +55,12 @@ export async function deleteGrupo(req: Request, res: Response): Promise<void> {
 // ── Subgrupos ─────────────────────────────────────────────────────────────────
 
 export async function listSubgrupos(req: Request, res: Response): Promise<void> {
+  const tf = getTenantFilter(req.user!);
   let q = db('dim_subgrupo_despesa as s')
     .join('dim_grupo_despesa as g', 's.fk_grupo', 'g.id')
     .select('s.*', 'g.nome as grupo_nome')
     .orderBy('g.nome').orderBy('s.nome');
+  if (tf.fk_municipio) q = q.where('g.fk_municipio', tf.fk_municipio);
   if (req.query.grupoId) q = q.where('s.fk_grupo', req.query.grupoId);
   res.json(await q);
 }
@@ -93,11 +98,13 @@ export async function listCredores(req: Request, res: Response): Promise<void> {
   const lim = Math.min(200, parseInt(limit));
   const offset = (pg - 1) * lim;
 
+  const tf = getTenantFilter(req.user!);
   const base = () =>
     db('dim_credor as c')
       .leftJoin('dim_grupo_despesa as g', 'c.fk_grupo', 'g.id')
       .leftJoin('dim_subgrupo_despesa as s', 'c.fk_subgrupo', 's.id')
       .modify((q) => {
+        if (tf.fk_municipio) q.where('c.fk_municipio', tf.fk_municipio);
         if (search) q.where((w) => w.where('c.nome', 'like', `%${search}%`).orWhere('c.cnpj_cpf', 'like', `%${search}%`));
         if (grupoId) q.where('c.fk_grupo', grupoId);
         if (semGrupo === '1') q.whereNull('c.fk_grupo');

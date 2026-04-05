@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import * as XLSX from 'xlsx';
 import { db } from '../config/database';
+import { getTenantFilter } from '../middleware/auth.middleware';
 
 export async function listPagamentos(req: Request, res: Response): Promise<void> {
   const {
@@ -41,6 +42,11 @@ export async function listPagamentos(req: Request, res: Response): Promise<void>
       .join('dim_unidade_orcamentaria as uo', 'f.fk_unidade_orc', 'uo.id')
       .leftJoin('dim_setor as st', 'f.fk_setor_pag', 'st.id')
       .modify((q) => {
+        // Tenant isolation
+        const tf = getTenantFilter(req.user!);
+        if (tf.fk_municipio) q.where('f.fk_municipio', tf.fk_municipio);
+        else if (tf.fk_entidade) q.where('f.fk_entidade', tf.fk_entidade);
+
         if (dataInicio) q.where('f.data_pagamento', '>=', dataInicio);
         if (dataFim) q.where('f.data_pagamento', '<=', dataFim);
         if (dataLiqInicio) q.where('f.data_liquidacao', '>=', dataLiqInicio);
@@ -337,11 +343,14 @@ export async function autoClassificarSetores(req: Request, res: Response): Promi
 export async function getPorSetor(req: Request, res: Response): Promise<void> {
   const { ano, entidadeId } = req.query as Record<string, string>;
   const anoFiltro = ano || new Date().getFullYear().toString();
+  const tf = getTenantFilter(req.user!);
 
   const rows = await db('fact_ordem_pagamento as f')
     .join('dim_setor as st', 'f.fk_setor_pag', 'st.id')
     .modify((q: any) => {
       q.whereRaw('YEAR(f.data_pagamento) = ?', [anoFiltro]);
+      if (tf.fk_municipio) q.where('f.fk_municipio', tf.fk_municipio);
+      else if (tf.fk_entidade) q.where('f.fk_entidade', tf.fk_entidade);
       if (entidadeId) q.where('f.fk_entidade', entidadeId);
     })
     .select(
@@ -367,8 +376,11 @@ export async function getPorSetor(req: Request, res: Response): Promise<void> {
 
 export async function getSummary(req: Request, res: Response): Promise<void> {
   const { dataInicio, dataFim, entidadeId } = req.query as Record<string, string>;
+  const tf = getTenantFilter(req.user!);
 
   const baseFilter = (q: any) => {
+    if (tf.fk_municipio) q.where('f.fk_municipio', tf.fk_municipio);
+    else if (tf.fk_entidade) q.where('f.fk_entidade', tf.fk_entidade);
     if (dataInicio) q.where('f.data_pagamento', '>=', dataInicio);
     if (dataFim) q.where('f.data_pagamento', '<=', dataFim);
     if (entidadeId) q.where('f.fk_entidade', entidadeId);
@@ -431,8 +443,12 @@ function applyFiltrosSintetica(q: any, p: {
   fonteRecurso?: string;
   grupoId?: string;
   subgrupoId?: string;
+  tenantFilter?: { fk_municipio?: number; fk_entidade?: number };
 }) {
   q.whereRaw('YEAR(f.data_pagamento) = ?', [p.anoFiltro]);
+  // Tenant isolation
+  if (p.tenantFilter?.fk_municipio) q.where('f.fk_municipio', p.tenantFilter.fk_municipio);
+  else if (p.tenantFilter?.fk_entidade) q.where('f.fk_entidade', p.tenantFilter.fk_entidade);
   if (p.entidadeId)   q.where('f.fk_entidade', p.entidadeId);
   if (p.secretariaId) q.where('st.fk_secretaria', p.secretariaId);
   if (p.setorId)      q.where('f.fk_setor_pag', p.setorId);
@@ -445,7 +461,8 @@ function applyFiltrosSintetica(q: any, p: {
 export async function getSinteticaMensal(req: Request, res: Response): Promise<void> {
   const { ano, entidadeId, secretariaId, setorId, blocoId, fonteRecurso, grupoId, subgrupoId } = req.query as Record<string, string>;
   const anoFiltro = ano || new Date().getFullYear().toString();
-  const filtrosBase = { anoFiltro, entidadeId, secretariaId, setorId, blocoId, fonteRecurso };
+  const tenantFilter = getTenantFilter(req.user!);
+  const filtrosBase = { anoFiltro, entidadeId, secretariaId, setorId, blocoId, fonteRecurso, tenantFilter };
   const filtrosSemRateio = { ...filtrosBase, grupoId, subgrupoId };
 
   const baseJoins = (q: any) => q
@@ -544,7 +561,8 @@ export async function getSinteticaMensal(req: Request, res: Response): Promise<v
 export async function getAnaliticaMensal(req: Request, res: Response): Promise<void> {
   const { ano, entidadeId, secretariaId, setorId, blocoId, fonteRecurso, grupoId, subgrupoId } = req.query as Record<string, string>;
   const anoFiltro = ano || new Date().getFullYear().toString();
-  const filtrosBase = { anoFiltro, entidadeId, secretariaId, setorId, blocoId, fonteRecurso };
+  const tenantFilter = getTenantFilter(req.user!);
+  const filtrosBase = { anoFiltro, entidadeId, secretariaId, setorId, blocoId, fonteRecurso, tenantFilter };
   const filtrosSemRateio = { ...filtrosBase, grupoId, subgrupoId };
 
   const baseJoins = (q: any) => q

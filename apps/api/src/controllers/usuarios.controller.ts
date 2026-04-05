@@ -129,6 +129,47 @@ export async function changePassword(req: Request, res: Response): Promise<void>
   res.json({ message: 'Senha alterada com sucesso' });
 }
 
+// ── Permissões e entidades do usuário ────────────────────────────────────────
+
+export async function getPermissoes(req: Request, res: Response): Promise<void> {
+  const { id } = req.params;
+  const [permissoes, entidades] = await Promise.all([
+    db('usuario_permissoes').where('fk_usuario', id).select('permissao'),
+    db('usuario_entidades').where('fk_usuario', id).select('fk_entidade'),
+  ]);
+  res.json({
+    permissoes: permissoes.map((r: any) => r.permissao),
+    entidades_ids: entidades.map((r: any) => r.fk_entidade),
+  });
+}
+
+export async function savePermissoes(req: Request, res: Response): Promise<void> {
+  const { id } = req.params;
+  const { permissoes = [], entidades_ids = [] } = req.body as {
+    permissoes: string[];
+    entidades_ids: number[];
+  };
+
+  await db.transaction(async (trx) => {
+    // Permissões de menu
+    await trx('usuario_permissoes').where('fk_usuario', id).delete();
+    if (permissoes.length > 0) {
+      await trx('usuario_permissoes').insert(
+        permissoes.map((p) => ({ fk_usuario: id, permissao: p }))
+      );
+    }
+    // Entidades acessíveis
+    await trx('usuario_entidades').where('fk_usuario', id).delete();
+    if (entidades_ids.length > 0) {
+      await trx('usuario_entidades').insert(
+        entidades_ids.map((e) => ({ fk_usuario: id, fk_entidade: e }))
+      );
+    }
+  });
+
+  res.json({ ok: true });
+}
+
 export async function deleteUsuario(req: Request, res: Response): Promise<void> {
   const user = req.user!;
   const { id } = req.params;

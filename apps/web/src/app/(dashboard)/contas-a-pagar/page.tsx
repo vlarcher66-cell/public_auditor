@@ -285,7 +285,7 @@ export default function ContasAPagarPage() {
     <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', background: '#f0f4f8' }}>
       <TopBar title="Contas a Pagar" subtitle="Empenhos liquidados pendentes de pagamento" />
 
-      <div style={{ padding: '24px', maxWidth: '1600px', margin: '0 auto', width: '100%', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+      <div className="p-3 md:p-6" style={{ maxWidth: '1600px', margin: '0 auto', width: '100%', display: 'flex', flexDirection: 'column', gap: '20px' }}>
 
         {/* ── Filtros de período ─────────────────────────────────────────────── */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>

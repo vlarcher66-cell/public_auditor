@@ -106,13 +106,14 @@ function definirNivel(confianca: number): MMSugestao['nivel'] {
  * Executa o MM para todos os credores sem grupo
  * Retorna lista de sugestões ordenadas por confiança
  */
-export async function executarMM(): Promise<{
+export async function executarMM(fk_municipio?: number): Promise<{
   sugestoes: MMSugestao[];
   resumo: { total: number; verde: number; amarelo: number; vermelho: number; preto: number; sem_sugestao: number };
 }> {
-  // 1. Busca credores sem grupo
+  // 1. Busca credores sem grupo (filtrado por município)
   const credoresSemGrupo = await db('dim_credor as c')
     .whereNull('c.fk_grupo')
+    .modify((q: any) => { if (fk_municipio) q.where('c.fk_municipio', fk_municipio); })
     .select('c.id', 'c.nome', 'c.historico');
 
   if (credoresSemGrupo.length === 0) {
@@ -122,10 +123,13 @@ export async function executarMM(): Promise<{
     };
   }
 
-  // 2. Busca todos os grupos e subgrupos do banco
+  // 2. Busca todos os grupos e subgrupos do município
   const [grupos, subgrupos] = await Promise.all([
-    db('dim_grupo_despesa').select('id', 'nome'),
-    db('dim_subgrupo_despesa').select('id', 'nome', 'fk_grupo'),
+    db('dim_grupo_despesa').select('id', 'nome')
+      .modify((q: any) => { if (fk_municipio) q.where('fk_municipio', fk_municipio); }),
+    db('dim_subgrupo_despesa as s').join('dim_grupo_despesa as g', 's.fk_grupo', 'g.id')
+      .select('s.id', 's.nome', 's.fk_grupo')
+      .modify((q: any) => { if (fk_municipio) q.where('g.fk_municipio', fk_municipio); }),
   ]);
 
   // 3. Busca históricos dos pagamentos de cada credor

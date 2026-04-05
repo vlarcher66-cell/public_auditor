@@ -34,15 +34,19 @@ export function SearchSelect({
   const updatePosition = useCallback(() => {
     if (!buttonRef.current) return;
     const rect = buttonRef.current.getBoundingClientRect();
-    const spaceBelow = window.innerHeight - rect.bottom;
-    const dropdownHeight = Math.min(280, spaceBelow - 8);
+    const spaceBelow = window.innerHeight - rect.bottom - 8;
+    const spaceAbove = rect.top - 8;
+    const preferBelow = spaceBelow >= 180 || spaceBelow >= spaceAbove;
+    const availableSpace = preferBelow ? spaceBelow : spaceAbove;
+    const maxH = Math.max(180, Math.min(320, availableSpace));
     setDropdownStyle({
       position: 'fixed',
-      top: rect.bottom + 4,
+      top: preferBelow ? rect.bottom + 4 : undefined,
+      bottom: preferBelow ? undefined : window.innerHeight - rect.top + 4,
       left: rect.left,
       width: Math.max(rect.width, 200),
       zIndex: 99999,
-      maxHeight: dropdownHeight > 100 ? dropdownHeight : 300,
+      maxHeight: maxH,
     });
   }, []);
 
@@ -84,7 +88,7 @@ export function SearchSelect({
     <div
       ref={dropdownRef}
       style={dropdownStyle}
-      className="bg-white border border-gray-200 rounded-xl shadow-xl overflow-hidden"
+      className="bg-white border border-gray-200 rounded-xl shadow-xl overflow-hidden flex flex-col"
     >
       <div className="p-2 border-b bg-gray-50">
         <input
@@ -96,7 +100,7 @@ export function SearchSelect({
           onClick={(e) => e.stopPropagation()}
         />
       </div>
-      <div className="max-h-52 overflow-y-auto">
+      <div className="overflow-y-auto" style={{ maxHeight: 'calc(100% - 52px)' }}>
         {!required && (
           <button
             type="button"
@@ -133,17 +137,7 @@ export function SearchSelect({
         type="button"
         onClick={() => {
           if (!open && buttonRef.current) {
-            const rect = buttonRef.current.getBoundingClientRect();
-            const spaceBelow = window.innerHeight - rect.bottom;
-            const dropdownHeight = Math.min(280, spaceBelow - 8);
-            setDropdownStyle({
-              position: 'fixed',
-              top: rect.bottom + 4,
-              left: rect.left,
-              width: Math.max(rect.width, 200),
-              zIndex: 99999,
-              maxHeight: dropdownHeight > 100 ? dropdownHeight : 300,
-            });
+            updatePosition();
           }
           setOpen(!open);
           setSearch('');
