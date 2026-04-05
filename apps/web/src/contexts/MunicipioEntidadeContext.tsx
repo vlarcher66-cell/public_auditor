@@ -46,10 +46,11 @@ const MunicipioEntidadeContext = createContext<MunicipioEntidadeContextValue | n
 
 export function MunicipioEntidadeProvider({ children }: { children: React.ReactNode }) {
   const { data: session } = useSession();
-  const token    = (session as any)?.accessToken as string | undefined;
-  const role     = (session?.user as any)?.role as string | undefined;
-  const jwtMunId = (session?.user as any)?.fk_municipio as number | null | undefined;
-  const jwtEntId = (session?.user as any)?.fk_entidade  as number | null | undefined;
+  const token         = (session as any)?.accessToken as string | undefined;
+  const role          = (session?.user as any)?.role as string | undefined;
+  const jwtMunId      = (session?.user as any)?.fk_municipio  as number | null | undefined;
+  const jwtEntId      = (session?.user as any)?.fk_entidade   as number | null | undefined;
+  const jwtEntIds     = (session?.user as any)?.entidades_ids as number[] | undefined ?? [];
 
   const [municipios,            setMunicipios]            = useState<Municipio[]>([]);
   const [entidades,             setEntidades]             = useState<Entidade[]>([]);
@@ -106,13 +107,25 @@ export function MunicipioEntidadeProvider({ children }: { children: React.ReactN
           }
 
         } else {
-          // CONTADOR / AUDITOR / VIEWER — tudo fixo
+          // CONTADOR / AUDITOR / VIEWER — município e entidade(s) fixos
           if (jwtMunId) {
             const list: Municipio[] = await apiRequest('/municipios/list', { token });
             const mun = list.find(m => m.id === jwtMunId) ?? null;
             if (mun) setMunicipioSelecionadoSt(mun);
           }
-          if (jwtEntId) {
+
+          // Carrega as entidades acessíveis ao usuário
+          if (jwtEntIds.length > 0) {
+            // Tem entidades específicas vinculadas — carrega só essas
+            const todas: Entidade[] = await apiRequest(`/entidades/list?municipioId=${jwtMunId}`, { token });
+            const permitidas = todas.filter(e => jwtEntIds.includes(e.id));
+            setEntidades(permitidas);
+            // Se só tem uma entidade, já seleciona automaticamente
+            if (permitidas.length === 1) {
+              setEntidadeSelecionadaSt(permitidas[0]);
+            }
+          } else if (jwtEntId) {
+            // Fallback: entidade única no campo fk_entidade
             const ent: Entidade = await apiRequest(`/entidades/${jwtEntId}`, { token });
             setEntidadeSelecionadaSt(ent);
             setEntidades([ent]);
