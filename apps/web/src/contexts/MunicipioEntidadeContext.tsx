@@ -57,12 +57,13 @@ export function MunicipioEntidadeProvider({ children }: { children: React.ReactN
   const [entidadeSelecionada,   setEntidadeSelecionadaSt]  = useState<Entidade | null>(null);
   const [loading,               setLoading]               = useState(true);
 
-  const podeEscolherMunicipio = role === 'SUPER_ADMIN';
-  const podeEscolherEntidade  = role === 'SUPER_ADMIN' || role === 'GESTOR';
+  const isSuperAdmin = role === 'SUPER_ADMIN' || role === 'ADMIN';
+  const podeEscolherMunicipio = isSuperAdmin;
+  const podeEscolherEntidade  = isSuperAdmin || role === 'GESTOR';
 
-  // ── Carrega municípios (só SUPER_ADMIN precisa da lista) ──────────────────
+  // ── Carrega municípios (só SUPER_ADMIN/ADMIN precisa da lista) ────────────
   useEffect(() => {
-    if (!token || role !== 'SUPER_ADMIN') return;
+    if (!token || !isSuperAdmin) return;
     apiRequest<Municipio[]>('/municipios/list', { token })
       .then((rows) => setMunicipios(rows))
       .catch(() => {});
@@ -86,7 +87,7 @@ export function MunicipioEntidadeProvider({ children }: { children: React.ReactN
     async function init() {
       setLoading(true);
       try {
-        if (role === 'SUPER_ADMIN') {
+        if (role === 'SUPER_ADMIN' || role === 'ADMIN') {
           // Carrega lista de municípios e aguarda seleção manual
           const rows: Municipio[] = await apiRequest('/municipios/list', { token });
           setMunicipios(rows);

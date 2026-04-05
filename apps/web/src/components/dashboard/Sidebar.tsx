@@ -213,12 +213,12 @@ export default function Sidebar({ collapsed, onToggle, mobileOpen = false, onMob
   const router = useRouter();
   const { data: session } = useSession();
   const role = (session as any)?.user?.role ?? '';
-  const isSuperAdmin = role === 'SUPER_ADMIN';
+  const isSuperAdmin = role === 'SUPER_ADMIN' || role === 'ADMIN';
   const isGestor = role === 'GESTOR';
   const userName = (session as any)?.user?.name ?? '';
   const permissoes: string[] = (session as any)?.user?.permissoes ?? [];
 
-  // SUPER_ADMIN e GESTOR têm acesso total; outros dependem das permissões
+  // SUPER_ADMIN, ADMIN e GESTOR têm acesso total; outros dependem das permissões
   const fullAccess = isSuperAdmin || isGestor;
   function hasPerm(key: string) { return fullAccess || permissoes.includes(key); }
 
