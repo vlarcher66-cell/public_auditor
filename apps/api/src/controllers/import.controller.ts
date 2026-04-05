@@ -9,6 +9,7 @@ import { extractFromExcel } from '../etl/extractors/excel.extractor';
 import { extractFromPdf } from '../etl/extractors/pdf.extractor';
 import { transformOrdemPagamento, normalizeCnpjCpf } from '../etl/transformers/ordemPagamento.transformer';
 import { env } from '../config/env';
+import { isSuperAdmin } from '../config/roles';
 
 export async function uploadFile(req: Request, res: Response): Promise<void> {
   if (!req.file) {
@@ -38,6 +39,13 @@ export async function uploadFile(req: Request, res: Response): Promise<void> {
     }
   }
 
+  // Resolve fk_municipio a partir da entidade
+  let fkMunicipio: number | null = null;
+  if (entidadeId) {
+    const ent = await db('dim_entidade').where('id', entidadeId).select('fk_municipio').first();
+    fkMunicipio = ent?.fk_municipio ?? null;
+  }
+
   const [id] = await db('import_jobs').insert({
     uuid,
     filename: req.file.originalname,
@@ -47,6 +55,8 @@ export async function uploadFile(req: Request, res: Response): Promise<void> {
     tipo_relatorio: tipoRelatorio,
     sistema_origem: sistemaOrigem,
     fk_usuario: req.user!.sub,
+    fk_entidade: entidadeId ?? null,
+    fk_municipio: fkMunicipio,
     criado_em: new Date().toISOString(),
   });
 
@@ -65,6 +75,10 @@ export async function listJobs(req: Request, res: Response): Promise<void> {
   const status = req.query.status as string | undefined;
   const tipo   = req.query.tipo   as string | undefined;
 
+  const user = req.user!;
+  const entidadeParam = req.query.entidade_id ? parseInt(req.query.entidade_id as string) : null;
+  const municipioParam = req.query.municipio_id ? parseInt(req.query.municipio_id as string) : null;
+
   let query = db('import_jobs')
     .join('usuarios', 'import_jobs.fk_usuario', 'usuarios.id')
     .select('import_jobs.*', 'usuarios.nome as usuario_nome')
@@ -73,6 +87,26 @@ export async function listJobs(req: Request, res: Response): Promise<void> {
     .offset(offset);
 
   let countQuery = db('import_jobs').count('* as total');
+
+  // Filtro multi-tenant
+  if (!isSuperAdmin(user.role)) {
+    if (user.fk_entidade) {
+      query      = query.where('import_jobs.fk_entidade', user.fk_entidade);
+      countQuery = countQuery.where('fk_entidade', user.fk_entidade);
+    } else if (user.fk_municipio) {
+      query      = query.where('import_jobs.fk_municipio', user.fk_municipio);
+      countQuery = countQuery.where('fk_municipio', user.fk_municipio);
+    }
+  } else {
+    // SUPER_ADMIN/ADMIN: filtra por parâmetro opcional da query
+    if (entidadeParam) {
+      query      = query.where('import_jobs.fk_entidade', entidadeParam);
+      countQuery = countQuery.where('fk_entidade', entidadeParam);
+    } else if (municipioParam) {
+      query      = query.where('import_jobs.fk_municipio', municipioParam);
+      countQuery = countQuery.where('fk_municipio', municipioParam);
+    }
+  }
 
   if (status) {
     query      = query.where('import_jobs.status', status);
@@ -92,11 +126,23 @@ export async function listJobs(req: Request, res: Response): Promise<void> {
   res.json({ jobs, total: Number(total), page, limit });
 }
 
+function canAccessJob(user: any, job: any): boolean {
+  if (isSuperAdmin(user.role)) return true;
+  if (user.fk_entidade) return job.fk_entidade === user.fk_entidade;
+  if (user.fk_municipio) return job.fk_municipio === user.fk_municipio;
+  return job.fk_usuario === user.sub;
+}
+
 export async function getJob(req: Request, res: Response): Promise<void> {
   const job = await db('import_jobs').where({ uuid: req.params.uuid }).first();
 
   if (!job) {
     res.status(404).json({ error: 'Job não encontrado' });
+    return;
+  }
+
+  if (!canAccessJob(req.user!, job)) {
+    res.status(403).json({ error: 'Acesso negado' });
     return;
   }
 
@@ -110,6 +156,7 @@ export async function getJob(req: Request, res: Response): Promise<void> {
 export async function cancelJob(req: Request, res: Response): Promise<void> {
   const job = await db('import_jobs').where({ uuid: req.params.uuid }).first();
   if (!job) { res.status(404).json({ error: 'Job não encontrado' }); return; }
+  if (!canAccessJob(req.user!, job)) { res.status(403).json({ error: 'Acesso negado' }); return; }
   if (job.status !== 'QUEUED') { res.status(409).json({ error: 'Apenas jobs QUEUED podem ser cancelados' }); return; }
   await db('import_jobs').where({ id: job.id }).update({ status: 'ERROR', finished_at: new Date().toISOString() });
   res.json({ message: 'Job cancelado' });
@@ -180,6 +227,7 @@ export async function backfillHistorico(_req: Request, res: Response): Promise<v
 export async function deleteJob(req: Request, res: Response): Promise<void> {
   const job = await db('import_jobs').where({ uuid: req.params.uuid }).first();
   if (!job) { res.status(404).json({ error: 'Job não encontrado' }); return; }
+  if (!canAccessJob(req.user!, job)) { res.status(403).json({ error: 'Acesso negado' }); return; }
 
   await db.transaction(async (trx) => {
     // Remove registros de despesa ou receita vinculados a este job
