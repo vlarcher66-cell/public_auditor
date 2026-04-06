@@ -39,7 +39,6 @@ function TipoRelatorioModal({
   const [tipo, setTipo] = useState<'OR' | 'RP'>('OR');
   const [municipioId, setMunicipioId] = useState<string>('');
   const [entidadeId, setEntidadeId] = useState<string>('');
-  const [sistemaOrigem, setSistemaOrigem] = useState<string>('FATOR');
 
   const { data: municipios = [], isLoading: loadingMunicipios } = useQuery<{ id: number; nome: string }[]>({
     queryKey: ['municipios-list'],
@@ -47,11 +46,15 @@ function TipoRelatorioModal({
     enabled: !!token,
   });
 
-  const { data: entidades = [], isLoading: loadingEntidades } = useQuery<{ id: number; nome: string; sigla?: string }[]>({
+  const { data: entidades = [], isLoading: loadingEntidades } = useQuery<{ id: number; nome: string; sigla?: string; sistema_contabil?: string | null }[]>({
     queryKey: ['entidades-list', municipioId],
     queryFn: () => apiRequest('/entidades', { token, params: { limit: 200, ...(municipioId ? { municipioId } : {}) } }).then((d: any) => d.rows ?? d),
     enabled: !!token,
   });
+
+  // Sistema herdado automaticamente da entidade selecionada
+  const entidadeSelecionada = entidades.find(e => String(e.id) === entidadeId);
+  const sistemaOrigem = entidadeSelecionada?.sistema_contabil ?? 'FATOR';
 
   const canConfirm = !!municipioId && !!entidadeId;
 
@@ -113,17 +116,18 @@ function TipoRelatorioModal({
             <p className="text-xs text-gray-400 mt-1">Entidade responsável pelos pagamentos deste relatório.</p>
           </div>
 
-          {/* Sistema de Origem */}
-          <div>
-            <label className="block text-xs font-medium text-gray-500 mb-1">Sistema de Origem</label>
-            <SearchSelect
-              value={sistemaOrigem}
-              onChange={(val) => setSistemaOrigem(String(val))}
-              options={[{ id: 'FATOR', nome: 'FATOR' }, { id: 'SIAFIC', nome: 'SIAFIC' }, { id: 'BETHA', nome: 'BETHA' }, { id: 'OUTRO', nome: 'OUTRO' }]}
-              placeholder="Selecione o sistema"
-            />
-            <p className="text-xs text-gray-400 mt-1">Sistema contábil de origem do relatório importado.</p>
-          </div>
+          {/* Sistema herdado da entidade */}
+          {entidadeSelecionada && (
+            <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-indigo-50 border border-indigo-100">
+              <span className="text-xs text-indigo-500 font-medium">Sistema contábil:</span>
+              <span className="text-xs font-bold text-indigo-700">
+                {entidadeSelecionada.sistema_contabil ?? 'Não definido'}
+              </span>
+              {!entidadeSelecionada.sistema_contabil && (
+                <span className="text-xs text-amber-600 ml-1">— configure em Cadastros → Entidades</span>
+              )}
+            </div>
+          )}
 
           {/* Tipo */}
           <div className="space-y-2">

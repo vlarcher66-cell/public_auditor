@@ -50,7 +50,6 @@ function ConfigModal({
   const [municipioId, setMunicipioId] = useState('');
   const [entidadeId, setEntidadeId]   = useState('');
   const [periodo, setPeriodo]         = useState('Janeiro/2026');
-  const [sistemaOrigem, setSistema]   = useState('SIAFIC');
 
   const { data: municipios = [], isLoading: loadingMun } = useQuery<{ id: number; nome: string }[]>({
     queryKey: ['municipios-list'],
@@ -58,11 +57,15 @@ function ConfigModal({
     enabled: !!token,
   });
 
-  const { data: entidades = [], isLoading: loadingEnt } = useQuery<{ id: number; nome: string }[]>({
+  const { data: entidades = [], isLoading: loadingEnt } = useQuery<{ id: number; nome: string; sistema_contabil?: string | null }[]>({
     queryKey: ['entidades-list', municipioId],
     queryFn: () => apiRequest('/entidades', { token, params: { limit: 200, ...(municipioId ? { municipioId } : {}) } }).then((d: any) => d.rows ?? d),
     enabled: !!token,
   });
+
+  // Sistema herdado da entidade selecionada
+  const entidadeSelecionada = entidades.find(e => String(e.id) === entidadeId);
+  const sistemaOrigem = entidadeSelecionada?.sistema_contabil ?? 'SIAFIC';
 
   const canConfirm = !!municipioId && !!entidadeId && !!periodo;
 
@@ -154,21 +157,18 @@ function ConfigModal({
             <p className="text-xs text-gray-400 mt-1">Mês/ano de competência da receita arrecadada.</p>
           </div>
 
-          {/* Sistema de origem */}
-          <div>
-            <label className="block text-xs font-medium text-gray-500 mb-1">Sistema de Origem</label>
-            <SearchSelect
-              value={sistemaOrigem}
-              onChange={val => setSistema(String(val))}
-              options={[
-                { id: 'SIAFIC', nome: 'SIAFIC' },
-                { id: 'FATOR',  nome: 'FATOR'  },
-                { id: 'BETHA',  nome: 'BETHA'  },
-                { id: 'OUTRO',  nome: 'OUTRO'  },
-              ]}
-              placeholder="Selecione o sistema"
-            />
-          </div>
+          {/* Sistema herdado da entidade */}
+          {entidadeSelecionada && (
+            <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-indigo-50 border border-indigo-100">
+              <span className="text-xs text-indigo-500 font-medium">Sistema contábil:</span>
+              <span className="text-xs font-bold text-indigo-700">
+                {entidadeSelecionada.sistema_contabil ?? 'Não definido'}
+              </span>
+              {!entidadeSelecionada.sistema_contabil && (
+                <span className="text-xs text-amber-600 ml-1">— configure em Cadastros → Entidades</span>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Footer */}

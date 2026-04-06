@@ -215,7 +215,7 @@ export default function MetasPage() {
       await fetch(`${API}/metas`, {
         method: 'POST',
         headers: { ...authH, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ metas }),
+        body: JSON.stringify({ metas, fk_entidade: entidadeSelecionada?.id ?? null }),
       });
       setSaved(true);
       setGrupos(prev => prev.map(g => ({

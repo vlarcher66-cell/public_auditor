@@ -90,7 +90,11 @@ export async function listJobs(req: Request, res: Response): Promise<void> {
 
   // Filtro multi-tenant
   if (!isSuperAdmin(user.role)) {
-    if (user.fk_entidade) {
+    const ids = user.entidades_ids ?? [];
+    if (ids.length > 0) {
+      query      = query.whereIn('import_jobs.fk_entidade', ids);
+      countQuery = countQuery.whereIn('fk_entidade', ids);
+    } else if (user.fk_entidade) {
       query      = query.where('import_jobs.fk_entidade', user.fk_entidade);
       countQuery = countQuery.where('fk_entidade', user.fk_entidade);
     } else if (user.fk_municipio) {
@@ -128,6 +132,8 @@ export async function listJobs(req: Request, res: Response): Promise<void> {
 
 function canAccessJob(user: any, job: any): boolean {
   if (isSuperAdmin(user.role)) return true;
+  const ids: number[] = user.entidades_ids ?? [];
+  if (ids.length > 0) return ids.includes(job.fk_entidade);
   if (user.fk_entidade) return job.fk_entidade === user.fk_entidade;
   if (user.fk_municipio) return job.fk_municipio === user.fk_municipio;
   return job.fk_usuario === user.sub;
@@ -235,8 +241,26 @@ export async function deleteJob(req: Request, res: Response): Promise<void> {
     const deletedReceita   = await trx('fact_receita').where({ fk_import_job: job.id }).delete();
     const deletedTransfer  = await trx('fact_transf_bancaria').where({ fk_import_job: job.id }).delete();
     const deletedEmpenhos  = await trx('fact_empenho_liquidado').where({ fk_import_job: job.id }).delete();
+
+    // Se era relatório de empenhos liquidados, limpa credores criados automaticamente
+    // que não possuem nenhum pagamento vinculado (origem = 'A_PAGAR' e sem uso em fact_ordem_pagamento)
+    let deletedCredores = 0;
+    if (job.tipo_relatorio === 'EMPENHO_LIQUIDADO') {
+      const idsParaDeletar = await trx('dim_credor as c')
+        .leftJoin('fact_ordem_pagamento as p', 'p.fk_credor', 'c.id')
+        .leftJoin('fact_empenho_liquidado as e', 'e.fk_credor', 'c.id')
+        .where('c.origem', 'A_PAGAR')
+        .whereNull('p.id')
+        .whereNull('e.id')
+        .pluck('c.id');
+
+      if (idsParaDeletar.length > 0) {
+        deletedCredores = await trx('dim_credor').whereIn('id', idsParaDeletar).delete();
+      }
+    }
+
     await trx('import_jobs').where({ id: job.id }).delete();
-    logger.info({ jobId: job.id, uuid: job.uuid, deletedDespesa, deletedReceita, deletedTransfer, deletedEmpenhos }, 'Import job deleted');
+    logger.info({ jobId: job.id, uuid: job.uuid, deletedDespesa, deletedReceita, deletedTransfer, deletedEmpenhos, deletedCredores }, 'Import job deleted');
   });
 
   res.json({ message: 'Importação e registros excluídos com sucesso' });

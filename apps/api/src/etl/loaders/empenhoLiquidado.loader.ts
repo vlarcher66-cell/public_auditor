@@ -39,24 +39,21 @@ async function resolveOrCreateCredor(
   // 1. Busca exata
   const exact = await db('dim_credor').whereRaw('UPPER(nome) = ?', [nome]).first();
   if (exact) {
-    // Sempre atualiza historico com o dado mais recente do empenho
-    if (historicoEmpenho) {
-      await db('dim_credor').where('id', exact.id).update({
-        historico: historicoEmpenho.trim().slice(0, 500),
-      });
-    }
+    const upd: Record<string, any> = {};
+    if (historicoEmpenho) upd.historico = historicoEmpenho.trim().slice(0, 500);
+    // Se ainda não tem origem definida, marca como A_PAGAR — já tem pagamento, mas também aparece em empenhos
+    if (!exact.origem) upd.origem = 'A_PAGAR';
+    if (Object.keys(upd).length) await db('dim_credor').where('id', exact.id).update(upd);
     return { id: exact.id, criado: false };
   }
 
   // 2. Busca parcial (começa com os primeiros 30 chars)
   const partial = await db('dim_credor').whereRaw('UPPER(nome) LIKE ?', [`${nome.slice(0, 30)}%`]).first();
   if (partial) {
-    // Sempre atualiza historico com o dado mais recente do empenho
-    if (historicoEmpenho) {
-      await db('dim_credor').where('id', partial.id).update({
-        historico: historicoEmpenho.trim().slice(0, 500),
-      });
-    }
+    const upd: Record<string, any> = {};
+    if (historicoEmpenho) upd.historico = historicoEmpenho.trim().slice(0, 500);
+    if (!partial.origem) upd.origem = 'A_PAGAR';
+    if (Object.keys(upd).length) await db('dim_credor').where('id', partial.id).update(upd);
     return { id: partial.id, criado: false };
   }
 
@@ -68,6 +65,7 @@ async function resolveOrCreateCredor(
     fk_grupo:     null,
     fk_subgrupo:  null,
     historico:    historicoEmpenho ? historicoEmpenho.trim().slice(0, 500) : null,
+    origem:       'A_PAGAR',
   });
 
   logger.info({ nome: nomeRaw.trim(), newId }, 'Credor criado automaticamente via importação de empenhos');

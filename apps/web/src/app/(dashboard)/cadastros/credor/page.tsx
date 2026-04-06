@@ -32,6 +32,7 @@ interface Credor {
   historico: string | null;
   precisa_reclassificacao: boolean;
   detalhar_no_pagamento: boolean;
+  origem: 'PAGO' | 'A_PAGAR' | null;
 }
 
 function authHeader(token: string) {
@@ -462,6 +463,18 @@ function CredorRow({
           </span>
         </button>
       </td>
+      {/* Origem */}
+      <td className="px-3 py-2">
+        {credor.origem === 'PAGO' && (
+          <span className="inline-flex px-2 py-0.5 rounded-full text-[10px] font-semibold bg-green-100 text-green-700">Pago</span>
+        )}
+        {credor.origem === 'A_PAGAR' && (
+          <span className="inline-flex px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-100 text-amber-700">A Pagar</span>
+        )}
+        {!credor.origem && (
+          <span className="text-gray-300 text-xs">—</span>
+        )}
+      </td>
       {/* Toggle detalhar por pagamento */}
       <td className="px-3 py-2 text-center">
         <button
@@ -725,9 +738,10 @@ export default function CredorPage() {
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
   const [filterGrupo, setFilterGrupo] = useState('');
+  const [filterOrigem, setFilterOrigem] = useState('');
   const [loading, setLoading] = useState(false);
-  const [stats, setStats] = useState({ total: 0, semGrupo: 0, semSubgrupo: 0 });
-  const [cardFilter, setCardFilter] = useState<'semGrupo' | 'semSubgrupo' | null>(null);
+  const [stats, setStats] = useState({ total: 0, semGrupo: 0, semSubgrupo: 0, aPagar: 0 });
+  const [cardFilter, setCardFilter] = useState<'semGrupo' | 'semSubgrupo' | 'aPagar' | null>(null);
   const [historicoModal, setHistoricoModal] = useState<Credor | null>(null);
   const [showLimparModal, setShowLimparModal] = useState(false);
   const searchParams = useSearchParams();
@@ -771,8 +785,10 @@ export default function CredorPage() {
       const params = new URLSearchParams({ page: String(page), limit: String(LIMIT) });
       if (search) params.set('search', search);
       if (filterGrupo) params.set('grupoId', filterGrupo);
-      if (cardFilter === 'semGrupo') params.set('semGrupo', '1');
+      if (cardFilter === 'semGrupo')   params.set('semGrupo', '1');
       if (cardFilter === 'semSubgrupo') params.set('semSubgrupo', '1');
+      if (cardFilter === 'aPagar')     params.set('origem', 'A_PAGAR');
+      else if (filterOrigem)           params.set('origem', filterOrigem);
       const res = await fetch(`${API}/credores?${params}`, { headers: authHeader(token) });
       if (res.ok) {
         const data = await res.json();
@@ -781,7 +797,7 @@ export default function CredorPage() {
       }
     } catch { /* API offline */ }
     setLoading(false);
-  }, [token, page, search, filterGrupo, cardFilter]);
+  }, [token, page, search, filterGrupo, filterOrigem, cardFilter]);
 
   const loadStats = useCallback(async () => {
     if (!token) return;
@@ -889,6 +905,24 @@ export default function CredorPage() {
           <p className={`text-xs mt-1 ${cardFilter === 'semSubgrupo' ? 'text-purple-100' : 'text-gray-400'}`}>Com grupo, sem subgrupo definido</p>
         </button>
 
+        {/* A Pagar — credores criados via empenhos liquidados */}
+        <button
+          onClick={() => { setCardFilter(cardFilter === 'aPagar' ? null : 'aPagar'); setPage(1); setFilterOrigem(''); }}
+          className={`text-left rounded-xl border p-4 transition-all ${
+            cardFilter === 'aPagar'
+              ? 'bg-amber-500 border-amber-500 shadow-md'
+              : stats.aPagar > 0
+              ? 'bg-amber-50 border-amber-200 hover:border-amber-400 hover:shadow-sm'
+              : 'bg-white hover:border-gray-300 hover:shadow-sm'
+          }`}
+        >
+          <p className={`text-xs font-medium ${cardFilter === 'aPagar' ? 'text-amber-100' : 'text-gray-500'}`}>Origem: A Pagar</p>
+          <p className={`text-2xl font-bold mt-1 ${cardFilter === 'aPagar' ? 'text-white' : stats.aPagar > 0 ? 'text-amber-600' : 'text-gray-400'}`}>
+            {stats.aPagar}
+          </p>
+          <p className={`text-xs mt-1 ${cardFilter === 'aPagar' ? 'text-amber-100' : 'text-gray-400'}`}>Criados via empenhos liquidados</p>
+        </button>
+
         {/* Grupos Cadastrados — apenas visual, sem filtro */}
         <div className="bg-white rounded-xl border p-4">
           <p className="text-xs text-gray-500">Grupos Cadastrados</p>
@@ -918,6 +952,16 @@ export default function CredorPage() {
               placeholder="Todos os grupos"
             />
           </div>
+          <select
+            className="shrink-0 border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-600"
+            value={cardFilter === 'aPagar' ? 'A_PAGAR' : filterOrigem}
+            onChange={(e) => { setFilterOrigem(e.target.value); setCardFilter(null); setPage(1); }}
+          >
+            <option value="">Todas as origens</option>
+            <option value="PAGO">Pago</option>
+            <option value="A_PAGAR">A Pagar</option>
+            <option value="SEM">Sem origem</option>
+          </select>
         </div>
 
         <div className="overflow-x-auto overflow-y-visible rounded-b-2xl">
@@ -928,6 +972,7 @@ export default function CredorPage() {
                 <th className="px-3 py-2 text-left w-48">Grupo</th>
                 <th className="px-3 py-2 text-left w-52">Subgrupo</th>
                 <th className="px-3 py-2 text-left">Histórico</th>
+                <th className="px-3 py-2 text-left w-24">Origem</th>
                 <th className="px-3 py-2 text-center text-indigo-600 w-20" title="Classificar cada pagamento individualmente">
                   <Layers size={13} className="mx-auto" />
                 </th>

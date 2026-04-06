@@ -1,11 +1,9 @@
 import { Request, Response } from 'express';
 import { db } from '../config/database';
-import { isSuperAdmin } from '../config/roles';
+import { getTenantFilter, applyTenantFilter } from '../middleware/auth.middleware';
 
 function applyRBAC(q: any, user: any) {
-  if (!isSuperAdmin(user?.role) && user?.fk_municipio) {
-    q.where('f.fk_municipio', user.fk_municipio);
-  }
+  applyTenantFilter(q, getTenantFilter(user), 'f.fk_entidade', 'f.fk_municipio');
   return q;
 }
 

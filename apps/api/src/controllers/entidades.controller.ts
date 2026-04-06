@@ -11,7 +11,7 @@ export async function listEntidades(req: Request, res: Response): Promise<void> 
 
     const query = db('dim_entidade as e')
       .leftJoin('dim_municipio as m', 'e.fk_municipio', 'm.id')
-      .select('e.id', 'e.nome', 'e.cnpj', 'e.tipo', 'e.ativo', 'e.fk_municipio', 'm.nome as municipio_nome', 'e.criado_em');
+      .select('e.id', 'e.nome', 'e.cnpj', 'e.tipo', 'e.ativo', 'e.fk_municipio', 'e.sistema_contabil', 'm.nome as municipio_nome', 'e.criado_em');
 
     if (search) query.where(function () {
       this.where('e.nome', 'like', `%${search}%`).orWhere('e.cnpj', 'like', `%${search}%`);
@@ -32,14 +32,15 @@ export async function listEntidades(req: Request, res: Response): Promise<void> 
 
 export async function createEntidade(req: Request, res: Response): Promise<void> {
   try {
-    const { nome, cnpj, tipo = 'FUNDO', ativo = true, fk_municipio } = req.body;
+    const { nome, cnpj, tipo = 'FUNDO', ativo = true, fk_municipio, sistema_contabil } = req.body;
     if (!nome) { res.status(400).json({ error: 'Nome é obrigatório' }); return; }
 
     const [id] = await db('dim_entidade').insert({
       nome, cnpj: cnpj || null, tipo, ativo,
       fk_municipio: fk_municipio || null,
+      sistema_contabil: sistema_contabil || null,
     });
-    res.status(201).json({ id, nome, cnpj, tipo, ativo, fk_municipio: fk_municipio || null });
+    res.status(201).json({ id, nome, cnpj, tipo, ativo, fk_municipio: fk_municipio || null, sistema_contabil: sistema_contabil || null });
   } catch (err: any) {
     logger.error({ err: err?.message }, 'createEntidade failed');
     res.status(500).json({ error: err?.message ?? 'Erro ao criar entidade' });
@@ -52,13 +53,14 @@ export async function updateEntidade(req: Request, res: Response): Promise<void>
     const row = await db('dim_entidade').where('id', id).first();
     if (!row) { res.status(404).json({ error: 'Entidade não encontrada' }); return; }
 
-    const { nome, cnpj, tipo, ativo, fk_municipio } = req.body;
+    const { nome, cnpj, tipo, ativo, fk_municipio, sistema_contabil } = req.body;
     await db('dim_entidade').where('id', id).update({
       ...(nome !== undefined && { nome }),
       ...(cnpj !== undefined && { cnpj: cnpj || null }),
       ...(tipo !== undefined && { tipo }),
       ...(ativo !== undefined && { ativo }),
       ...(fk_municipio !== undefined && { fk_municipio: fk_municipio || null }),
+      ...(sistema_contabil !== undefined && { sistema_contabil: sistema_contabil || null }),
     });
     res.json({ message: 'Entidade atualizada com sucesso' });
   } catch (err: any) {

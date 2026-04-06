@@ -43,6 +43,8 @@ export async function getIndice15(req: Request, res: Response): Promise<void> {
   const ano = parseInt(req.query.ano as string) || new Date().getFullYear();
   const user = (req as any).user;
 
+  // Para o índice 15%, o filtro é SEMPRE por município — nunca por entidade isolada,
+  // pois o cálculo envolve Prefeitura (base) + Fundo (aplicado) de forma consolidada.
   const applyRBAC = (q: any) => {
     if (!isSuperAdmin(user?.role) && user?.fk_municipio) q.where('r.fk_municipio', user.fk_municipio);
     return q;

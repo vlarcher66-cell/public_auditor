@@ -1,11 +1,10 @@
 import { Request, Response } from 'express';
 import { db } from '../config/database';
 import { isSuperAdmin } from '../config/roles';
+import { getTenantFilter, applyTenantFilter } from '../middleware/auth.middleware';
 
 function applyRBAC(q: any, user: any) {
-  if (!isSuperAdmin(user?.role) && user?.fk_municipio) {
-    q.where('f.fk_municipio', user.fk_municipio);
-  }
+  applyTenantFilter(q, getTenantFilter(user), 'f.fk_entidade', 'f.fk_municipio');
   return q;
 }
 
@@ -112,6 +111,11 @@ export async function getDespesaReal(req: Request, res: Response): Promise<void>
 export async function getMetas(req: Request, res: Response): Promise<void> {
   const ano = parseInt(req.query.ano as string) || new Date().getFullYear();
   const user = (req as any).user;
+  let tf     = getTenantFilter(user);
+
+  // entidadeId explícito (enviado pelo frontend via TopBar) sobrepõe o tenant filter
+  const entidadeIdParam = req.query.entidadeId ? parseInt(req.query.entidadeId as string) : null;
+  if (entidadeIdParam) tf = { fk_entidade: entidadeIdParam };
 
   const q = db('planejamento_metas as m')
     .join('dim_subgrupo_despesa as s', 'm.fk_subgrupo', 's.id')
@@ -119,8 +123,12 @@ export async function getMetas(req: Request, res: Response): Promise<void> {
     .where('m.ano', ano)
     .select('m.*', 's.nome as subgrupo_nome', 'g.id as grupo_id', 'g.nome as grupo_nome');
 
-  if (!isSuperAdmin(user?.role) && user?.fk_municipio) {
-    q.where('m.fk_municipio', user.fk_municipio);
+  if (tf.entidades_ids?.length) {
+    q.whereIn('m.fk_entidade', tf.entidades_ids);
+  } else if (tf.fk_entidade) {
+    q.where('m.fk_entidade', tf.fk_entidade);
+  } else if (tf.fk_municipio) {
+    q.where('m.fk_municipio', tf.fk_municipio);
   }
 
   const metas = await q;
@@ -227,11 +235,15 @@ export async function saveMetas(req: Request, res: Response): Promise<void> {
     return;
   }
 
-  const fk_municipio = !isSuperAdmin(user?.role) ? (user?.fk_municipio ?? null) : null;
+  const tf = getTenantFilter(user);
+  const fk_municipio = tf.fk_municipio ?? (!isSuperAdmin(user?.role) ? (user?.fk_municipio ?? null) : null);
+  // Entidade: prioriza parâmetro explícito do body (enviado pelo frontend quando role tem escolha)
+  const bodyEntidade = req.body.fk_entidade ? parseInt(req.body.fk_entidade) : null;
+  const fk_entidade  = bodyEntidade ?? tf.fk_entidade ?? (tf.entidades_ids?.length ? tf.entidades_ids[0] : null);
 
   for (const m of metas) {
     const existing = await db('planejamento_metas')
-      .where({ ano: m.ano, fk_subgrupo: m.fk_subgrupo, fk_municipio })
+      .where({ ano: m.ano, fk_subgrupo: m.fk_subgrupo, fk_municipio, fk_entidade })
       .first();
 
     if (existing) {
@@ -249,6 +261,7 @@ export async function saveMetas(req: Request, res: Response): Promise<void> {
         ano: m.ano,
         fk_subgrupo: m.fk_subgrupo,
         fk_municipio,
+        fk_entidade,
         meta_anual: m.meta_anual,
         percentual_ajuste: m.percentual_ajuste,
         base_calculo: m.base_calculo,
@@ -260,4 +273,148 @@ export async function saveMetas(req: Request, res: Response): Promise<void> {
   }
 
   res.json({ ok: true, saved: metas.length });
+}
+
+// ── Farol de metas por grupo ─────────────────────────────────────────────────
+// Total mês = pago (fact_ordem_pagamento) + a pagar (fact_empenho_liquidado, dt_pagamento IS NULL)
+// Farol mês:   total_mes   vs meta_mensal  — verde < 85%, amarelo 85-100%, vermelho >= 100%
+// Farol média: media_total vs media_meta   — mesma escala
+export async function getFarol(req: Request, res: Response): Promise<void> {
+  const ano  = parseInt(req.query.ano  as string) || new Date().getFullYear();
+  const user = (req as any).user;
+  let tf     = getTenantFilter(user);
+
+  // entidadeId explícito (enviado pelo frontend via TopBar) sobrepõe o tenant filter
+  const entidadeIdParam = req.query.entidadeId ? parseInt(req.query.entidadeId as string) : null;
+  if (entidadeIdParam) {
+    tf = { fk_entidade: entidadeIdParam };
+  }
+
+  // Determina o mês: parâmetro ou último mês com dados
+  let mes = req.query.mes ? parseInt(req.query.mes as string) : null;
+
+  if (!mes) {
+    const ultimoMes = await db('fact_ordem_pagamento as f')
+      .modify((q: any) => {
+        applyTenantFilter(q, tf, 'f.fk_entidade', 'f.fk_municipio');
+        q.whereRaw('YEAR(f.data_pagamento) = ?', [ano]).whereNotNull('f.data_pagamento');
+      })
+      .max(db.raw('MONTH(f.data_pagamento)') as any)
+      .first() as any;
+    mes = ultimoMes ? Number(Object.values(ultimoMes)[0]) || null : null;
+    if (!mes) { res.json({ ano, mes: null, grupos: [] }); return; }
+  }
+
+  const mesFinal = mes!;
+  // periodo_ref do mês selecionado, ex: '2026-01'
+  const periodoRef = `${ano}-${String(mesFinal).padStart(2, '0')}`;
+
+  // ── 1. Metas anuais por grupo (filtradas pela mesma entidade do tenant) ─────
+  const metasQ = db('planejamento_metas as m')
+    .join('dim_subgrupo_despesa as s', 'm.fk_subgrupo', 's.id')
+    .join('dim_grupo_despesa as g', 's.fk_grupo', 'g.id')
+    .where('m.ano', ano)
+    .select('g.id as grupo_id', 'g.nome as grupo_nome', db.raw('SUM(m.meta_anual) as meta_anual'))
+    .groupBy('g.id', 'g.nome');
+
+  if (tf.entidades_ids?.length) {
+    metasQ.whereIn('m.fk_entidade', tf.entidades_ids);
+  } else if (tf.fk_entidade) {
+    metasQ.where('m.fk_entidade', tf.fk_entidade);
+  } else if (tf.fk_municipio) {
+    metasQ.where('m.fk_municipio', tf.fk_municipio);
+  }
+
+  const metasRows: any[] = await metasQ;
+
+  // ── 2. Pago por grupo × mês (Jan..mesFinal) ────────────────────────────────
+  const pagoRows: any[] = await db('fact_ordem_pagamento as f')
+    .join('dim_credor as c', 'f.fk_credor', 'c.id')
+    .join('dim_grupo_despesa as g', 'c.fk_grupo', 'g.id')
+    .modify((q: any) => {
+      applyTenantFilter(q, tf, 'f.fk_entidade', 'f.fk_municipio');
+      q.whereRaw('YEAR(f.data_pagamento) = ?', [ano])
+       .whereNotIn('f.tipo_relatorio', ['DEA', 'RP'])
+       .whereNotNull('f.data_pagamento')
+       .whereRaw('MONTH(f.data_pagamento) <= ?', [mesFinal]);
+    })
+    .select('g.id as grupo_id', db.raw('MONTH(f.data_pagamento) as mes'))
+    .sum('f.valor_bruto as total')
+    .groupByRaw('g.id, MONTH(f.data_pagamento)');
+
+  // ── 3. A pagar por grupo no período selecionado (dt_pagamento IS NULL) ─────
+  const aPagarRows: any[] = await db('fact_empenho_liquidado as f')
+    .leftJoin('dim_credor as c', 'f.fk_credor', 'c.id')
+    .join('dim_grupo_despesa as g', 'c.fk_grupo', 'g.id')
+    .modify((q: any) => {
+      applyTenantFilter(q, tf, 'f.fk_entidade', 'f.fk_municipio');
+      q.where('f.periodo_ref', periodoRef).whereNull('f.dt_pagamento');
+    })
+    .select('g.id as grupo_id')
+    .sum('f.valor as total')
+    .groupBy('g.id');
+
+  // ── 4. Agrega em memória ───────────────────────────────────────────────────
+  // pagoMap[grupo_id] = { mes: valor do mês, acumulado: Jan..mes }
+  const pagoMap: Record<number, { mes: number; acumulado: number }> = {};
+  for (const r of pagoRows) {
+    const gId = Number(r.grupo_id);
+    const m   = Number(r.mes);
+    const v   = Number(r.total);
+    if (!pagoMap[gId]) pagoMap[gId] = { mes: 0, acumulado: 0 };
+    pagoMap[gId].acumulado += v;
+    if (m === mesFinal) pagoMap[gId].mes += v;
+  }
+
+  // aPagarMap[grupo_id] = valor a pagar no período
+  const aPagarMap: Record<number, number> = {};
+  for (const r of aPagarRows) {
+    aPagarMap[Number(r.grupo_id)] = Number(r.total);
+  }
+
+  // ── 5. Monta resultado ─────────────────────────────────────────────────────
+  function calcFarol(pct: number, semMeta: boolean): 'verde' | 'amarelo' | 'vermelho' | 'cinza' {
+    if (semMeta) return 'cinza';
+    if (pct < 85)  return 'verde';
+    if (pct < 100) return 'amarelo';
+    return 'vermelho';
+  }
+
+  const grupos = metasRows.map((g: any) => {
+    const gId        = Number(g.grupo_id);
+    const metaAnual  = Number(g.meta_anual);
+    const metaMensal = metaAnual / 12;           // meta uniforme por mês
+    const mediaMeta  = metaMensal;               // constante
+
+    const pago      = pagoMap[gId]  ?? { mes: 0, acumulado: 0 };
+    const aPagar    = aPagarMap[gId] ?? 0;
+
+    const pagoMes        = pago.mes;
+    const totalMes       = pagoMes + aPagar;          // pago + a pagar no mês
+    const acumuladoTotal = pago.acumulado + aPagar;   // acumulado pago + a pagar do mês
+    const mediaTotal     = mesFinal > 0 ? acumuladoTotal / mesFinal : 0;
+
+    const pctMes   = metaMensal > 0 ? (totalMes   / metaMensal) * 100 : 0;
+    const pctMedia = mediaMeta  > 0 ? (mediaTotal / mediaMeta)  * 100 : 0;
+
+    const semMeta = metaMensal === 0;
+
+    return {
+      grupo_id:     gId,
+      grupo_nome:   g.grupo_nome,
+      meta_mensal:  metaMensal,
+      pago_mes:     pagoMes,
+      a_pagar_mes:  aPagar,
+      total_mes:    totalMes,
+      media_meta:   mediaMeta,
+      media_total:  mediaTotal,
+      pct_mes:      pctMes,
+      pct_media:    pctMedia,
+      farol_mes:    calcFarol(pctMes,   semMeta),
+      farol_media:  calcFarol(pctMedia, semMeta),
+    };
+  }).filter(g => g.meta_mensal > 0 || g.total_mes > 0)
+    .sort((a, b) => b.total_mes - a.total_mes);
+
+  res.json({ ano, mes: mesFinal, periodo_ref: periodoRef, grupos });
 }

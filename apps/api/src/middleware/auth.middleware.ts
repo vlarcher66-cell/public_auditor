@@ -62,11 +62,44 @@ export function requireRole(...roles: string[]) {
  * Retorna o filtro de tenant para uso nas queries Knex.
  * SUPER_ADMIN/ADMIN não têm filtro (veem tudo).
  * GESTOR filtra por município.
- * CONTADOR/AUDITOR/VIEWER filtra por entidade (se tiver) ou município.
+ * CONTADOR/AUDITOR/VIEWER filtra por entidades_ids (múltiplas) ou fk_entidade (legado) ou município.
  */
-export function getTenantFilter(user: JwtPayload): { fk_municipio?: number; fk_entidade?: number } {
+export function getTenantFilter(user: JwtPayload): {
+  fk_municipio?: number;
+  fk_entidade?: number;
+  entidades_ids?: number[];
+} {
   if (isSuperAdmin(user.role)) return {};
+  if (user.role === 'GESTOR') {
+    if (user.fk_municipio) return { fk_municipio: user.fk_municipio };
+    return {};
+  }
+  // CONTADOR / AUDITOR / VIEWER — prioriza lista de entidades
+  const ids = user.entidades_ids ?? [];
+  if (ids.length > 0) return { entidades_ids: ids };
   if (user.fk_entidade) return { fk_entidade: user.fk_entidade };
   if (user.fk_municipio) return { fk_municipio: user.fk_municipio };
   return {};
+}
+
+/**
+ * Aplica o filtro de tenant numa query Knex.
+ * @param q    Query builder
+ * @param tf   Resultado de getTenantFilter()
+ * @param col  Coluna de entidade (padrão: 'fk_entidade')
+ * @param munCol Coluna de município (padrão: 'fk_municipio')
+ */
+export function applyTenantFilter(
+  q: any,
+  tf: ReturnType<typeof getTenantFilter>,
+  col = 'fk_entidade',
+  munCol = 'fk_municipio',
+): void {
+  if (tf.entidades_ids && tf.entidades_ids.length > 0) {
+    q.whereIn(col, tf.entidades_ids);
+  } else if (tf.fk_entidade) {
+    q.where(col, tf.fk_entidade);
+  } else if (tf.fk_municipio) {
+    q.where(munCol, tf.fk_municipio);
+  }
 }

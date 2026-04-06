@@ -26,11 +26,11 @@ interface MunicipioEntidadeContextValue {
 
   // Selecionados
   municipioSelecionado: Municipio | null;
-  entidadeSelecionada: Entidade | null;    // null = "Consolidado (todas)"
+  entidadeSelecionada: Entidade | null;    // null = nenhuma entidade carregada ainda
 
   // Setters (só disponíveis conforme o role)
   setMunicipioSelecionado: (m: Municipio) => void;
-  setEntidadeSelecionada:  (e: Entidade | null) => void;
+  setEntidadeSelecionada:  (e: Entidade) => void;  // sempre requer entidade — sem consolidado
 
   // Permissões
   podeEscolherMunicipio: boolean;
@@ -76,8 +76,8 @@ export function MunicipioEntidadeProvider({ children }: { children: React.ReactN
     try {
       const rows: Entidade[] = await apiRequest(`/entidades/list?municipioId=${munId}`, { token });
       setEntidades(rows);
-      // Reseta entidade selecionada para "Consolidado"
-      setEntidadeSelecionadaSt(null);
+      // Sempre seleciona a primeira entidade — dados nunca são consolidados
+      setEntidadeSelecionadaSt(rows.length > 0 ? rows[0] : null);
     } catch {}
   }, [token]);
 
@@ -98,12 +98,12 @@ export function MunicipioEntidadeProvider({ children }: { children: React.ReactN
           }
 
         } else if (role === 'GESTOR') {
-          // Município fixo do JWT, entidades livres
+          // Município fixo do JWT, entidades livres — auto-seleciona a primeira
           if (jwtMunId) {
             const list: Municipio[] = await apiRequest('/municipios/list', { token });
             const mun = list.find(m => m.id === jwtMunId) ?? null;
             if (mun) setMunicipioSelecionadoSt(mun);
-            await carregarEntidades(jwtMunId);
+            await carregarEntidades(jwtMunId); // já auto-seleciona a primeira entidade
           }
 
         } else {
@@ -120,8 +120,8 @@ export function MunicipioEntidadeProvider({ children }: { children: React.ReactN
             const todas: Entidade[] = await apiRequest(`/entidades/list?municipioId=${jwtMunId}`, { token });
             const permitidas = todas.filter(e => jwtEntIds.includes(e.id));
             setEntidades(permitidas);
-            // Se só tem uma entidade, já seleciona automaticamente
-            if (permitidas.length === 1) {
+            // Sempre seleciona a primeira — dados nunca são consolidados
+            if (permitidas.length > 0) {
               setEntidadeSelecionadaSt(permitidas[0]);
             }
           } else if (jwtEntId) {
@@ -146,7 +146,7 @@ export function MunicipioEntidadeProvider({ children }: { children: React.ReactN
   }, [podeEscolherMunicipio, carregarEntidades]);
 
   // ── Troca de entidade ─────────────────────────────────────────────────────
-  const setEntidadeSelecionada = useCallback((e: Entidade | null) => {
+  const setEntidadeSelecionada = useCallback((e: Entidade) => {
     if (!podeEscolherEntidade) return;
     setEntidadeSelecionadaSt(e);
   }, [podeEscolherEntidade]);

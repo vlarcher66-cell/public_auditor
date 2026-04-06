@@ -65,11 +65,13 @@ function ConfigModal({ filename, token, onConfirm, onCancel }: {
     enabled: !!token,
   });
 
-  const { data: entidades = [], isLoading: loadingEnt } = useQuery<{ id: number; nome: string }[]>({
+  const { data: entidades = [], isLoading: loadingEnt } = useQuery<{ id: number; nome: string; sistema_contabil?: string | null }[]>({
     queryKey: ['entidades-list', municipioId],
     queryFn: () => apiRequest('/entidades', { token, params: { limit: 200, ...(municipioId ? { municipioId } : {}) } }).then((d: any) => d.rows ?? d),
     enabled: !!token,
   });
+
+  const entidadeSelecionada = entidades.find(e => String(e.id) === entidadeId);
 
   const canConfirm = !!municipioId && !!entidadeId && !!periodoRef;
 
@@ -154,6 +156,19 @@ function ConfigModal({ filename, token, onConfirm, onCancel }: {
             </select>
             <p className="text-xs text-gray-400 mt-1">Mês/ano de competência da listagem importada.</p>
           </div>
+
+          {/* Sistema herdado da entidade */}
+          {entidadeSelecionada && (
+            <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-indigo-50 border border-indigo-100">
+              <span className="text-xs text-indigo-500 font-medium">Sistema contábil:</span>
+              <span className="text-xs font-bold text-indigo-700">
+                {entidadeSelecionada.sistema_contabil ?? 'Não definido'}
+              </span>
+              {!entidadeSelecionada.sistema_contabil && (
+                <span className="text-xs text-amber-600 ml-1">— configure em Cadastros → Entidades</span>
+              )}
+            </div>
+          )}
         </div>
 
         <div className="flex justify-end gap-2 px-6 py-4 border-t border-gray-100">

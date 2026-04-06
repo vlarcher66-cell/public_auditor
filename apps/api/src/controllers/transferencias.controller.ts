@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import { db } from '../config/database';
-import { isSuperAdmin } from '../config/roles';
+import { getTenantFilter, applyTenantFilter } from '../middleware/auth.middleware';
 
 const ALLOWED_SORT = new Set([
   'data_transf', 'valor', 'conta_origem_nome', 'conta_destino_nome',
@@ -34,13 +34,9 @@ export async function listTransferencias(req: Request, res: Response): Promise<v
   let countQuery = db('fact_transf_bancaria as f').count('f.id as total');
 
   // RBAC
-  if (user.role === 'GESTOR' && user.fk_municipio) {
-    query      = query.where('f.fk_municipio', user.fk_municipio);
-    countQuery = countQuery.where('f.fk_municipio', user.fk_municipio);
-  } else if (!isSuperAdmin(user.role) && user.fk_entidade) {
-    query      = query.where('f.fk_entidade', user.fk_entidade);
-    countQuery = countQuery.where('f.fk_entidade', user.fk_entidade);
-  }
+  const tf = getTenantFilter(user);
+  applyTenantFilter(query, tf, 'f.fk_entidade', 'f.fk_municipio');
+  applyTenantFilter(countQuery, tf, 'f.fk_entidade', 'f.fk_municipio');
 
   // Filtros opcionais
   if (req.query.entidadeId)    { query = query.where('f.fk_entidade', req.query.entidadeId);  countQuery = countQuery.where('f.fk_entidade', req.query.entidadeId); }
@@ -74,8 +70,7 @@ export async function getTransferenciaDRE(req: Request, res: Response): Promise<
       q.where('f.ano', parseInt(ano));
       if (entidadeId)  q.where('f.fk_entidade', parseInt(entidadeId));
       if (municipioId) q.where('f.fk_municipio', parseInt(municipioId));
-      if (user.role === 'GESTOR' && user.fk_municipio) q.where('f.fk_municipio', user.fk_municipio);
-      else if (!isSuperAdmin(user.role) && user.fk_entidade) q.where('f.fk_entidade', user.fk_entidade);
+      applyTenantFilter(q, getTenantFilter(user), 'f.fk_entidade', 'f.fk_municipio');
     })
     .select(
       'f.tipo_lancamento',
@@ -95,11 +90,7 @@ export async function getTransferenciaSummary(req: Request, res: Response): Prom
 
   let base = db('fact_transf_bancaria as f');
 
-  if (user.role === 'GESTOR' && user.fk_municipio) {
-    base = base.where('f.fk_municipio', user.fk_municipio);
-  } else if (!isSuperAdmin(user.role) && user.fk_entidade) {
-    base = base.where('f.fk_entidade', user.fk_entidade);
-  }
+  applyTenantFilter(base, getTenantFilter(user), 'f.fk_entidade', 'f.fk_municipio');
 
   if (req.query.entidadeId)  base = base.where('f.fk_entidade',  req.query.entidadeId);
   if (req.query.municipioId) base = base.where('f.fk_municipio', req.query.municipioId);

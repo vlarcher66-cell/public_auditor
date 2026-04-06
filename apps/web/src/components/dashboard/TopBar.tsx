@@ -1,7 +1,7 @@
 'use client';
 
 import { useSession } from 'next-auth/react';
-import { Bell, ChevronDown, Building2, MapPin, Layers, Menu } from 'lucide-react';
+import { Bell, ChevronDown, Building2, MapPin, Menu } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
 import { useMunicipioEntidade, Municipio, Entidade } from '@/contexts/MunicipioEntidadeContext';
 import { useSidebar } from '@/contexts/SidebarContext';
@@ -35,7 +35,7 @@ function SeletorDropdown<T extends { id: number; nome: string }>({
 }: {
   valor: T | null;
   opcoes: T[];
-  onChange: (v: T | null) => void;
+  onChange: (v: T) => void;
   placeholder: string;
   icon: React.ReactNode;
   extraBadge?: (item: T) => React.ReactNode;
@@ -76,23 +76,6 @@ function SeletorDropdown<T extends { id: number; nome: string }>({
           background: '#fff', borderRadius: '12px', border: '1px solid #e2e8f0',
           boxShadow: '0 8px 30px rgba(0,0,0,0.12)', minWidth: '220px', overflow: 'hidden',
         }}>
-          {/* Opção consolidado (só para entidade) */}
-          {placeholder === 'Consolidado' && (
-            <button
-              onClick={() => { onChange(null); setOpen(false); }}
-              style={{
-                width: '100%', textAlign: 'left', padding: '10px 14px',
-                display: 'flex', alignItems: 'center', gap: '8px',
-                background: valor === null ? '#f0f4ff' : 'transparent',
-                border: 'none', cursor: 'pointer', fontSize: '13px', fontWeight: valor === null ? 700 : 400,
-                color: valor === null ? '#0F2A4E' : '#374151',
-              }}
-            >
-              <Layers size={14} style={{ color: '#C9A84C' }} />
-              Consolidado (todas)
-              {valor === null && <span style={{ marginLeft: 'auto', color: '#C9A84C', fontSize: '10px' }}>✓</span>}
-            </button>
-          )}
 
           {opcoes.map(op => (
             <button
@@ -182,7 +165,7 @@ export default function TopBar({ title, subtitle }: TopBarProps) {
             <SeletorDropdown<Municipio>
               valor={municipioSelecionado}
               opcoes={municipios}
-              onChange={(v) => { if (v) setMunicipioSelecionado(v); }}
+              onChange={setMunicipioSelecionado}
               placeholder="Selecione o município"
               icon={<MapPin size={14} />}
             />
@@ -207,7 +190,7 @@ export default function TopBar({ title, subtitle }: TopBarProps) {
               valor={entidadeSelecionada}
               opcoes={entidades}
               onChange={setEntidadeSelecionada}
-              placeholder="Consolidado"
+              placeholder="Selecione a entidade"
               icon={<Building2 size={14} />}
               extraBadge={(e) => <EntidadeTipoBadge tipo={e.tipo} />}
             />
@@ -260,7 +243,7 @@ export default function TopBar({ title, subtitle }: TopBarProps) {
               <SeletorDropdown<Municipio>
                 valor={municipioSelecionado}
                 opcoes={municipios}
-                onChange={(v) => { if (v) setMunicipioSelecionado(v); }}
+                onChange={setMunicipioSelecionado}
                 placeholder="Selecione o município"
                 icon={<MapPin size={14} />}
               />
@@ -282,7 +265,7 @@ export default function TopBar({ title, subtitle }: TopBarProps) {
                 valor={entidadeSelecionada}
                 opcoes={entidades}
                 onChange={setEntidadeSelecionada}
-                placeholder="Consolidado"
+                placeholder="Selecione a entidade"
                 icon={<Building2 size={14} />}
                 extraBadge={(e) => <EntidadeTipoBadge tipo={e.tipo} />}
               />

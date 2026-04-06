@@ -78,7 +78,11 @@ export async function loadToMySQL(
         historico: r.historico || null,
         historico_hash: hashHistorico(r.historico),
         precisa_reclassificacao: false,
+        origem: 'PAGO',
       });
+    } else if (!exists.origem || exists.origem === 'A_PAGAR') {
+      // Credor sem origem definida ou que veio só de empenhos — marca como PAGO
+      await db('dim_credor').where('id', exists.id).update({ origem: 'PAGO' });
     }
   }
 

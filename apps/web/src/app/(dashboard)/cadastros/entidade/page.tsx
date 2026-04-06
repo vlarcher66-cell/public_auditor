@@ -16,7 +16,10 @@ interface Entidade {
   ativo: boolean;
   fk_municipio: number | null;
   municipio_nome?: string | null;
+  sistema_contabil?: string | null;
 }
+
+const SISTEMAS = ['FATOR', 'SIAFIC', 'BETHA', 'OUTRO'];
 
 const TIPOS = ['FUNDO', 'PREFEITURA', 'AUTARQUIA', 'CÂMARA', 'OUTROS'];
 
@@ -44,6 +47,7 @@ function EntidadeModal({ entidade, token, municipios, onClose, onSaved }: {
   const [tipo, setTipo] = useState(entidade?.tipo ?? 'FUNDO');
   const [ativo, setAtivo] = useState(entidade?.ativo ?? true);
   const [fkMunicipio, setFkMunicipio] = useState<number | null>(entidade?.fk_municipio ?? null);
+  const [sistemaContabil, setSistemaContabil] = useState(entidade?.sistema_contabil ?? '');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
@@ -56,7 +60,7 @@ function EntidadeModal({ entidade, token, municipios, onClose, onSaved }: {
       const res = await fetch(url, {
         method: entidade ? 'PUT' : 'POST',
         headers: authHeader(token),
-        body: JSON.stringify({ nome: nome.trim(), cnpj: cnpj.trim() || null, tipo, ativo, fk_municipio: fkMunicipio }),
+        body: JSON.stringify({ nome: nome.trim(), cnpj: cnpj.trim() || null, tipo, ativo, fk_municipio: fkMunicipio, sistema_contabil: sistemaContabil || null }),
       });
       const data = await res.json();
       if (!res.ok) { setError(data.error || 'Erro ao salvar'); setSaving(false); return; }
@@ -104,6 +108,15 @@ function EntidadeModal({ entidade, token, municipios, onClose, onSaved }: {
             <select className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
               value={tipo} onChange={e => setTipo(e.target.value)}>
               {TIPOS.map(t => <option key={t} value={t}>{t}</option>)}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-xs font-medium text-gray-500 mb-1">Sistema Contábil</label>
+            <select className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              value={sistemaContabil} onChange={e => setSistemaContabil(e.target.value)}>
+              <option value="">— Não definido —</option>
+              {SISTEMAS.map(s => <option key={s} value={s}>{s}</option>)}
             </select>
           </div>
 
@@ -206,6 +219,7 @@ export default function EntidadePage() {
               <th className="px-4 py-3 text-left">Nome</th>
               <th className="px-4 py-3 text-left">CNPJ</th>
               <th className="px-4 py-3 text-left">Tipo</th>
+              <th className="px-4 py-3 text-left">Sistema</th>
               <th className="px-4 py-3 text-center">Status</th>
               <th className="px-4 py-3 text-center w-24">Ações</th>
             </tr>
@@ -234,6 +248,11 @@ export default function EntidadePage() {
                   <span className={`inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium ${tipoColor[e.tipo] || tipoColor.OUTROS}`}>
                     {e.tipo}
                   </span>
+                </td>
+                <td className="px-4 py-3">
+                  {e.sistema_contabil
+                    ? <span className="inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-700">{e.sistema_contabil}</span>
+                    : <span className="text-gray-300 text-xs">—</span>}
                 </td>
                 <td className="px-4 py-3 text-center">
                   {e.ativo

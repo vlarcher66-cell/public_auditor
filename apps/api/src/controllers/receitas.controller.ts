@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import { db } from '../config/database';
-import { isSuperAdmin } from '../config/roles';
+import { getTenantFilter, applyTenantFilter } from '../middleware/auth.middleware';
 
 // ─── Listagem de receitas ─────────────────────────────────────────────────────
 
@@ -43,13 +43,7 @@ export async function listReceitas(req: Request, res: Response): Promise<void> {
           q.where((w) => w.where('r.fornecedor_nome', 'like', like).orWhere('r.descricao', 'like', like));
         }
         // Filtro por role do usuário
-        const user = (req as any).user;
-        if (!isSuperAdmin(user?.role) && user?.fk_municipio) {
-          q.where('r.fk_municipio', user.fk_municipio);
-        }
-        if (!isSuperAdmin(user?.role) && user?.role !== 'GESTOR' && user?.fk_entidade) {
-          q.where('r.fk_entidade', user.fk_entidade);
-        }
+        applyTenantFilter(q, getTenantFilter((req as any).user), 'r.fk_entidade', 'r.fk_municipio');
       });
 
   const [rows, countRows] = await Promise.all([
@@ -83,11 +77,10 @@ export async function getReceitaSummary(req: Request, res: Response): Promise<vo
       if (municipioId) q.where('r.fk_municipio', parseInt(municipioId));
       if (ano)         q.where('r.ano', parseInt(ano));
       if (mes)         q.where('r.mes', parseInt(mes));
-      if (!isSuperAdmin(user?.role) && user?.fk_municipio) q.where('r.fk_municipio', user.fk_municipio);
-      if (!isSuperAdmin(user?.role) && user?.role !== 'GESTOR' && user?.fk_entidade) q.where('r.fk_entidade', user.fk_entidade);
+      applyTenantFilter(q, getTenantFilter(user), 'r.fk_entidade', 'r.fk_municipio');
     });
 
-  const [totais, porFonte, porTipo] = await Promise.all([
+  const [totais, porFonte, porTipo, porMes] = await Promise.all([
     base().select(
       db.raw('COUNT(*) as total_registros'),
       db.raw('COALESCE(SUM(valor), 0) as valor_total'),
@@ -105,9 +98,14 @@ export async function getReceitaSummary(req: Request, res: Response): Promise<vo
       .count('* as registros')
       .sum('r.valor as total')
       .groupBy('r.tipo_receita'),
+    base()
+      .select('r.mes')
+      .sum('r.valor as total')
+      .groupBy('r.mes')
+      .orderBy('r.mes'),
   ]);
 
-  res.json({ totais, porFonte, porTipo });
+  res.json({ totais, porFonte, porTipo, porMes });
 }
 
 // ─── DRE Mensal (matriz Jan→Dez) ─────────────────────────────────────────────
@@ -121,8 +119,7 @@ export async function getReceitaDRE(req: Request, res: Response): Promise<void> 
       q.where('r.ano', parseInt(ano));
       if (entidadeId)  q.where('r.fk_entidade', parseInt(entidadeId));
       if (municipioId) q.where('r.fk_municipio', parseInt(municipioId));
-      if (!isSuperAdmin(user?.role) && user?.fk_municipio) q.where('r.fk_municipio', user.fk_municipio);
-      if (!isSuperAdmin(user?.role) && user?.role !== 'GESTOR' && user?.fk_entidade) q.where('r.fk_entidade', user.fk_entidade);
+      applyTenantFilter(q, getTenantFilter(user), 'r.fk_entidade', 'r.fk_municipio');
     })
     .select(
       'r.codigo_rubrica',

@@ -2,7 +2,7 @@ import { Request, Response } from 'express';
 import * as XLSX from 'xlsx';
 import { db } from '../config/database';
 import { isSuperAdmin } from '../config/roles';
-import { getTenantFilter } from '../middleware/auth.middleware';
+import { getTenantFilter, applyTenantFilter } from '../middleware/auth.middleware';
 
 export async function listPagamentos(req: Request, res: Response): Promise<void> {
   const {
@@ -45,8 +45,7 @@ export async function listPagamentos(req: Request, res: Response): Promise<void>
       .modify((q) => {
         // Tenant isolation
         const tf = getTenantFilter(req.user!);
-        if (tf.fk_municipio) q.where('f.fk_municipio', tf.fk_municipio);
-        else if (tf.fk_entidade) q.where('f.fk_entidade', tf.fk_entidade);
+        applyTenantFilter(q, tf, 'f.fk_entidade', 'f.fk_municipio');
 
         if (dataInicio) q.where('f.data_pagamento', '>=', dataInicio);
         if (dataFim) q.where('f.data_pagamento', '<=', dataFim);
@@ -350,8 +349,7 @@ export async function getPorSetor(req: Request, res: Response): Promise<void> {
     .join('dim_setor as st', 'f.fk_setor_pag', 'st.id')
     .modify((q: any) => {
       q.whereRaw('YEAR(f.data_pagamento) = ?', [anoFiltro]);
-      if (tf.fk_municipio) q.where('f.fk_municipio', tf.fk_municipio);
-      else if (tf.fk_entidade) q.where('f.fk_entidade', tf.fk_entidade);
+      applyTenantFilter(q, tf, 'f.fk_entidade', 'f.fk_municipio');
       if (entidadeId) q.where('f.fk_entidade', entidadeId);
     })
     .select(
@@ -376,18 +374,18 @@ export async function getPorSetor(req: Request, res: Response): Promise<void> {
 }
 
 export async function getSummary(req: Request, res: Response): Promise<void> {
-  const { dataInicio, dataFim, entidadeId } = req.query as Record<string, string>;
+  const { dataInicio, dataFim, entidadeId, ano } = req.query as Record<string, string>;
   const tf = getTenantFilter(req.user!);
 
   const baseFilter = (q: any) => {
-    if (tf.fk_municipio) q.where('f.fk_municipio', tf.fk_municipio);
-    else if (tf.fk_entidade) q.where('f.fk_entidade', tf.fk_entidade);
+    applyTenantFilter(q, tf, 'f.fk_entidade', 'f.fk_municipio');
+    if (ano) q.whereRaw('YEAR(f.data_pagamento) = ?', [parseInt(ano)]);
     if (dataInicio) q.where('f.data_pagamento', '>=', dataInicio);
     if (dataFim) q.where('f.data_pagamento', '<=', dataFim);
     if (entidadeId) q.where('f.fk_entidade', entidadeId);
   };
 
-  const [totais, topCredores, byElemento, byFonte] = await Promise.all([
+  const [totais, topCredores, byElemento, byFonte, porMes] = await Promise.all([
     db('fact_ordem_pagamento as f')
       .modify(baseFilter)
       .select(
@@ -403,8 +401,7 @@ export async function getSummary(req: Request, res: Response): Promise<void> {
       .modify(baseFilter)
       .select('c.nome as nome', db.raw('SUM(f.valor_liquido) as total'))
       .groupBy('c.id', 'c.nome')
-      .orderBy('total', 'desc')
-      .limit(10),
+      .orderBy('total', 'desc'),
 
     db('fact_ordem_pagamento as f')
       .join('dim_elemento_despesa as el', 'f.fk_elemento_despesa', 'el.id')
@@ -421,6 +418,13 @@ export async function getSummary(req: Request, res: Response): Promise<void> {
       .groupBy('fr.id', 'fr.codigo')
       .orderBy('total', 'desc')
       .limit(10),
+
+    db('fact_ordem_pagamento as f')
+      .modify(baseFilter)
+      .select(db.raw('MONTH(f.data_pagamento) as mes'))
+      .sum('f.valor_liquido as total')
+      .groupByRaw('MONTH(f.data_pagamento)')
+      .orderByRaw('MONTH(f.data_pagamento)'),
   ]);
 
   res.json({
@@ -431,6 +435,7 @@ export async function getSummary(req: Request, res: Response): Promise<void> {
     topCredores,
     byElementoDespesa: byElemento,
     byFonteRecurso: byFonte,
+    porMes,
   });
 }
 
@@ -444,12 +449,11 @@ function applyFiltrosSintetica(q: any, p: {
   fonteRecurso?: string;
   grupoId?: string;
   subgrupoId?: string;
-  tenantFilter?: { fk_municipio?: number; fk_entidade?: number };
+  tenantFilter?: ReturnType<typeof getTenantFilter>;
 }) {
   q.whereRaw('YEAR(f.data_pagamento) = ?', [p.anoFiltro]);
   // Tenant isolation
-  if (p.tenantFilter?.fk_municipio) q.where('f.fk_municipio', p.tenantFilter.fk_municipio);
-  else if (p.tenantFilter?.fk_entidade) q.where('f.fk_entidade', p.tenantFilter.fk_entidade);
+  if (p.tenantFilter) applyTenantFilter(q, p.tenantFilter, 'f.fk_entidade', 'f.fk_municipio');
   if (p.entidadeId)   q.where('f.fk_entidade', p.entidadeId);
   if (p.secretariaId) q.where('st.fk_secretaria', p.secretariaId);
   if (p.setorId)      q.where('f.fk_setor_pag', p.setorId);
