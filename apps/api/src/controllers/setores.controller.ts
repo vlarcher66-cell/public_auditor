@@ -16,8 +16,8 @@ export async function listSetores(req: Request, res: Response): Promise<void> {
 
     if (search) {
       query.where((q) =>
-        q.where('s.descricao', 'like', `%${search}%`)
-          .orWhere('b.descricao', 'like', `%${search}%`),
+        q.where('s.descricao', 'ilike', `%${search}%`)
+          .orWhere('b.descricao', 'ilike', `%${search}%`),
       );
     }
 

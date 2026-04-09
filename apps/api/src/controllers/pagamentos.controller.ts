@@ -53,10 +53,10 @@ export async function listPagamentos(req: Request, res: Response): Promise<void>
         if (dataLiqFim) q.where('f.data_liquidacao', '<=', dataLiqFim);
         if (credorId) q.where('f.fk_credor', credorId);
         if (credorSearch) q.where((w) => w
-          .where('c.nome', 'like', `%${credorSearch}%`)
-          .orWhere('c.cnpj_cpf', 'like', `%${credorSearch}%`)
-          .orWhere('f.credor_nome', 'like', `%${credorSearch}%`)
-          .orWhere('f.credor_cnpj_cpf', 'like', `%${credorSearch}%`));
+          .where('c.nome', 'ilike', `%${credorSearch}%`)
+          .orWhere('c.cnpj_cpf', 'ilike', `%${credorSearch}%`)
+          .orWhere('f.credor_nome', 'ilike', `%${credorSearch}%`)
+          .orWhere('f.credor_cnpj_cpf', 'ilike', `%${credorSearch}%`));
         if (entidadeId) q.where('f.fk_entidade', entidadeId);
         if (elementoDespesa) q.where('el.codigo', 'like', `%${elementoDespesa}%`);
         if (fonteRecurso) q.where('fr.codigo', fonteRecurso);
@@ -981,8 +981,8 @@ export async function getCardStats(req: Request, res: Response): Promise<void> {
       if (grupoId)    q.where(db.raw('COALESCE(f.fk_grupo_pag, c.fk_grupo)') as any, grupoId);
       if (subgrupoId) q.where(db.raw('COALESCE(f.fk_subgrupo_pag, c.fk_subgrupo)') as any, subgrupoId);
       if (credorSearch) q.where((w: any) => w
-        .where('c.nome', 'like', `%${credorSearch}%`)
-        .orWhere('f.credor_nome', 'like', `%${credorSearch}%`));
+        .where('c.nome', 'ilike', `%${credorSearch}%`)
+        .orWhere('f.credor_nome', 'ilike', `%${credorSearch}%`));
     })
     .select(
       db.raw('COUNT(*) as total_processos'),

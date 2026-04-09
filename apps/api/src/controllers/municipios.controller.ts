@@ -10,7 +10,7 @@ export async function listMunicipios(req: Request, res: Response): Promise<void>
     const offset = (pg - 1) * lim;
 
     const query = db('dim_municipio');
-    if (search) query.where('nome', 'like', `%${search}%`);
+    if (search) query.where('nome', 'ilike', `%${search}%`);
 
     const [rows, [{ total }]] = await Promise.all([
       query.clone().select('*').orderBy('nome').limit(lim).offset(offset),

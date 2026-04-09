@@ -49,8 +49,8 @@ export async function listTransferencias(req: Request, res: Response): Promise<v
   if (req.query.dataFim)       { query = query.where('f.data_transf', '<=', req.query.dataFim);    countQuery = countQuery.where('f.data_transf', '<=', req.query.dataFim); }
   if (req.query.historico) {
     const term = `%${req.query.historico}%`;
-    query      = query.where('f.historico', 'like', term);
-    countQuery = countQuery.where('f.historico', 'like', term);
+    query      = query.where('f.historico', 'ilike', term);
+    countQuery = countQuery.where('f.historico', 'ilike', term);
   }
   if (req.query.valorMin) { query = query.where('f.valor', '>=', req.query.valorMin); countQuery = countQuery.where('f.valor', '>=', req.query.valorMin); }
   if (req.query.valorMax) { query = query.where('f.valor', '<=', req.query.valorMax); countQuery = countQuery.where('f.valor', '<=', req.query.valorMax); }

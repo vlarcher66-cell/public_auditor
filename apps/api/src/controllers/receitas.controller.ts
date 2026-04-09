@@ -40,7 +40,7 @@ export async function listReceitas(req: Request, res: Response): Promise<void> {
         if (valorMax)    q.where('r.valor', '<=', parseFloat(valorMax));
         if (fornecedor) {
           const like = `%${fornecedor}%`;
-          q.where((w) => w.where('r.fornecedor_nome', 'like', like).orWhere('r.descricao', 'like', like));
+          q.where((w) => w.where('r.fornecedor_nome', 'ilike', like).orWhere('r.descricao', 'ilike', like));
         }
         // Filtro por role do usuário
         applyTenantFilter(q, getTenantFilter((req as any).user), 'r.fk_entidade', 'r.fk_municipio');

@@ -10,7 +10,7 @@ export async function listBlocos(req: Request, res: Response): Promise<void> {
     const offset = (pg - 1) * lim;
 
     const query = db('dim_bloco').select('id', 'descricao');
-    if (search) query.where('descricao', 'like', `%${search}%`);
+    if (search) query.where('descricao', 'ilike', `%${search}%`);
 
     const [rows, [{ total }]] = await Promise.all([
       query.orderBy('id', 'asc').limit(lim).offset(offset),

@@ -105,7 +105,7 @@ export async function listCredores(req: Request, res: Response): Promise<void> {
       .leftJoin('dim_subgrupo_despesa as s', 'c.fk_subgrupo', 's.id')
       .modify((q) => {
         if (tf.fk_municipio) q.where('c.fk_municipio', tf.fk_municipio);
-        if (search) q.where((w) => w.where('c.nome', 'like', `%${search}%`).orWhere('c.cnpj_cpf', 'like', `%${search}%`));
+        if (search) q.where((w) => w.where('c.nome', 'ilike', `%${search}%`).orWhere('c.cnpj_cpf', 'ilike', `%${search}%`));
         if (grupoId) q.where('c.fk_grupo', grupoId);
         if (semGrupo === '1') q.whereNull('c.fk_grupo');
         if (semSubgrupo === '1') q.whereNotNull('c.fk_grupo').whereNull('c.fk_subgrupo');

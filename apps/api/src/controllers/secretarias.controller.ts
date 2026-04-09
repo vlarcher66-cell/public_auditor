@@ -13,7 +13,7 @@ export async function listSecretarias(req: Request, res: Response): Promise<void
       .leftJoin('dim_entidade as e', 's.fk_entidade', 'e.id')
       .select('s.id', 's.nome', 's.sigla', 's.fk_entidade', 's.ativo', 's.criado_em', 'e.nome as entidade_nome');
 
-    if (search) query.where('s.nome', 'like', `%${search}%`);
+    if (search) query.where('s.nome', 'ilike', `%${search}%`);
     if (entidadeId) query.where('s.fk_entidade', entidadeId);
 
     const [rows, [{ total }]] = await Promise.all([
