@@ -405,15 +405,17 @@ export default function DashboardGeralPage() {
                     <thead>
                       <tr className="border-b-2 border-gray-100">
                         <th className="text-left py-2 pr-3 font-semibold text-gray-400 uppercase tracking-wider text-[10px]">Grupo</th>
-                        <th className="text-right py-2 px-2 font-semibold text-gray-400 uppercase tracking-wider text-[10px]">Meta Mês</th>
-                        <th className="text-right py-2 px-2 font-semibold text-gray-400 uppercase tracking-wider text-[10px]">Pago</th>
-                        <th className="text-right py-2 px-2 font-semibold text-gray-400 uppercase tracking-wider text-[10px]">A Pagar</th>
-                        <th className="text-right py-2 px-2 font-semibold text-[#0F2A4E] uppercase tracking-wider text-[10px]">Total Mês</th>
-                        <th className="text-right py-2 px-2 font-semibold text-gray-400 uppercase tracking-wider text-[10px]">% Mês</th>
-                        <th className="text-center py-2 px-2 font-semibold text-gray-400 uppercase tracking-wider text-[10px]">Farol</th>
+                        {/* Desktop only */}
+                        <th className="hidden sm:table-cell text-right py-2 px-2 font-semibold text-gray-400 uppercase tracking-wider text-[10px]">Meta Mês</th>
+                        <th className="hidden sm:table-cell text-right py-2 px-2 font-semibold text-gray-400 uppercase tracking-wider text-[10px]">Pago</th>
+                        <th className="hidden sm:table-cell text-right py-2 px-2 font-semibold text-gray-400 uppercase tracking-wider text-[10px]">A Pagar</th>
+                        <th className="hidden sm:table-cell text-right py-2 px-2 font-semibold text-[#0F2A4E] uppercase tracking-wider text-[10px]">Total Mês</th>
+                        <th className="hidden sm:table-cell text-right py-2 px-2 font-semibold text-gray-400 uppercase tracking-wider text-[10px]">% Mês</th>
+                        <th className="hidden sm:table-cell text-center py-2 px-2 font-semibold text-gray-400 uppercase tracking-wider text-[10px]">Farol Mês</th>
+                        {/* Mobile + Desktop */}
                         <th className="text-right py-2 px-2 font-semibold text-gray-400 uppercase tracking-wider text-[10px]">Méd. Meta</th>
                         <th className="text-right py-2 px-2 font-semibold text-gray-400 uppercase tracking-wider text-[10px]">Méd. Total</th>
-                        <th className="text-right py-2 px-2 font-semibold text-gray-400 uppercase tracking-wider text-[10px]">% Acum.</th>
+                        <th className="hidden sm:table-cell text-right py-2 px-2 font-semibold text-gray-400 uppercase tracking-wider text-[10px]">% Acum.</th>
                         <th className="text-center py-2 pl-2 font-semibold text-gray-400 uppercase tracking-wider text-[10px]">Farol</th>
                       </tr>
                     </thead>
@@ -428,35 +430,37 @@ export default function DashboardGeralPage() {
                         const cMedia = cor(g.farol_media);
                         return (
                           <tr key={g.grupo_id} className="hover:bg-gray-50/50 transition-colors">
-                            <td className="py-2.5 pr-3 font-medium text-[#0F2A4E] max-w-[140px] truncate" title={g.grupo_nome}>{g.grupo_nome}</td>
-                            <td className="py-2.5 px-2 text-right text-gray-500 whitespace-nowrap"
+                            <td className="py-2.5 pr-3 font-medium text-[#0F2A4E] max-w-[120px] truncate" title={g.grupo_nome}>{g.grupo_nome}</td>
+                            {/* Desktop only */}
+                            <td className="hidden sm:table-cell py-2.5 px-2 text-right text-gray-500 whitespace-nowrap"
                               title={`Meta mensal: R$ ${fmt(g.meta_mensal)}`}>
                               R$ {fmt(g.meta_mensal)}
                             </td>
-                            <td className="py-2.5 px-2 text-right text-gray-600 whitespace-nowrap"
+                            <td className="hidden sm:table-cell py-2.5 px-2 text-right text-gray-600 whitespace-nowrap"
                               title={`Pago no mês: R$ ${fmt(g.pago_mes)}`}>
                               R$ {fmt(g.pago_mes)}
                             </td>
-                            <td className="py-2.5 px-2 text-right text-amber-600 whitespace-nowrap"
+                            <td className="hidden sm:table-cell py-2.5 px-2 text-right text-amber-600 whitespace-nowrap"
                               title={`Empenhos liquidados a pagar no período: R$ ${fmt(g.a_pagar_mes)}`}>
                               R$ {fmt(g.a_pagar_mes)}
                             </td>
-                            <td className="py-2.5 px-2 text-right font-bold text-[#0F2A4E] whitespace-nowrap"
+                            <td className="hidden sm:table-cell py-2.5 px-2 text-right font-bold text-[#0F2A4E] whitespace-nowrap"
                               title={`Total comprometido (pago + a pagar): R$ ${fmt(g.total_mes)}`}>
                               R$ {fmt(g.total_mes)}
                             </td>
-                            <td className="py-2.5 px-2 text-right whitespace-nowrap font-semibold"
+                            <td className="hidden sm:table-cell py-2.5 px-2 text-right whitespace-nowrap font-semibold"
                               title={`Execução do mês: ${g.pct_mes.toFixed(2)}%`}
                               style={{ color: cMes.text }}>
                               {g.pct_mes.toFixed(2)}%
                             </td>
-                            <td className="py-2.5 px-2 text-center">
+                            <td className="hidden sm:table-cell py-2.5 px-2 text-center">
                               <span
                                 title={`Farol mês: ${g.pct_mes.toFixed(2)}% da meta mensal\nTotal: R$ ${fmt(g.total_mes)} / Meta: R$ ${fmt(g.meta_mensal)}`}
                                 style={{ background: cMes.bg, color: cMes.text }}
                                 className="inline-flex items-center justify-center w-6 h-6 rounded-full text-sm cursor-help"
                               >●</span>
                             </td>
+                            {/* Mobile + Desktop */}
                             <td className="py-2.5 px-2 text-right text-gray-500 whitespace-nowrap"
                               title={`Média mensal da meta: R$ ${fmt(g.media_meta)}`}>
                               R$ {fmt(g.media_meta)}
@@ -465,7 +469,7 @@ export default function DashboardGeralPage() {
                               title={`Média mensal realizada (total Jan→mês ÷ nº meses): R$ ${fmt(g.media_total)}`}>
                               R$ {fmt(g.media_total)}
                             </td>
-                            <td className="py-2.5 px-2 text-right whitespace-nowrap font-semibold"
+                            <td className="hidden sm:table-cell py-2.5 px-2 text-right whitespace-nowrap font-semibold"
                               title={`Execução média acumulada: ${g.pct_media.toFixed(2)}%`}
                               style={{ color: cMedia.text }}>
                               {g.pct_media.toFixed(2)}%
@@ -500,34 +504,36 @@ export default function DashboardGeralPage() {
                         <tfoot>
                           <tr style={{ borderTop: '2px solid #e2e8f0', background: '#f8fafc' }}>
                             <td className="py-2.5 pr-3 font-bold text-[#0F2A4E] text-[12px]">TOTAL</td>
-                            <td className="py-2.5 px-2 text-right font-bold text-gray-700 whitespace-nowrap text-[12px]"
+                            {/* Desktop only */}
+                            <td className="hidden sm:table-cell py-2.5 px-2 text-right font-bold text-gray-700 whitespace-nowrap text-[12px]"
                               title={`Meta mensal total: R$ ${fmt(tot_meta)}`}>
                               R$ {fmt(tot_meta)}
                             </td>
-                            <td className="py-2.5 px-2 text-right font-bold text-gray-700 whitespace-nowrap text-[12px]"
+                            <td className="hidden sm:table-cell py-2.5 px-2 text-right font-bold text-gray-700 whitespace-nowrap text-[12px]"
                               title={`Pago total no mês: R$ ${fmt(tot_pago)}`}>
                               R$ {fmt(tot_pago)}
                             </td>
-                            <td className="py-2.5 px-2 text-right font-bold text-amber-600 whitespace-nowrap text-[12px]"
+                            <td className="hidden sm:table-cell py-2.5 px-2 text-right font-bold text-amber-600 whitespace-nowrap text-[12px]"
                               title={`A pagar total: R$ ${fmt(tot_apagar)}`}>
                               R$ {fmt(tot_apagar)}
                             </td>
-                            <td className="py-2.5 px-2 text-right font-bold text-[#0F2A4E] whitespace-nowrap text-[12px]"
+                            <td className="hidden sm:table-cell py-2.5 px-2 text-right font-bold text-[#0F2A4E] whitespace-nowrap text-[12px]"
                               title={`Total comprometido: R$ ${fmt(tot_total)}`}>
                               R$ {fmt(tot_total)}
                             </td>
-                            <td className="py-2.5 px-2 text-right font-bold whitespace-nowrap text-[12px]"
+                            <td className="hidden sm:table-cell py-2.5 px-2 text-right font-bold whitespace-nowrap text-[12px]"
                               title={`Execução total do mês: ${pct_mes.toFixed(2)}%`}
                               style={{ color: cM.text }}>
                               {pct_mes.toFixed(2)}%
                             </td>
-                            <td className="py-2.5 px-2 text-center">
+                            <td className="hidden sm:table-cell py-2.5 px-2 text-center">
                               <span
                                 title={`Farol mês total: ${pct_mes.toFixed(2)}%`}
                                 style={{ background: cM.bg, color: cM.text }}
                                 className="inline-flex items-center justify-center w-6 h-6 rounded-full text-sm cursor-help"
                               >●</span>
                             </td>
+                            {/* Mobile + Desktop */}
                             <td className="py-2.5 px-2 text-right font-bold text-gray-700 whitespace-nowrap text-[12px]"
                               title={`Média meta total: R$ ${fmt(tot_mmeta)}`}>
                               R$ {fmt(tot_mmeta)}
@@ -536,7 +542,7 @@ export default function DashboardGeralPage() {
                               title={`Média realizada total: R$ ${fmt(tot_mtotal)}`}>
                               R$ {fmt(tot_mtotal)}
                             </td>
-                            <td className="py-2.5 px-2 text-right font-bold whitespace-nowrap text-[12px]"
+                            <td className="hidden sm:table-cell py-2.5 px-2 text-right font-bold whitespace-nowrap text-[12px]"
                               title={`Execução média total: ${pct_media.toFixed(2)}%`}
                               style={{ color: cA.text }}>
                               {pct_media.toFixed(2)}%

@@ -1443,20 +1443,30 @@ function TabDespesaSintetica({ token, entidadeId, municipioId }: { token: string
             <div style={{ height: '220px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8', gap: '8px' }}><Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} /> Carregando...</div>
           ) : pieData.length === 0 ? (
             <div style={{ height: '220px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8', fontSize: '12px' }}>Sem dados classificados</div>
-          ) : (
-            <ResponsiveContainer width="100%" height={220}>
-              <PieChart>
-                <Pie data={pieData} dataKey="value" nameKey="name" cx="40%" cy="50%" outerRadius={90} paddingAngle={1}
-                  label={({ percent }) => `${(percent * 100).toFixed(1)}%`}
-                  labelLine={{ stroke: '#94a3b8', strokeWidth: 1 }}>
-                  {pieData.map((entry, i) => <Cell key={i} fill={entry.color} />)}
-                </Pie>
-                <Tooltip formatter={(v: number) => formatCurrency(v)} contentStyle={{ fontSize: '12px', borderRadius: '8px', border: '1px solid #e2e8f0' }} />
-                <Legend layout="vertical" align="right" verticalAlign="middle" iconType="square" iconSize={8}
-                  formatter={(value) => <span style={{ fontSize: '10px', color: '#475569' }}>{value.length > 22 ? value.slice(0, 22) + '…' : value}</span>} />
-              </PieChart>
-            </ResponsiveContainer>
-          )}
+          ) : (() => {
+            const totalPieGrupo = pieData.reduce((a, d) => a + d.value, 0);
+            return (
+              <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
+                <div style={{ flex: '0 0 auto' }}>
+                  <PieChart width={170} height={170}>
+                    <Pie data={pieData} cx={80} cy={80} innerRadius={50} outerRadius={80} dataKey="value" strokeWidth={2} paddingAngle={2}>
+                      {pieData.map((entry, i) => <Cell key={i} fill={entry.color} />)}
+                    </Pie>
+                    <Tooltip formatter={(v: number) => [formatCurrency(v), '']} contentStyle={{ fontSize: '11px', borderRadius: '8px' }} />
+                  </PieChart>
+                </div>
+                <div style={{ flex: 1, maxHeight: '180px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  {pieData.map((d, i) => (
+                    <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <span style={{ width: '10px', height: '10px', borderRadius: '2px', background: d.color, flexShrink: 0 }} />
+                      <span style={{ fontSize: '11px', color: '#475569', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={d.name}>{d.name}</span>
+                      <span style={{ fontSize: '10px', color: '#94a3b8', whiteSpace: 'nowrap' }}>{totalPieGrupo > 0 ? ((d.value / totalPieGrupo) * 100).toFixed(1) : 0}%</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })()}
           </div>
         </div>
       </div>
@@ -2406,20 +2416,30 @@ function TabDespesaDiarias({ token, entidadeId, municipioId }: { token: string |
             <div style={{ height: '220px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8', gap: '8px' }}><Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} /> Carregando...</div>
           ) : pieData.length === 0 ? (
             <div style={{ height: '220px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8', fontSize: '12px' }}>Sem dados</div>
-          ) : (
-            <ResponsiveContainer width="100%" height={220}>
-              <PieChart>
-                <Pie data={pieData} dataKey="value" nameKey="name" cx="40%" cy="50%" outerRadius={90} paddingAngle={1}
-                  label={({ percent }) => `${(percent * 100).toFixed(1)}%`}
-                  labelLine={{ stroke: '#94a3b8', strokeWidth: 1 }}>
-                  {pieData.map((entry, i) => <Cell key={i} fill={entry.color} />)}
-                </Pie>
-                <Tooltip formatter={(v: number) => formatCurrency(v)} contentStyle={{ fontSize: '12px', borderRadius: '8px', border: '1px solid #e2e8f0' }} />
-                <Legend layout="vertical" align="right" verticalAlign="middle" iconType="square" iconSize={8}
-                  formatter={(value) => <span style={{ fontSize: '10px', color: '#475569' }}>{value.length > 22 ? value.slice(0, 22) + '…' : value}</span>} />
-              </PieChart>
-            </ResponsiveContainer>
-          )}
+          ) : (() => {
+            const totalPieDiarias = pieData.reduce((a, d) => a + d.value, 0);
+            return (
+              <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
+                <div style={{ flex: '0 0 auto' }}>
+                  <PieChart width={170} height={170}>
+                    <Pie data={pieData} cx={80} cy={80} innerRadius={50} outerRadius={80} dataKey="value" strokeWidth={2} paddingAngle={2}>
+                      {pieData.map((entry, i) => <Cell key={i} fill={entry.color} />)}
+                    </Pie>
+                    <Tooltip formatter={(v: number) => [formatCurrency(v), '']} contentStyle={{ fontSize: '11px', borderRadius: '8px' }} />
+                  </PieChart>
+                </div>
+                <div style={{ flex: 1, maxHeight: '180px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  {pieData.map((d, i) => (
+                    <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <span style={{ width: '10px', height: '10px', borderRadius: '2px', background: d.color, flexShrink: 0 }} />
+                      <span style={{ fontSize: '11px', color: '#475569', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={d.name}>{d.name}</span>
+                      <span style={{ fontSize: '10px', color: '#94a3b8', whiteSpace: 'nowrap' }}>{totalPieDiarias > 0 ? ((d.value / totalPieDiarias) * 100).toFixed(1) : 0}%</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })()}
           </div>
         </div>
       </div>
