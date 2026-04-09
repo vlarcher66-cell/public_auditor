@@ -154,10 +154,10 @@ export async function backfillSubgrupoPrefixado(_req: Request, res: Response): P
       .first();
 
     if (!subgrupo) {
-      const [novoId] = await db('dim_subgrupo_despesa').insert({
+      const [{ id: novoId }] = await db('dim_subgrupo_despesa').insert({
         nome: nomeComPrefixo,
         fk_grupo: pag.fk_grupo_pag,
-      });
+      }).returning('id');
       subgrupo = { id: novoId };
     }
 
@@ -219,10 +219,10 @@ async function resolverSubgrupoPrefixado(grupoId: number, pagamentoId: string): 
     .first();
 
   if (!subgrupo) {
-    const [novoId] = await db('dim_subgrupo_despesa').insert({
+    const [{ id: novoId }] = await db('dim_subgrupo_despesa').insert({
       nome: nomeComPrefixo,
       fk_grupo: grupoId,
-    });
+    }).returning('id');
     return novoId;
   }
 
@@ -389,10 +389,10 @@ export async function getSummary(req: Request, res: Response): Promise<void> {
     db('fact_ordem_pagamento as f')
       .modify(baseFilter)
       .select(
-        db.raw('SUM(valor_bruto) as totalBruto'),
-        db.raw('SUM(valor_retido) as totalRetido'),
-        db.raw('SUM(valor_liquido) as totalLiquido'),
-        db.raw('COUNT(*) as countRegistros'),
+        db.raw('SUM(valor_bruto) as "totalBruto"'),
+        db.raw('SUM(valor_retido) as "totalRetido"'),
+        db.raw('SUM(valor_liquido) as "totalLiquido"'),
+        db.raw('COUNT(*) as "countRegistros"'),
       )
       .first(),
 
@@ -699,12 +699,12 @@ export async function getOutrosExercicios(req: Request, res: Response): Promise<
       .whereNull('f.rateio_itens')
       .whereIn(db.raw('COALESCE(f.fk_grupo_pag, c.fk_grupo)') as any, GRUPOS_EX_ANT)
       .select(
-        db.raw('COALESCE(c.nome, "Sem credor") as credor'),
+        db.raw("COALESCE(c.nome, 'Sem credor') as credor"),
         db.raw('COALESCE(f.fk_grupo_pag, c.fk_grupo) as grupo_id'),
         db.raw('SUM(f.valor_bruto) as total'),
         db.raw('COUNT(*) as qtd'),
       )
-      .groupByRaw('COALESCE(c.nome, "Sem credor"), COALESCE(f.fk_grupo_pag, c.fk_grupo)')
+      .groupByRaw("COALESCE(c.nome, 'Sem credor'), COALESCE(f.fk_grupo_pag, c.fk_grupo)")
       .orderBy('total', 'desc'),
 
     // Top setores
@@ -713,11 +713,11 @@ export async function getOutrosExercicios(req: Request, res: Response): Promise<
       .whereNull('f.rateio_itens')
       .whereIn(db.raw('COALESCE(f.fk_grupo_pag, c.fk_grupo)') as any, GRUPOS_EX_ANT)
       .select(
-        db.raw('COALESCE(st.descricao, "Sem setor") as setor'),
+        db.raw("COALESCE(st.descricao, 'Sem setor') as setor"),
         db.raw('COALESCE(f.fk_grupo_pag, c.fk_grupo) as grupo_id'),
         db.raw('SUM(f.valor_bruto) as total'),
       )
-      .groupByRaw('COALESCE(st.descricao, "Sem setor"), COALESCE(f.fk_grupo_pag, c.fk_grupo)')
+      .groupByRaw("COALESCE(st.descricao, 'Sem setor'), COALESCE(f.fk_grupo_pag, c.fk_grupo)")
       .orderBy('total', 'desc'),
   ]);
 
@@ -853,10 +853,10 @@ export async function getDiarias(req: Request, res: Response): Promise<void> {
       .whereNull('f.rateio_itens')
       .where(db.raw('COALESCE(f.fk_grupo_pag, c.fk_grupo)') as any, GRUPO_DIARIAS_ID)
       .select(
-        db.raw('COALESCE(st.descricao, "Sem setor") as setor'),
+        db.raw("COALESCE(st.descricao, 'Sem setor') as setor"),
         db.raw('SUM(f.valor_bruto) as total'),
       )
-      .groupByRaw('COALESCE(st.descricao, "Sem setor")')
+      .groupByRaw("COALESCE(st.descricao, 'Sem setor')")
       .orderBy('total', 'desc')
       .limit(15),
 
@@ -865,11 +865,11 @@ export async function getDiarias(req: Request, res: Response): Promise<void> {
       .whereNull('f.rateio_itens')
       .where(db.raw('COALESCE(f.fk_grupo_pag, c.fk_grupo)') as any, GRUPO_DIARIAS_ID)
       .select(
-        db.raw('COALESCE(c.nome, "Sem credor") as credor'),
+        db.raw("COALESCE(c.nome, 'Sem credor') as credor"),
         db.raw('EXTRACT(MONTH FROM f.data_pagamento) as mes'),
         db.raw('SUM(f.valor_bruto) as total'),
       )
-      .groupByRaw('COALESCE(c.nome, "Sem credor"), EXTRACT(MONTH FROM f.data_pagamento)')
+      .groupByRaw("COALESCE(c.nome, 'Sem credor'), EXTRACT(MONTH FROM f.data_pagamento)")
       .orderBy('credor'),
   ]);
 

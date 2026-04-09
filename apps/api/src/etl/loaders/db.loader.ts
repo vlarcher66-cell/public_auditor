@@ -123,7 +123,7 @@ export async function loadToDB(
     if (subgrupoPrefixadoCache.has(cacheKey)) return subgrupoPrefixadoCache.get(cacheKey)!;
     let sub = await db('dim_subgrupo_despesa').where({ nome: nomeComPrefixo, fk_grupo: grupoId }).first();
     if (!sub) {
-      const [novoId] = await db('dim_subgrupo_despesa').insert({ nome: nomeComPrefixo, fk_grupo: grupoId });
+      const [{ id: novoId }] = await db('dim_subgrupo_despesa').insert({ nome: nomeComPrefixo, fk_grupo: grupoId }).returning('id');
       sub = { id: novoId };
     }
     subgrupoPrefixadoCache.set(cacheKey, sub.id);
@@ -162,112 +162,105 @@ export async function loadToDB(
     regrasEmpenho.map((r: any) => [`${r.fk_credor}_${r.num_empenho_base}`, { fk_grupo_pag: r.fk_grupo_pag, fk_subgrupo_pag: r.fk_subgrupo_pag }]),
   );
 
-  // Insert fact rows in chunks
-  for (let i = 0; i < rows.length; i += CHUNK_SIZE) {
-    const chunk = rows.slice(i, i + CHUNK_SIZE);
+  // Backfill historico para duplicatas
+  const hashesParaBackfill = rows.filter(r => existingHashes.has(r.hash_linha) && r.historico);
+  for (const r of hashesParaBackfill) {
+    await db('fact_ordem_pagamento')
+      .where('hash_linha', r.hash_linha)
+      .where((q) => q.whereNull('historico').orWhere('historico', ''))
+      .update({ historico: r.historico });
+    rows_skipped++;
+  }
+  const rowsNovos = rows.filter(r => !existingHashes.has(r.hash_linha));
+  rows_skipped += rows.length - hashesParaBackfill.length - rowsNovos.length;
 
-    for (const r of chunk) {
-      if (existingHashes.has(r.hash_linha)) {
-        // Back-fill historico if existing row has it empty and we now have a value
-        if (r.historico) {
-          await db('fact_ordem_pagamento')
-            .where('hash_linha', r.hash_linha)
-            .where((q) => q.whereNull('historico').orWhere('historico', ''))
-            .update({ historico: r.historico });
-        }
-        rows_skipped++;
-        continue;
-      }
+  // Monta todos os registros a inserir
+  const toInsert: Record<string, any>[] = [];
+  for (const r of rowsNovos) {
+    const fkEntidade = resolvedEntidadeRow
+      ? resolvedEntidadeRow.id
+      : entidadeMap.get(r.entidade_cnpj || PLACEHOLDER_CNPJ);
+    const fkMunicipio = resolvedEntidadeRow?.fk_municipio ?? null;
+    const fkCredor = credorMap.get(`${r.cnpj_cpf_norm}||${r.credor_nome.trim().toUpperCase()}`);
+    const fkTipo = tipoMap.get(r.tipo_empenho);
+    const fkPeriodo = periodoMap.get(toDateStr(r.periodo_inicio) + '_' + toDateStr(r.periodo_fim));
+    const fkUniOrc = unidOrcMap.get(String(r.unidade_orcamentaria));
+    const fkUniGest = unidGestMap.get(String(r.unidade_gestora));
+    const fkAcao = acaoMap.get(r.acao);
+    const fkElem = elemMap.get(r.elemento_despesa);
+    const fkFonte = fonteMap.get(r.fonte_recurso);
 
-      // Se a entidade foi selecionada pelo usuário, usa ela; senão resolve pelo CNPJ do arquivo
-      const fkEntidade = resolvedEntidadeRow
-        ? resolvedEntidadeRow.id
-        : entidadeMap.get(r.entidade_cnpj || PLACEHOLDER_CNPJ);
-      const fkMunicipio = resolvedEntidadeRow?.fk_municipio ?? null;
-      const fkCredor = credorMap.get(`${r.cnpj_cpf_norm}||${r.credor_nome.trim().toUpperCase()}`);
-      const fkTipo = tipoMap.get(r.tipo_empenho);
-      const fkPeriodo = periodoMap.get(toDateStr(r.periodo_inicio) + '_' + toDateStr(r.periodo_fim));
-      const fkUniOrc = unidOrcMap.get(String(r.unidade_orcamentaria));
-      const fkUniGest = unidGestMap.get(String(r.unidade_gestora));
-      const fkAcao = acaoMap.get(r.acao);
-      const fkElem = elemMap.get(r.elemento_despesa);
-      const fkFonte = fonteMap.get(r.fonte_recurso);
+    if (!fkEntidade || !fkCredor || !fkTipo || !fkPeriodo || !fkUniOrc || !fkUniGest || !fkAcao || !fkElem || !fkFonte) {
+      logger.warn({ empenho: r.num_empenho }, 'FK lookup failed, skipping');
+      rows_skipped++;
+      continue;
+    }
 
-      if (!fkEntidade || !fkCredor || !fkTipo || !fkPeriodo || !fkUniOrc || !fkUniGest || !fkAcao || !fkElem || !fkFonte) {
-        logger.warn({ empenho: r.num_empenho }, 'FK lookup failed, skipping');
-        rows_skipped++;
-        continue;
-      }
+    const tipoRow = r.elemento_despesa === '3.3.90.92.00' ? 'DEA' : tipoRelatorio;
+    let fkGrupoPag: number | null = null;
+    let fkSubgrupoPag: number | null = null;
+    if (tipoRow === 'DEA' && grupoDeaId) fkGrupoPag = grupoDeaId;
+    else if (tipoRow === 'RP' && grupoRpId) fkGrupoPag = grupoRpId;
 
-      try {
-        // Determine tipo_relatorio per row:
-        // If elemento_despesa is 3.3.90.92.00, it's DEA (Despesa do Exercício Anterior)
-        // Otherwise, use the tipo_relatorio selected by the user (OR or RP)
-        const tipoRow = r.elemento_despesa === '3.3.90.92.00' ? 'DEA' : tipoRelatorio;
+    const credorRow = credorRows.find((c: any) => c.id === fkCredor) as any;
+    if (fkGrupoPag && credorRow?.subgrupo_nome) {
+      const prefixo = fkGrupoPag === grupoDeaId ? 'DEA' : 'RP';
+      fkSubgrupoPag = await resolverSubgrupoPrefixadoLoader(fkGrupoPag, prefixo, credorRow.subgrupo_nome);
+    }
+    if (credorRow?.detalhar_no_pagamento && r.num_empenho_base) {
+      const regraKey = `${fkCredor}_${r.num_empenho_base}`;
+      const regra = regraEmpenhoMap.get(regraKey);
+      if (regra) { fkGrupoPag = regra.fk_grupo_pag; fkSubgrupoPag = regra.fk_subgrupo_pag; }
+    }
 
-        // Auto-classifica grupo por pagamento conforme tipo_relatorio
-        let fkGrupoPag: number | null = null;
-        let fkSubgrupoPag: number | null = null;
-        if (tipoRow === 'DEA' && grupoDeaId) fkGrupoPag = grupoDeaId;
-        else if (tipoRow === 'RP' && grupoRpId) fkGrupoPag = grupoRpId;
+    toInsert.push({
+      num_empenho: r.num_empenho,
+      num_empenho_base: r.num_empenho_base || null,
+      reduzido: r.reduzido,
+      num_processo: r.num_processo || null,
+      historico: r.historico || null,
+      credor_nome: r.credor_nome || null,
+      credor_cnpj_cpf: r.cnpj_cpf || null,
+      sub_elemento: r.sub_elemento || null,
+      data_pagamento: toDateStr(r.data_pagamento),
+      data_empenho: r.data_empenho ? toDateStr(r.data_empenho) : null,
+      data_liquidacao: r.data_liquidacao ? toDateStr(r.data_liquidacao) : null,
+      valor_bruto: r.valor_bruto,
+      valor_retido: r.valor_retido,
+      valor_liquido: r.valor_liquido,
+      valor_pessoal: r.valor_pessoal,
+      tipo_relatorio: tipoRow,
+      fk_grupo_pag: fkGrupoPag,
+      fk_subgrupo_pag: fkSubgrupoPag,
+      fk_municipio: fkMunicipio,
+      fk_entidade: fkEntidade,
+      fk_credor: fkCredor,
+      fk_tipo_empenho: fkTipo,
+      fk_periodo: fkPeriodo,
+      fk_unidade_orc: fkUniOrc,
+      fk_unidade_gestora: fkUniGest,
+      fk_acao: fkAcao,
+      fk_elemento_despesa: fkElem,
+      fk_fonte_recurso: fkFonte,
+      fk_import_job: importJobId,
+      hash_linha: r.hash_linha,
+      criado_em: new Date().toISOString(),
+    });
+  }
 
-        // Aplica regra de empenho se o credor usa detalhar_no_pagamento e há regra cadastrada
-        const credorRow = credorRows.find((c: any) => c.id === fkCredor) as any;
-
-        // Para DEA/RP: resolve subgrupo prefixado a partir do subgrupo do credor
-        if (fkGrupoPag && credorRow?.subgrupo_nome) {
-          const prefixo = fkGrupoPag === grupoDeaId ? 'DEA' : 'RP';
-          fkSubgrupoPag = await resolverSubgrupoPrefixadoLoader(fkGrupoPag, prefixo, credorRow.subgrupo_nome);
-        }
-        if (credorRow?.detalhar_no_pagamento && r.num_empenho_base) {
-          const regraKey = `${fkCredor}_${r.num_empenho_base}`;
-          const regra = regraEmpenhoMap.get(regraKey);
-          if (regra) {
-            fkGrupoPag = regra.fk_grupo_pag;
-            fkSubgrupoPag = regra.fk_subgrupo_pag;
-          }
-        }
-
-        await db('fact_ordem_pagamento').insert({
-          num_empenho: r.num_empenho,
-          num_empenho_base: r.num_empenho_base || null,
-          reduzido: r.reduzido,
-          num_processo: r.num_processo || null,
-          historico: r.historico || null,
-          credor_nome: r.credor_nome || null,
-          credor_cnpj_cpf: r.cnpj_cpf || null,
-          sub_elemento: r.sub_elemento || null,
-          data_pagamento: toDateStr(r.data_pagamento),
-          data_empenho: r.data_empenho ? toDateStr(r.data_empenho) : null,
-          data_liquidacao: r.data_liquidacao ? toDateStr(r.data_liquidacao) : null,
-          valor_bruto: r.valor_bruto,
-          valor_retido: r.valor_retido,
-          valor_liquido: r.valor_liquido,
-          valor_pessoal: r.valor_pessoal,
-          tipo_relatorio: tipoRow,
-          fk_grupo_pag: fkGrupoPag,
-          fk_subgrupo_pag: fkSubgrupoPag,
-          fk_municipio: fkMunicipio,
-          fk_entidade: fkEntidade,
-          fk_credor: fkCredor,
-          fk_tipo_empenho: fkTipo,
-          fk_periodo: fkPeriodo,
-          fk_unidade_orc: fkUniOrc,
-          fk_unidade_gestora: fkUniGest,
-          fk_acao: fkAcao,
-          fk_elemento_despesa: fkElem,
-          fk_fonte_recurso: fkFonte,
-          fk_import_job: importJobId,
-          hash_linha: r.hash_linha,
-          criado_em: new Date().toISOString(),
-        });
-        existingHashes.add(r.hash_linha);
-        rows_loaded++;
-      } catch (err: any) {
-        if (err.message?.includes('UNIQUE') || err.message?.includes('unique') || err.code === '23505') {
-          rows_skipped++;
-        } else {
-          logger.error({ err: err.message }, 'Insert error');
+  // Insert em lotes de 200 (muito mais rápido que um por um)
+  for (let i = 0; i < toInsert.length; i += CHUNK_SIZE) {
+    const chunk = toInsert.slice(i, i + CHUNK_SIZE);
+    try {
+      await db('fact_ordem_pagamento').insert(chunk);
+      rows_loaded += chunk.length;
+    } catch (err: any) {
+      // Fallback: insere um por um para não perder nenhum
+      for (const row of chunk) {
+        try {
+          await db('fact_ordem_pagamento').insert(row);
+          rows_loaded++;
+        } catch (e: any) {
           rows_skipped++;
         }
       }

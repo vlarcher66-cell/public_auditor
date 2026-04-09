@@ -21,7 +21,7 @@ export async function createGrupo(req: Request, res: Response): Promise<void> {
   const exists = await db('dim_grupo_despesa').where('nome', nome.trim()).first();
   if (exists) { res.status(409).json({ error: 'Grupo já existe', id: exists.id }); return; }
 
-  const [id] = await db('dim_grupo_despesa').insert({ nome: nome.trim(), descricao: descricao?.trim() || null });
+  const [{ id }] = await db('dim_grupo_despesa').insert({ nome: nome.trim(), descricao: descricao?.trim() || null }).returning('id');
   res.status(201).json({ id, nome: nome.trim(), descricao: descricao?.trim() || null });
 }
 
@@ -72,7 +72,7 @@ export async function createSubgrupo(req: Request, res: Response): Promise<void>
   const exists = await db('dim_subgrupo_despesa').where({ nome: nome.trim(), fk_grupo }).first();
   if (exists) { res.status(409).json({ error: 'Subgrupo já existe neste grupo', id: exists.id }); return; }
 
-  const [id] = await db('dim_subgrupo_despesa').insert({ nome: nome.trim(), fk_grupo });
+  const [{ id }] = await db('dim_subgrupo_despesa').insert({ nome: nome.trim(), fk_grupo }).returning('id');
   res.status(201).json({ id, nome: nome.trim(), fk_grupo });
 }
 
@@ -194,10 +194,10 @@ export async function updateCredor(req: Request, res: Response): Promise<void> {
           .first();
 
         if (!subgrupoPrefixado) {
-          const [novoId] = await db('dim_subgrupo_despesa').insert({
+          const [{ id: novoId }] = await db('dim_subgrupo_despesa').insert({
             nome: nomeComPrefixo,
             fk_grupo: grupoId,
-          });
+          }).returning('id');
           subgrupoPrefixado = { id: novoId };
         }
 
@@ -214,13 +214,13 @@ export async function updateCredor(req: Request, res: Response): Promise<void> {
 
 export async function deleteAllCredores(_req: Request, res: Response): Promise<void> {
   try {
-    await db.raw('SET FOREIGN_KEY_CHECKS = 0');
+    await db.raw('SET session_replication_role = replica');
     await db.raw('DELETE FROM dim_credor');
-    await db.raw('SET FOREIGN_KEY_CHECKS = 1');
+    await db.raw('SET session_replication_role = DEFAULT');
     res.json({ message: 'Todos os credores foram excluídos' });
   } catch (err: any) {
     logger.error({ err: err?.message, stack: err?.stack }, 'deleteAllCredores failed');
-    await db.raw('SET FOREIGN_KEY_CHECKS = 1').catch(() => {});
+    await db.raw('SET session_replication_role = DEFAULT').catch(() => {});
     res.status(500).json({ error: err?.message ?? 'Erro desconhecido ao excluir credores' });
   }
 }

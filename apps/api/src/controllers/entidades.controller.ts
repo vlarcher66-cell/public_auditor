@@ -35,11 +35,11 @@ export async function createEntidade(req: Request, res: Response): Promise<void>
     const { nome, cnpj, tipo = 'FUNDO', ativo = true, fk_municipio, sistema_contabil } = req.body;
     if (!nome) { res.status(400).json({ error: 'Nome é obrigatório' }); return; }
 
-    const [id] = await db('dim_entidade').insert({
+    const [{ id }] = await db('dim_entidade').insert({
       nome, cnpj: cnpj || null, tipo, ativo,
       fk_municipio: fk_municipio || null,
       sistema_contabil: sistema_contabil || null,
-    });
+    }).returning('id');
     res.status(201).json({ id, nome, cnpj, tipo, ativo, fk_municipio: fk_municipio || null, sistema_contabil: sistema_contabil || null });
   } catch (err: any) {
     logger.error({ err: err?.message }, 'createEntidade failed');

@@ -1674,8 +1674,8 @@ function TabSintetica({
             <Banknote size={18} color="#059669" />
           </div>
           <div style={{ fontSize: '12px', color: '#94a3b8', marginBottom: '4px', fontWeight: 500 }}>Total Líquido</div>
-          {isLoading ? <div style={{ height: '32px', background: '#e2e8f0', borderRadius: '6px' }} /> : (
-            <div style={{ fontSize: '26px', fontWeight: 800, color: '#059669', lineHeight: 1.2 }}>{formatCurrency(summary?.totalLiquido ?? 0)}</div>
+          {isLoading ? <div style={{ height: '28px', background: '#e2e8f0', borderRadius: '6px' }} /> : (
+            <div style={{ fontSize: '20px', fontWeight: 700, color: '#059669', lineHeight: 1.2 }}>{formatCurrency(summary?.totalLiquido ?? 0)}</div>
           )}
           <div style={{ fontSize: '11px', color: '#94a3b8', marginTop: '4px' }}>Valor efetivamente pago</div>
         </div>

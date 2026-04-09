@@ -287,7 +287,7 @@ export async function getAging(req: Request, res: Response): Promise<void> {
     .whereNull('f.dt_pagamento')
     .whereNotNull('f.dt_empenho')
     .select(
-      db.raw('DATEDIFF(CURDATE(), f.dt_empenho) as dias'),
+      db.raw("(CURRENT_DATE - f.dt_empenho::date) as dias"),
       'f.valor',
     );
 

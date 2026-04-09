@@ -38,7 +38,7 @@ export async function createSecretaria(req: Request, res: Response): Promise<voi
     const entidade = await db('dim_entidade').where('id', fk_entidade).first();
     if (!entidade) { res.status(400).json({ error: 'Entidade não encontrada' }); return; }
 
-    const [id] = await db('dim_secretaria').insert({ nome, sigla: sigla || null, fk_entidade, ativo });
+    const [{ id }] = await db('dim_secretaria').insert({ nome, sigla: sigla || null, fk_entidade, ativo }).returning('id');
     res.status(201).json({ id, nome, sigla, fk_entidade, ativo });
   } catch (err: any) {
     logger.error({ err: err?.message }, 'createSecretaria failed');

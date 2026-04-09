@@ -85,7 +85,7 @@ export async function createUsuario(req: Request, res: Response): Promise<void> 
     insert.fk_entidade = fk_entidade || null;
   }
 
-  const [id] = await db('usuarios').insert(insert);
+  const [{ id }] = await db('usuarios').insert(insert).returning('id');
   res.status(201).json({ id, nome: nome.trim(), email, role, ativo: true });
 }
 

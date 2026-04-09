@@ -39,7 +39,7 @@ export async function createMunicipio(req: Request, res: Response): Promise<void
     const { nome, cnpj, uf, ativo = true } = req.body;
     if (!nome) { res.status(400).json({ error: 'Nome é obrigatório' }); return; }
 
-    const [id] = await db('dim_municipio').insert({ nome, cnpj: cnpj || null, uf: uf || null, ativo });
+    const [{ id }] = await db('dim_municipio').insert({ nome, cnpj: cnpj || null, uf: uf || null, ativo }).returning('id');
     logger.info({ id, nome }, 'Município criado');
     res.status(201).json({ id, nome, cnpj, uf, ativo, message: 'Município criado com sucesso' });
   } catch (err: any) {

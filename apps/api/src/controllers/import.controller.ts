@@ -46,7 +46,7 @@ export async function uploadFile(req: Request, res: Response): Promise<void> {
     fkMunicipio = ent?.fk_municipio ?? null;
   }
 
-  const [id] = await db('import_jobs').insert({
+  const [{ id }] = await db('import_jobs').insert({
     uuid,
     filename: req.file.originalname,
     file_type: fileType,
@@ -58,7 +58,7 @@ export async function uploadFile(req: Request, res: Response): Promise<void> {
     fk_entidade: entidadeId ?? null,
     fk_municipio: fkMunicipio,
     criado_em: new Date().toISOString(),
-  });
+  }).returning('id');
 
   // Start ETL asynchronously (no Redis needed)
   enqueueETLJob({ importJobId: id, filePath: req.file.path, tipoRelatorio, entidadeId, periodoReferencia });

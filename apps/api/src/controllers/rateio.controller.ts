@@ -6,7 +6,7 @@ async function resolverSubgrupoPrefixado(grupoId: number, prefixo: string, subgr
   const nomeComPrefixo = `${prefixo} - ${subgrupoNome}`;
   const existing = await db('dim_subgrupo_despesa').where({ nome: nomeComPrefixo, fk_grupo: grupoId }).first();
   if (existing) return existing.id;
-  const [novoId] = await db('dim_subgrupo_despesa').insert({ nome: nomeComPrefixo, fk_grupo: grupoId });
+  const [{ id: novoId }] = await db('dim_subgrupo_despesa').insert({ nome: nomeComPrefixo, fk_grupo: grupoId }).returning('id');
   return novoId;
 }
 

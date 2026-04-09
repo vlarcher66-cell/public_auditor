@@ -44,7 +44,7 @@ export async function createSetor(req: Request, res: Response): Promise<void> {
     if (!blocoExists) { res.status(400).json({ error: 'Bloco não encontrado' }); return; }
 
     const { palavras_chave, fk_secretaria } = req.body;
-    const [id] = await db('dim_setor').insert({ descricao, fk_bloco, palavras_chave: palavras_chave || null, fk_secretaria: fk_secretaria || null });
+    const [{ id }] = await db('dim_setor').insert({ descricao, fk_bloco, palavras_chave: palavras_chave || null, fk_secretaria: fk_secretaria || null }).returning('id');
     res.status(201).json({ id, descricao, fk_bloco, palavras_chave, message: 'Setor criado com sucesso' });
   } catch (err: any) {
     logger.error({ err: err?.message }, 'createSetor failed');

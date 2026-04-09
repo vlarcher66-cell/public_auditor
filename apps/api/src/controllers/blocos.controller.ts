@@ -31,7 +31,7 @@ export async function createBloco(req: Request, res: Response): Promise<void> {
       res.status(400).json({ error: 'Descrição é obrigatória' });
       return;
     }
-    const [id] = await db('dim_bloco').insert({ descricao });
+    const [{ id }] = await db('dim_bloco').insert({ descricao }).returning('id');
     res.status(201).json({ id, descricao, message: 'Bloco criado com sucesso' });
   } catch (err: any) {
     logger.error({ err: err?.message }, 'createBloco failed');

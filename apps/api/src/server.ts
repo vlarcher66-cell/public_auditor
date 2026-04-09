@@ -28,8 +28,23 @@ app.get('/health', (_req, res) => {
 app.use(errorMiddleware);
 
 const PORT = env.API_PORT;
-app.listen(PORT, () => {
+app.listen(PORT, async () => {
   logger.info(`🚀 API rodando em http://localhost:${PORT}`);
+
+  // Warm-up: pré-aquece as queries mais comuns para eliminar lentidão na primeira visita
+  try {
+    const { db } = await import('./config/database');
+    await Promise.all([
+      db('fact_ordem_pagamento').count('id as n').first(),
+      db('dim_credor').select('id', 'nome', 'fk_grupo').limit(1),
+      db('dim_grupo_despesa').select('id', 'nome').limit(1),
+      db('dim_entidade').select('id', 'nome').limit(1),
+      db('fact_ordem_pagamento').select('data_pagamento').orderBy('data_pagamento', 'desc').limit(1),
+    ]);
+    logger.info('✅ Warm-up do banco concluído');
+  } catch (_) {
+    // silencioso — warm-up é opcional
+  }
 });
 
 export default app;
