@@ -6,7 +6,7 @@ import { extractFromPdf } from './extractors/pdf.extractor';
 import { extractFromExcel } from './extractors/excel.extractor';
 import { transformOrdemPagamento } from './transformers/ordemPagamento.transformer';
 import { validateRows } from './validators/ordemPagamento.validator';
-import { loadToMySQL } from './loaders/mysql.loader';
+import { loadToDB } from './loaders/db.loader';
 import { logger } from '../config/logger';
 
 export interface ETLResult {
@@ -82,7 +82,7 @@ export async function runETL(
   let loadResult = { rows_loaded: 0, rows_skipped: 0 };
 
   if (valid.length > 0) {
-    loadResult = await loadToMySQL(db, valid, importJobId, tipoRelatorio, entidadeId);
+    loadResult = await loadToDB(db, valid, importJobId, tipoRelatorio, entidadeId);
   }
 
   // Compute valor_bruto_total from all valid rows

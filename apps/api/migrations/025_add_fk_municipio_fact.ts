@@ -11,9 +11,9 @@ export async function up(knex: Knex): Promise<void> {
   // 2. Backfill: preenche fk_municipio a partir da dim_entidade
   await knex.raw(`
     UPDATE fact_ordem_pagamento f
-    JOIN dim_entidade e ON f.fk_entidade = e.id
-    SET f.fk_municipio = e.fk_municipio
-    WHERE e.fk_municipio IS NOT NULL
+    SET fk_municipio = e.fk_municipio
+    FROM dim_entidade e
+    WHERE f.fk_entidade = e.id AND e.fk_municipio IS NOT NULL
   `);
 }
 

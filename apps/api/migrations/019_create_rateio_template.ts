@@ -15,10 +15,9 @@ export async function up(knex: Knex): Promise<void> {
     });
   }
 
-  // Adiciona índice único com nome curto (seguro para MySQL)
   await knex.raw(`
-    ALTER TABLE dim_rateio_template
-    ADD UNIQUE INDEX uq_rateio_tpl (fk_credor, num_empenho_base, fk_setor, fk_grupo, fk_subgrupo)
+    CREATE UNIQUE INDEX IF NOT EXISTS uq_rateio_tpl
+    ON dim_rateio_template (fk_credor, num_empenho_base, COALESCE(fk_setor, -1), COALESCE(fk_grupo, -1), COALESCE(fk_subgrupo, -1))
   `).catch(() => { /* índice já existe */ });
 }
 

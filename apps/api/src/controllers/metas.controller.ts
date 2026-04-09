@@ -22,7 +22,7 @@ export async function getDespesaReal(req: Request, res: Response): Promise<void>
     .join('dim_credor as c', 'f.fk_credor', 'c.id')
     .join('dim_grupo_despesa as g', 'c.fk_grupo', 'g.id')
     .leftJoin('dim_subgrupo_despesa as s', 'c.fk_subgrupo', 's.id')
-    .whereRaw('YEAR(f.data_pagamento) = ?', [ano])
+    .whereRaw('EXTRACT(YEAR FROM f.data_pagamento) = ?', [ano])
     .whereNotIn('f.tipo_relatorio', ['DEA', 'RP'])
     .whereNotNull('f.data_pagamento')
     .select(
@@ -30,10 +30,10 @@ export async function getDespesaReal(req: Request, res: Response): Promise<void>
       'g.nome as grupo_nome',
       db.raw('COALESCE(s.id, 0) as subgrupo_id'),
       db.raw("COALESCE(s.nome, 'Sem Subgrupo') as subgrupo_nome"),
-      db.raw('MONTH(f.data_pagamento) as mes'),
+      db.raw('EXTRACT(MONTH FROM f.data_pagamento) as mes'),
     )
     .sum('f.valor_bruto as total')
-    .groupBy('g.id', 'g.nome', 's.id', 's.nome', db.raw('MONTH(f.data_pagamento)'));
+    .groupBy('g.id', 'g.nome', 's.id', 's.nome', db.raw('EXTRACT(MONTH FROM f.data_pagamento)'));
 
   // Pagamentos DEA/RP do ano seguinte → pertencem ao ANO
   // Usa grupo/subgrupo do CREDOR (classificação original, não o DEA prefixado)
@@ -41,7 +41,7 @@ export async function getDespesaReal(req: Request, res: Response): Promise<void>
     .join('dim_credor as c', 'f.fk_credor', 'c.id')
     .join('dim_grupo_despesa as g', 'c.fk_grupo', 'g.id')
     .leftJoin('dim_subgrupo_despesa as s', 'c.fk_subgrupo', 's.id')
-    .whereRaw('YEAR(f.data_pagamento) = ?', [ano + 1])
+    .whereRaw('EXTRACT(YEAR FROM f.data_pagamento) = ?', [ano + 1])
     .whereIn('f.tipo_relatorio', ['DEA', 'RP'])
     .whereNotNull('f.data_pagamento')
     .select(
@@ -49,10 +49,10 @@ export async function getDespesaReal(req: Request, res: Response): Promise<void>
       'g.nome as grupo_nome',
       db.raw('COALESCE(s.id, 0) as subgrupo_id'),
       db.raw("COALESCE(s.nome, 'Sem Subgrupo') as subgrupo_nome"),
-      db.raw('MONTH(f.data_pagamento) as mes'),
+      db.raw('EXTRACT(MONTH FROM f.data_pagamento) as mes'),
     )
     .sum('f.valor_bruto as total')
-    .groupBy('g.id', 'g.nome', 's.id', 's.nome', db.raw('MONTH(f.data_pagamento)'));
+    .groupBy('g.id', 'g.nome', 's.id', 's.nome', db.raw('EXTRACT(MONTH FROM f.data_pagamento)'));
 
   applyRBAC(q1, user);
   applyRBAC(q2, user);
@@ -149,40 +149,40 @@ export async function getExecutado(req: Request, res: Response): Promise<void> {
     .join('dim_credor as c', 'f.fk_credor', 'c.id')
     .join('dim_grupo_despesa as g', 'c.fk_grupo', 'g.id')
     .leftJoin('dim_subgrupo_despesa as s', 'c.fk_subgrupo', 's.id')
-    .whereRaw('YEAR(f.data_pagamento) = ?', [ano])
+    .whereRaw('EXTRACT(YEAR FROM f.data_pagamento) = ?', [ano])
     .whereNotIn('f.tipo_relatorio', ['DEA', 'RP'])
     .whereNotNull('f.data_pagamento')
     .select(
       'g.id as grupo_id', 'g.nome as grupo_nome',
       db.raw('COALESCE(s.id, 0) as subgrupo_id'),
       db.raw("COALESCE(s.nome, 'Sem Subgrupo') as subgrupo_nome"),
-      db.raw('MONTH(f.data_pagamento) as mes'),
+      db.raw('EXTRACT(MONTH FROM f.data_pagamento) as mes'),
     )
     .sum('f.valor_bruto as total')
-    .groupBy('g.id', 'g.nome', 's.id', 's.nome', db.raw('MONTH(f.data_pagamento)'));
+    .groupBy('g.id', 'g.nome', 's.id', 's.nome', db.raw('EXTRACT(MONTH FROM f.data_pagamento)'));
 
   // q2: DEA/RP pagos em ano+1 que pertencem a este ano
   const q2 = db('fact_ordem_pagamento as f')
     .join('dim_credor as c', 'f.fk_credor', 'c.id')
     .join('dim_grupo_despesa as g', 'c.fk_grupo', 'g.id')
     .leftJoin('dim_subgrupo_despesa as s', 'c.fk_subgrupo', 's.id')
-    .whereRaw('YEAR(f.data_pagamento) = ?', [ano + 1])
+    .whereRaw('EXTRACT(YEAR FROM f.data_pagamento) = ?', [ano + 1])
     .whereIn('f.tipo_relatorio', ['DEA', 'RP'])
     .whereNotNull('f.data_pagamento')
     .select(
       'g.id as grupo_id', 'g.nome as grupo_nome',
       db.raw('COALESCE(s.id, 0) as subgrupo_id'),
       db.raw("COALESCE(s.nome, 'Sem Subgrupo') as subgrupo_nome"),
-      db.raw('MONTH(f.data_pagamento) as mes'),
+      db.raw('EXTRACT(MONTH FROM f.data_pagamento) as mes'),
     )
     .sum('f.valor_bruto as total')
-    .groupBy('g.id', 'g.nome', 's.id', 's.nome', db.raw('MONTH(f.data_pagamento)'));
+    .groupBy('g.id', 'g.nome', 's.id', 's.nome', db.raw('EXTRACT(MONTH FROM f.data_pagamento)'));
 
   // Filtros opcionais
   if (fk_entidade) { q1.where('f.fk_entidade', fk_entidade); q2.where('f.fk_entidade', fk_entidade); }
   if (fk_grupo)    { q1.where('g.id', fk_grupo);    q2.where('g.id', fk_grupo); }
   if (fk_subgrupo) { q1.where('s.id', fk_subgrupo); q2.where('s.id', fk_subgrupo); }
-  if (mes)         { q1.whereRaw('MONTH(f.data_pagamento) = ?', [mes]); }
+  if (mes)         { q1.whereRaw('EXTRACT(MONTH FROM f.data_pagamento) = ?', [mes]); }
   applyRBAC(q1, user); applyRBAC(q2, user);
 
   const [rows1, rows2]: [any[], any[]] = await Promise.all([q1, q2]);
@@ -297,9 +297,9 @@ export async function getFarol(req: Request, res: Response): Promise<void> {
     const ultimoMes = await db('fact_ordem_pagamento as f')
       .modify((q: any) => {
         applyTenantFilter(q, tf, 'f.fk_entidade', 'f.fk_municipio');
-        q.whereRaw('YEAR(f.data_pagamento) = ?', [ano]).whereNotNull('f.data_pagamento');
+        q.whereRaw('EXTRACT(YEAR FROM f.data_pagamento) = ?', [ano]).whereNotNull('f.data_pagamento');
       })
-      .max(db.raw('MONTH(f.data_pagamento)') as any)
+      .max(db.raw('EXTRACT(MONTH FROM f.data_pagamento)') as any)
       .first() as any;
     mes = ultimoMes ? Number(Object.values(ultimoMes)[0]) || null : null;
     if (!mes) { res.json({ ano, mes: null, grupos: [] }); return; }
@@ -333,14 +333,14 @@ export async function getFarol(req: Request, res: Response): Promise<void> {
     .join('dim_grupo_despesa as g', 'c.fk_grupo', 'g.id')
     .modify((q: any) => {
       applyTenantFilter(q, tf, 'f.fk_entidade', 'f.fk_municipio');
-      q.whereRaw('YEAR(f.data_pagamento) = ?', [ano])
+      q.whereRaw('EXTRACT(YEAR FROM f.data_pagamento) = ?', [ano])
        .whereNotIn('f.tipo_relatorio', ['DEA', 'RP'])
        .whereNotNull('f.data_pagamento')
-       .whereRaw('MONTH(f.data_pagamento) <= ?', [mesFinal]);
+       .whereRaw('EXTRACT(MONTH FROM f.data_pagamento) <= ?', [mesFinal]);
     })
-    .select('g.id as grupo_id', db.raw('MONTH(f.data_pagamento) as mes'))
+    .select('g.id as grupo_id', db.raw('EXTRACT(MONTH FROM f.data_pagamento) as mes'))
     .sum('f.valor_bruto as total')
-    .groupByRaw('g.id, MONTH(f.data_pagamento)');
+    .groupByRaw('g.id, EXTRACT(MONTH FROM f.data_pagamento)');
 
   // ── 3. A pagar por grupo no período selecionado (dt_pagamento IS NULL) ─────
   const aPagarRows: any[] = await db('fact_empenho_liquidado as f')

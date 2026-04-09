@@ -4,10 +4,10 @@ import dotenv from 'dotenv';
 dotenv.config({ path: '../../.env' });
 
 const db = knex({
-  client: 'mysql2',
+  client: 'pg',
   connection: {
     host: process.env.DATABASE_HOST,
-    port: parseInt(process.env.DATABASE_PORT || '3306'),
+    port: parseInt(process.env.DATABASE_PORT || '5432'),
     user: process.env.DATABASE_USER,
     password: process.env.DATABASE_PASSWORD,
     database: process.env.DATABASE_NAME,

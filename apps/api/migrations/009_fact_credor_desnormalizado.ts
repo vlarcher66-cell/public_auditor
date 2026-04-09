@@ -9,9 +9,10 @@ export async function up(knex: Knex): Promise<void> {
   // Backfill com os dados atuais de dim_credor
   await knex.raw(`
     UPDATE fact_ordem_pagamento f
-    JOIN dim_credor c ON f.fk_credor = c.id
-    SET f.credor_nome = c.nome,
-        f.credor_cnpj_cpf = c.cnpj_cpf
+    SET credor_nome = c.nome,
+        credor_cnpj_cpf = c.cnpj_cpf
+    FROM dim_credor c
+    WHERE f.fk_credor = c.id
   `);
 }
 

@@ -9,7 +9,7 @@ const envSchema = z.object({
   API_PORT: z.coerce.number().default(3001),
   CORS_ORIGIN: z.string().default('http://localhost:3000'),
   DATABASE_HOST: z.string().default('127.0.0.1'),
-  DATABASE_PORT: z.coerce.number().default(3306),
+  DATABASE_PORT: z.coerce.number().default(5432),
   DATABASE_NAME: z.string().default('public_auditor'),
   DATABASE_USER: z.string().default('root'),
   DATABASE_PASSWORD: z.string().default(''),

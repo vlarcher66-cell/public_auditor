@@ -46,12 +46,12 @@ router.post('/admin/backfill-empenho-base', backfillEmpenhoBase);
 router.post('/admin/fix-regra-credor', async (_req, res) => {
   const result = await db.raw(`
     UPDATE dim_regra_empenho r
-    JOIN fact_ordem_pagamento f ON f.num_empenho_base = r.num_empenho_base
-    SET r.fk_credor = f.fk_credor
-    WHERE r.fk_credor != f.fk_credor
-    LIMIT 1
+    SET fk_credor = f.fk_credor
+    FROM fact_ordem_pagamento f
+    WHERE f.num_empenho_base = r.num_empenho_base
+      AND r.fk_credor != f.fk_credor
   `);
-  res.json({ affected: result[0].affectedRows });
+  res.json({ affected: result.rowCount });
 });
 router.get('/admin/debug-regras', async (_req, res) => {
   const regras = await db('dim_regra_empenho as r')
@@ -75,8 +75,7 @@ router.get('/admin/reset-super-admin', async (_req, res) => {
     const senha_hash = await bcrypt.hash('Admin@2025!', 12);
 
     // Verifica se a coluna fk_municipio já existe na tabela usuarios
-    const cols = await db.raw(`SHOW COLUMNS FROM usuarios LIKE 'fk_municipio'`);
-    const temColuna = cols[0].length > 0;
+    const temColuna = await db.schema.hasColumn('usuarios', 'fk_municipio');
 
     const base: Record<string, any> = {
       nome: 'Administrador',

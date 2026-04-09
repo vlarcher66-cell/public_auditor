@@ -65,18 +65,18 @@ export async function getRelatorioQuadrimestral(req: Request, res: Response): Pr
       .leftJoin('dim_credor as c', 'r.fk_credor', 'c.id')
       .leftJoin('dim_grupo_despesa as g', 'c.fk_grupo', 'g.id')
       .leftJoin('dim_subgrupo_despesa as s', 'c.fk_subgrupo', 's.id')
-      .where(db.raw('YEAR(r.data_pagamento)'), ano)
-      .where(db.raw('MONTH(r.data_pagamento)'), 'in', meses)
+      .whereRaw('EXTRACT(YEAR FROM r.data_pagamento) = ?', [ano])
+      .whereRaw('EXTRACT(MONTH FROM r.data_pagamento) = ANY(?)', [meses])
       .where('e.tipo', 'FUNDO')
       .select(
-        db.raw('MONTH(r.data_pagamento) as mes'),
+        db.raw('EXTRACT(MONTH FROM r.data_pagamento) as mes'),
         db.raw("COALESCE(g.nome, 'Sem Grupo') as grupo_nome"),
         db.raw("COALESCE(s.nome, 'Sem Subgrupo') as subgrupo_nome"),
         'c.nome as credor_nome',
       )
       .sum('r.valor_liquido as total')
       .count('r.id as qtd')
-      .groupBy('mes', 'g.nome', 's.nome', 'c.nome')
+      .groupBy(db.raw('EXTRACT(MONTH FROM r.data_pagamento)'), 'g.nome', 's.nome', 'c.nome')
       .orderBy('total', 'desc'),
     'r'
   );
@@ -87,8 +87,8 @@ export async function getRelatorioQuadrimestral(req: Request, res: Response): Pr
       .join('dim_entidade as e', 'r.fk_entidade', 'e.id')
       .leftJoin('dim_credor as c', 'r.fk_credor', 'c.id')
       .leftJoin('dim_grupo_despesa as g', 'c.fk_grupo', 'g.id')
-      .where(db.raw('YEAR(r.data_pagamento)'), ano)
-      .where(db.raw('MONTH(r.data_pagamento)'), 'in', meses)
+      .whereRaw('EXTRACT(YEAR FROM r.data_pagamento) = ?', [ano])
+      .whereRaw('EXTRACT(MONTH FROM r.data_pagamento) = ANY(?)', [meses])
       .where('e.tipo', 'FUNDO')
       .select(
         db.raw("COALESCE(c.nome, r.credor_nome, 'Desconhecido') as credor_nome"),
@@ -96,7 +96,7 @@ export async function getRelatorioQuadrimestral(req: Request, res: Response): Pr
       )
       .sum('r.valor_liquido as total')
       .count('r.id as qtd')
-      .groupBy('credor_nome', 'g.nome')
+      .groupBy(db.raw("COALESCE(c.nome, r.credor_nome, 'Desconhecido')"), 'g.nome')
       .orderBy('total', 'desc')
       .limit(15),
     'r'

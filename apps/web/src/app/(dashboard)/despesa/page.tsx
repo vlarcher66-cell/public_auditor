@@ -1009,9 +1009,11 @@ function fmt(v: number) {
   return v.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 function fmtK(v: number) {
-  if (v >= 1_000_000) return `R$${(v/1_000_000).toFixed(1)}M`;
-  if (v >= 1_000) return `R$${(v/1_000).toFixed(0)}k`;
-  return `R$${v.toFixed(0)}`;
+  const n = Number(v);
+  if (!isFinite(n)) return '—';
+  if (n >= 1_000_000) return `R$${(n/1_000_000).toFixed(1)}M`;
+  if (n >= 1_000) return `R$${(n/1_000).toFixed(0)}k`;
+  return `R$${n.toFixed(0)}`;
 }
 
 // ─── Tab: Despesa Sintética ───────────────────────────────────────────────────

@@ -240,13 +240,13 @@ export async function getCredorClassificacao(req: Request, res: Response): Promi
       'fr.codigo as fonte',
       'te.descricao as tipo_empenho',
       'e.nome as entidade',
-      db.raw('YEAR(f.data_pagamento) as ano'),
+      db.raw('EXTRACT(YEAR FROM f.data_pagamento) as ano'),
       db.raw('COUNT(*) as qtd'),
       db.raw('SUM(f.valor_bruto) as total'),
       db.raw('MAX(f.data_pagamento) as ultimo_pagamento'),
     )
-    .groupByRaw('el.codigo, fr.codigo, te.descricao, e.nome, YEAR(f.data_pagamento)')
-    .orderByRaw('YEAR(f.data_pagamento) DESC, SUM(f.valor_bruto) DESC')
+    .groupByRaw('el.codigo, fr.codigo, te.descricao, e.nome, EXTRACT(YEAR FROM f.data_pagamento)')
+    .orderByRaw('EXTRACT(YEAR FROM f.data_pagamento) DESC, SUM(f.valor_bruto) DESC')
     .limit(30);
 
   res.json(rows.map((r: any) => ({
@@ -288,8 +288,7 @@ export async function autoClassificarDiariasPorHistorico(_req: Request, res: Res
 
 export async function autoClassificarCredorDiariaIndividual(req: Request, res: Response): Promise<void> {
   try {
-    const { id } = req.params;
-    const credorId = parseInt(id);
+    const credorId = parseInt(req.params.id as string);
 
     const { atualizado, resultado } = await classificarCredorDiarias(credorId);
     res.json({ atualizado, resultado });

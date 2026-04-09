@@ -7,15 +7,13 @@ const ROLES_VALIDOS = ['SUPER_ADMIN', 'GESTOR', 'CONTADOR', 'AUDITOR', 'VEREADOR
 
 async function tabelaExiste(tabela: string): Promise<boolean> {
   try {
-    const r = await db.raw(`SHOW TABLES LIKE '${tabela}'`);
-    return r[0].length > 0;
+    return await db.schema.hasTable(tabela);
   } catch { return false; }
 }
 
 async function colunaExiste(tabela: string, coluna: string): Promise<boolean> {
   try {
-    const r = await db.raw(`SHOW COLUMNS FROM ${tabela} LIKE '${coluna}'`);
-    return r[0].length > 0;
+    return await db.schema.hasColumn(tabela, coluna);
   } catch { return false; }
 }
 
