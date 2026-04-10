@@ -6,7 +6,7 @@ import Sidebar from './Sidebar';
 import { MunicipioEntidadeProvider } from '@/contexts/MunicipioEntidadeContext';
 import { SidebarProvider, useSidebar } from '@/contexts/SidebarContext';
 
-const TIMEOUT_MS = 5 * 60 * 1000;   // 5 minutos
+const TIMEOUT_MS = 20 * 60 * 1000;  // 20 minutos
 const WARNING_MS = 1 * 60 * 1000;   // aviso 1 minuto antes
 
 // Componente interno que consome o SidebarContext
