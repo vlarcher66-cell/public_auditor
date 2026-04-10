@@ -68,7 +68,7 @@ export async function listReceitas(req: Request, res: Response): Promise<void> {
 // ─── Resumo (cards) ───────────────────────────────────────────────────────────
 
 export async function getReceitaSummary(req: Request, res: Response): Promise<void> {
-  const { entidadeId, municipioId, ano, mes } = req.query as Record<string, string>;
+  const { entidadeId, municipioId, ano, mes, fonte } = req.query as Record<string, string>;
   const user = (req as any).user;
 
   const base = () =>
@@ -77,6 +77,7 @@ export async function getReceitaSummary(req: Request, res: Response): Promise<vo
       if (municipioId) q.where('r.fk_municipio', parseInt(municipioId));
       if (ano)         q.where('r.ano', parseInt(ano));
       if (mes)         q.where('r.mes', parseInt(mes));
+      if (fonte)       q.where('r.fonte_recurso', fonte);
       applyTenantFilter(q, getTenantFilter(user), 'r.fk_entidade', 'r.fk_municipio');
     });
 

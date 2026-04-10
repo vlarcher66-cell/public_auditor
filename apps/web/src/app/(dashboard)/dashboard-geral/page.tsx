@@ -200,10 +200,12 @@ export default function DashboardGeralPage() {
     const p: Record<string, string> = { ano, ...ctxParams };
     if (mesAtual) p.mes = String(mesAtual);
     if (fonteAtual) p.fonteRecurso = fonteAtual;
+    const pReceita: Record<string, string> = { ...p };
+    if (fonteAtual) pReceita.fonte = fonteAtual;
     try {
       const [desp, rec, ind, cnt, met, ex, far, transf] = await Promise.all([
         apiRequest<DespesaSummary>('/pagamentos/summary', { token, params: p }).catch(() => null),
-        apiRequest<ReceitaSummaryResponse>('/receitas/summary', { token, params: p }).catch(() => null),
+        apiRequest<ReceitaSummaryResponse>('/receitas/summary', { token, params: pReceita }).catch(() => null),
         apiRequest<Indice15>('/indice15', { token, params: p }).catch(() => null),
         apiRequest<ContasResumo>('/empenhos-liquidados/resumo', { token, params: p }).catch(() => null),
         apiRequest<MetaItem[]>('/metas', { token, params: p }).catch(() => []),
