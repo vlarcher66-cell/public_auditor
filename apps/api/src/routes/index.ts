@@ -124,6 +124,35 @@ router.get('/fontes-recurso', authMiddleware, async (_req, res) => {
   res.json(rows);
 });
 
+// Fix sequences dessincronizadas (usar uma vez em emergência)
+router.get('/admin/fix-sequences', async (_req, res) => {
+  try {
+    const tables = [
+      'dim_subgrupo_despesa',
+      'dim_grupo_despesa',
+      'dim_credor',
+      'dim_credor_a_pagar',
+      'fact_ordem_pagamento',
+      'import_jobs',
+      'usuarios',
+      'dim_municipio',
+      'dim_entidade',
+    ];
+    const results: Record<string, number> = {};
+    for (const table of tables) {
+      try {
+        const seq = `${table}_id_seq`;
+        await db.raw(`SELECT setval('${seq}', COALESCE((SELECT MAX(id) FROM "${table}"), 0) + 1, false)`);
+        const row = await db.raw(`SELECT last_value FROM "${seq}"`);
+        results[table] = row.rows[0]?.last_value;
+      } catch { results[table] = -1; }
+    }
+    res.json({ ok: true, sequences: results });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ── Credores a Pagar ──────────────────────────────────────────────────────────
 router.get('/credores-a-pagar',           authMiddleware, listCredoresAPagar);
 router.patch('/credores-a-pagar/:id',     authMiddleware, classificarCredorAPagar);
