@@ -30,6 +30,7 @@ interface Empenho  {
   periodo_ref: string;
   classificacao_orc: string | null;
   fk_credor: number | null;
+  fk_credor_a_pagar: number | null;
   entidade_nome: string | null;
   fk_grupo: number | null;
   fk_subgrupo: number | null;
@@ -105,14 +106,22 @@ function GrupoCell({ row, grupos, subgrupos, token, onSaved }: {
   const subsFiltrados = subgrupos.filter(s => s.fk_grupo === Number(fkGrupo));
 
   async function save(g: number | '', s: number | '') {
-    if (!row.fk_credor) return; // sem credor vinculado, não pode classificar via credor
+    if (!row.fk_credor && !row.fk_credor_a_pagar) return;
     setSaving(true);
     try {
-      await fetch(`${API_URL}/api/credores/${row.fk_credor}`, {
-        method: 'PUT',
-        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ fk_grupo: g || null, fk_subgrupo: s || null }),
-      });
+      if (row.fk_credor) {
+        await fetch(`${API_URL}/api/credores/${row.fk_credor}`, {
+          method: 'PUT',
+          headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ fk_grupo: g || null, fk_subgrupo: s || null }),
+        });
+      } else {
+        await fetch(`${API_URL}/api/credores-a-pagar/${row.fk_credor_a_pagar}`, {
+          method: 'PATCH',
+          headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ fk_grupo: g || null, fk_subgrupo: s || null }),
+        });
+      }
       setSaved(true);
       setTimeout(() => setSaved(false), 1500);
       const grupoNome    = grupos.find(gr => gr.id === Number(g))?.nome ?? null;
@@ -135,8 +144,8 @@ function GrupoCell({ row, grupos, subgrupos, token, onSaved }: {
     save(fkGrupo, v);
   }
 
-  // Sem credor vinculado → só exibe link para cadastrar
-  if (!row.fk_credor) {
+  // Sem credor em nenhuma tabela → exibe link para cadastrar
+  if (!row.fk_credor && !row.fk_credor_a_pagar) {
     return (
       <>
         <td className="px-2 py-2 text-center">
