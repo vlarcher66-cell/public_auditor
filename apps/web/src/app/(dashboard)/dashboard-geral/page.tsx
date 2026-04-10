@@ -160,7 +160,7 @@ export default function DashboardGeralPage() {
   const [metas,      setMetas]      = useState<MetaItem[]>([]);
   const [exec,       setExec]       = useState<ExecItem[]>([]);
   const [farol,      setFarol]      = useState<FarolData | null>(null);
-  const [mesFarol,   setMesFarol]   = useState<number | null>(null); // null = último
+  const [mesSelecionado, setMesSelecionado] = useState<number | null>(null); // null = ano todo / último
   const [lastUpdate, setLastUpdate] = useState(new Date());
   const [grupoTooltip, setGrupoTooltip] = useState<number | null>(null);
 
@@ -168,26 +168,21 @@ export default function DashboardGeralPage() {
   if (entidadeSelecionada?.id) ctxParams.entidadeId = String(entidadeSelecionada.id);
   else if (municipioSelecionado?.id) ctxParams.municipioId = String(municipioSelecionado.id);
 
-  const loadFarol = useCallback(async (mes: number | null) => {
-    if (!token) return;
-    const p: Record<string, string> = { ano, ...ctxParams };
-    if (mes) p.mes = String(mes);
-    const f = await apiRequest<FarolData>('/metas/farol', { token, params: p }).catch(() => null);
-    setFarol(f);
-    if (f?.mes && !mes) setMesFarol(f.mes); // sincroniza mês automático
-  }, [token, ano, entidadeSelecionada, municipioSelecionado]); // eslint-disable-line
-
-  const load = useCallback(async () => {
+  const load = useCallback(async (mes?: number | null) => {
     if (!token) return;
     setLoading(true);
+    const mesAtual = mes !== undefined ? mes : mesSelecionado;
+    const p: Record<string, string> = { ano, ...ctxParams };
+    if (mesAtual) p.mes = String(mesAtual);
     try {
-      const [desp, rec, ind, cnt, met, ex] = await Promise.all([
-        apiRequest<DespesaSummary>('/pagamentos/summary', { token, params: { ano, ...ctxParams } }).catch(() => null),
-        apiRequest<ReceitaSummaryResponse>('/receitas/summary', { token, params: { ano, ...ctxParams } }).catch(() => null),
-        apiRequest<Indice15>('/indice15', { token, params: { ano, ...ctxParams } }).catch(() => null),
-        apiRequest<ContasResumo>('/empenhos-liquidados/resumo', { token, params: ctxParams }).catch(() => null),
-        apiRequest<MetaItem[]>('/metas', { token, params: { ano, ...ctxParams } }).catch(() => []),
-        apiRequest<{ rows: ExecItem[] }>('/metas/executado', { token, params: { ano, ...ctxParams } }).catch(() => ({ rows: [] })),
+      const [desp, rec, ind, cnt, met, ex, far] = await Promise.all([
+        apiRequest<DespesaSummary>('/pagamentos/summary', { token, params: p }).catch(() => null),
+        apiRequest<ReceitaSummaryResponse>('/receitas/summary', { token, params: p }).catch(() => null),
+        apiRequest<Indice15>('/indice15', { token, params: p }).catch(() => null),
+        apiRequest<ContasResumo>('/empenhos-liquidados/resumo', { token, params: p }).catch(() => null),
+        apiRequest<MetaItem[]>('/metas', { token, params: p }).catch(() => []),
+        apiRequest<{ rows: ExecItem[] }>('/metas/executado', { token, params: p }).catch(() => ({ rows: [] })),
+        apiRequest<FarolData>('/metas/farol', { token, params: p }).catch(() => null),
       ]);
       setDespesa(desp);
       setReceita(rec ?? null);
@@ -195,20 +190,19 @@ export default function DashboardGeralPage() {
       setContas(cnt);
       setMetas(Array.isArray(met) ? met : []);
       setExec((ex as any)?.rows ?? (Array.isArray(ex) ? ex : []));
+      setFarol(far);
       setLastUpdate(new Date());
-      await loadFarol(null); // carrega farol com último mês automaticamente
     } finally {
       setLoading(false);
     }
-  }, [token, entidadeSelecionada, municipioSelecionado]); // eslint-disable-line
+  }, [token, entidadeSelecionada, municipioSelecionado, mesSelecionado]); // eslint-disable-line
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => { load(); }, [token, entidadeSelecionada, municipioSelecionado]); // eslint-disable-line
 
-  // Quando mês do farol muda manualmente
-  const handleMesFarol = useCallback((mes: number | null) => {
-    setMesFarol(mes);
-    loadFarol(mes);
-  }, [loadFarol]);
+  const handleMes = (mes: number | null) => {
+    setMesSelecionado(mes);
+    load(mes);
+  };
 
   // ── Dados derivados ──────────────────────────────────────────────────────────
 
@@ -267,23 +261,60 @@ export default function DashboardGeralPage() {
       <div className="px-3 py-3 md:px-8 md:py-6 space-y-5">
 
         {/* ── Header ── */}
-        <motion.div {...stagger(0)} className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-[#0F2A4E]">Painel Geral — {ano}</h1>
-            <p className="text-sm text-gray-400 mt-0.5 flex items-center gap-1.5">
-              <Building2 size={13} />
-              {entidadeSelecionada?.nome ?? municipioSelecionado?.nome ?? 'Consolidado'}
-            </p>
+        <motion.div {...stagger(0)} className="flex flex-col gap-3">
+          <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+            <div>
+              <h1 className="text-2xl font-bold text-[#0F2A4E]">Painel Geral — {ano}</h1>
+              <p className="text-sm text-gray-400 mt-0.5 flex items-center gap-1.5">
+                <Building2 size={13} />
+                {entidadeSelecionada?.nome ?? municipioSelecionado?.nome ?? 'Consolidado'}
+                {mesSelecionado ? ` · ${MESES[mesSelecionado - 1]}` : ' · Ano todo'}
+              </p>
+            </div>
+            <div className="flex items-center gap-3">
+              <span className="text-[11px] text-gray-400 flex items-center gap-1.5">
+                <Calendar size={11} />
+                {lastUpdate.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+              </span>
+              <button onClick={() => load()} disabled={loading}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium border border-gray-200 rounded-lg bg-white hover:bg-gray-50 text-gray-600 transition-colors">
+                <RefreshCw size={12} className={loading ? 'animate-spin' : ''} /> Atualizar
+              </button>
+            </div>
           </div>
-          <div className="flex items-center gap-3">
-            <span className="text-[11px] text-gray-400 flex items-center gap-1.5">
-              <Calendar size={11} />
-              {lastUpdate.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
-            </span>
-            <button onClick={load} disabled={loading}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium border border-gray-200 rounded-lg bg-white hover:bg-gray-50 text-gray-600 transition-colors">
-              <RefreshCw size={12} className={loading ? 'animate-spin' : ''} /> Atualizar
-            </button>
+          {/* ── Seletor de mês global ── */}
+          <div className="bg-white rounded-xl border border-gray-200 shadow-sm px-4 py-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
+            <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider whitespace-nowrap">Período:</span>
+            <div className="flex flex-col gap-1.5 flex-1">
+              <button
+                onClick={() => handleMes(null)}
+                className={`w-full sm:w-auto px-3 py-1.5 rounded-lg text-[11px] font-semibold transition-colors border ${
+                  mesSelecionado === null
+                    ? 'bg-[#0F2A4E] text-white border-[#0F2A4E]'
+                    : 'bg-white text-gray-500 border-gray-200 hover:bg-gray-50'
+                }`}
+              >
+                Ano todo
+              </button>
+              <div className="grid grid-cols-4 gap-1 sm:flex sm:flex-wrap sm:gap-1.5">
+                {MESES.map((m, i) => {
+                  const mesNum = i + 1;
+                  const ativo = mesSelecionado === mesNum;
+                  return (
+                    <button key={m}
+                      onClick={() => handleMes(mesNum)}
+                      className={`py-1.5 rounded-lg text-[11px] font-medium transition-colors border sm:px-2.5 ${
+                        ativo
+                          ? 'bg-[#C9A84C] text-white border-[#C9A84C]'
+                          : 'bg-white text-gray-500 border-gray-200 hover:bg-gray-50'
+                      }`}
+                    >
+                      {m}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
           </div>
         </motion.div>
 
@@ -364,48 +395,11 @@ export default function DashboardGeralPage() {
             {/* ── BLOCO 2.5 — Farol de Metas por Grupo ── */}
             <motion.div {...stagger(4.5)}
               className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-              {/* Header + seletor de mês */}
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-5 py-3"
-                style={{ background: 'linear-gradient(90deg, #0F2A4E, #1e4d95)' }}>
-                <div>
-                  <h3 className="text-sm font-bold text-white">Farol de Metas — Despesa por Grupo</h3>
-                  <p className="text-[11px] text-blue-200 mt-0.5">
-                    {farol?.mes ? `Ref. ${ano}-${String(farol.mes).padStart(2,'0')}` : 'Carregando...'}
-                  </p>
-                </div>
-                {/* Seletor de mês */}
-                <div className="flex flex-col gap-1.5 sm:flex-row sm:flex-wrap sm:items-center">
-                  {/* Botão Último — linha própria no mobile */}
-                  <button
-                    onClick={() => handleMesFarol(null)}
-                    className={`w-full sm:w-auto px-3 py-1.5 rounded-lg text-[11px] font-semibold transition-colors ${
-                      mesFarol === null || mesFarol === farol?.mes
-                        ? 'bg-[#0F2A4E] text-white'
-                        : 'bg-white/10 text-white/70 hover:bg-white/20'
-                    }`}
-                  >
-                    Último
-                  </button>
-                  {/* Grade 4×3 no mobile, inline no desktop */}
-                  <div className="grid grid-cols-4 gap-1 sm:flex sm:flex-wrap sm:gap-1.5">
-                    {MESES.map((m, i) => {
-                      const mesNum = i + 1;
-                      const ativo = mesFarol === mesNum;
-                      return (
-                        <button key={m}
-                          onClick={() => handleMesFarol(mesNum)}
-                          className={`py-1.5 rounded-lg text-[11px] font-medium transition-colors sm:px-2.5 ${
-                            ativo
-                              ? 'bg-[#C9A84C] text-white'
-                              : 'bg-white/10 text-white/80 hover:bg-white/20'
-                          }`}
-                        >
-                          {m}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
+              <div className="px-5 py-3" style={{ background: 'linear-gradient(90deg, #0F2A4E, #1e4d95)' }}>
+                <h3 className="text-sm font-bold text-white">Farol de Metas — Despesa por Grupo</h3>
+                <p className="text-[11px] text-blue-200 mt-0.5">
+                  {mesSelecionado ? `Ref. ${ano}-${String(mesSelecionado).padStart(2,'0')}` : `Ano todo — ${ano}`}
+                </p>
               </div>
 
               {/* Tabela */}
