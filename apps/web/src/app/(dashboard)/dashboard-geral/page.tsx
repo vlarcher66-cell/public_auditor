@@ -283,15 +283,16 @@ export default function DashboardGeralPage() {
             </div>
           </div>
           {/* ── Seletor de mês global ── */}
-          <div className="bg-white rounded-xl border border-gray-200 shadow-sm px-4 py-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
-            <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider whitespace-nowrap">Período:</span>
+          <div className="rounded-xl px-4 py-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3"
+            style={{ background: 'linear-gradient(90deg, #0F2A4E, #1e4d95)' }}>
+            <span className="text-[11px] font-bold text-blue-200 uppercase tracking-wider whitespace-nowrap">Período:</span>
             <div className="flex flex-col gap-1.5 flex-1">
               <button
                 onClick={() => handleMes(null)}
-                className={`w-full sm:w-auto px-3 py-1.5 rounded-lg text-[11px] font-semibold transition-colors border ${
+                className={`w-full sm:w-auto px-3 py-1.5 rounded-lg text-[11px] font-semibold transition-colors ${
                   mesSelecionado === null
-                    ? 'bg-[#0F2A4E] text-white border-[#0F2A4E]'
-                    : 'bg-white text-gray-500 border-gray-200 hover:bg-gray-50'
+                    ? 'bg-white text-[#0F2A4E]'
+                    : 'bg-white/10 text-white/70 hover:bg-white/20'
                 }`}
               >
                 Ano todo
@@ -303,10 +304,10 @@ export default function DashboardGeralPage() {
                   return (
                     <button key={m}
                       onClick={() => handleMes(mesNum)}
-                      className={`py-1.5 rounded-lg text-[11px] font-medium transition-colors border sm:px-2.5 ${
+                      className={`py-1.5 rounded-lg text-[11px] font-medium transition-colors sm:px-2.5 ${
                         ativo
-                          ? 'bg-[#C9A84C] text-white border-[#C9A84C]'
-                          : 'bg-white text-gray-500 border-gray-200 hover:bg-gray-50'
+                          ? 'bg-[#C9A84C] text-white'
+                          : 'bg-white/10 text-white/80 hover:bg-white/20'
                       }`}
                     >
                       {m}
