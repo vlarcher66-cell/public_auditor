@@ -36,8 +36,8 @@ const config: { [key: string]: Knex.Config } = {
     client: 'pg',
     connection: connectionConfig,
     pool: { min: 2, max: 10 },
-    migrations: { directory: './dist/migrations', extension: 'js' },
-    seeds: { directory: './dist/seeds', extension: 'js' },
+    migrations: { directory: path.resolve(__dirname, 'migrations'), extension: 'js' },
+    seeds: { directory: path.resolve(__dirname, 'seeds'), extension: 'js' },
   },
 };
 
