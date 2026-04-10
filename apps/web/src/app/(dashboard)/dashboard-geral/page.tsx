@@ -156,6 +156,7 @@ export default function DashboardGeralPage() {
   const [farol,      setFarol]      = useState<FarolData | null>(null);
   const [mesFarol,   setMesFarol]   = useState<number | null>(null); // null = último
   const [lastUpdate, setLastUpdate] = useState(new Date());
+  const [grupoTooltip, setGrupoTooltip] = useState<number | null>(null);
 
   const ctxParams: Record<string, string> = {};
   if (entidadeSelecionada?.id) ctxParams.entidadeId = String(entidadeSelecionada.id);
@@ -367,40 +368,44 @@ export default function DashboardGeralPage() {
                   </p>
                 </div>
                 {/* Seletor de mês */}
-                <div className="flex items-center gap-1.5 flex-wrap">
+                <div className="flex flex-col gap-1.5 sm:flex-row sm:flex-wrap sm:items-center">
+                  {/* Botão Último — linha própria no mobile */}
                   <button
                     onClick={() => handleMesFarol(null)}
-                    className={`px-3 py-1 rounded-lg text-[11px] font-semibold transition-colors ${
+                    className={`w-full sm:w-auto px-3 py-1.5 rounded-lg text-[11px] font-semibold transition-colors ${
                       mesFarol === null || mesFarol === farol?.mes
                         ? 'bg-[#0F2A4E] text-white'
-                        : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+                        : 'bg-white/10 text-white/70 hover:bg-white/20'
                     }`}
                   >
                     Último
                   </button>
-                  {MESES.map((m, i) => {
-                    const mesNum = i + 1;
-                    const ativo = mesFarol === mesNum;
-                    return (
-                      <button key={m}
-                        onClick={() => handleMesFarol(mesNum)}
-                        className={`px-2.5 py-1 rounded-lg text-[11px] font-medium transition-colors ${
-                          ativo
-                            ? 'bg-[#C9A84C] text-white'
-                            : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
-                        }`}
-                      >
-                        {m}
-                      </button>
-                    );
-                  })}
+                  {/* Grade 4×3 no mobile, inline no desktop */}
+                  <div className="grid grid-cols-4 gap-1 sm:flex sm:flex-wrap sm:gap-1.5">
+                    {MESES.map((m, i) => {
+                      const mesNum = i + 1;
+                      const ativo = mesFarol === mesNum;
+                      return (
+                        <button key={m}
+                          onClick={() => handleMesFarol(mesNum)}
+                          className={`py-1.5 rounded-lg text-[11px] font-medium transition-colors sm:px-2.5 ${
+                            ativo
+                              ? 'bg-[#C9A84C] text-white'
+                              : 'bg-white/10 text-white/80 hover:bg-white/20'
+                          }`}
+                        >
+                          {m}
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
               </div>
 
               {/* Tabela */}
               <div className="p-5">
               {farol && farol.grupos.length > 0 ? (
-                <div className="overflow-x-auto">
+                <div className="overflow-x-auto" onClick={(e) => { if (!(e.target as HTMLElement).closest('.relative')) setGrupoTooltip(null); }}>
                   <table className="w-full text-[12px]">
                     <thead>
                       <tr className="border-b-2 border-gray-100">
@@ -430,7 +435,26 @@ export default function DashboardGeralPage() {
                         const cMedia = cor(g.farol_media);
                         return (
                           <tr key={g.grupo_id} className="hover:bg-gray-50/50 transition-colors">
-                            <td className="py-2.5 pr-3 font-medium text-[#0F2A4E] max-w-[120px] truncate" title={g.grupo_nome}>{g.grupo_nome}</td>
+                            <td className="py-2.5 pr-3 font-medium text-[#0F2A4E] max-w-[120px]">
+                              <div className="relative">
+                                <span
+                                  className="block truncate cursor-pointer sm:cursor-default"
+                                  title={g.grupo_nome}
+                                  onClick={() => setGrupoTooltip(grupoTooltip === g.grupo_id ? null : g.grupo_id)}
+                                >
+                                  {g.grupo_nome}
+                                </span>
+                                {grupoTooltip === g.grupo_id && (
+                                  <div
+                                    className="absolute left-0 top-full mt-1 z-50 bg-[#0F2A4E] text-white text-[11px] font-medium rounded-lg px-3 py-2 shadow-xl whitespace-normal min-w-[180px] max-w-[260px]"
+                                    onClick={() => setGrupoTooltip(null)}
+                                  >
+                                    {g.grupo_nome}
+                                    <div className="absolute -top-1.5 left-4 w-3 h-3 bg-[#0F2A4E] rotate-45 rounded-sm" />
+                                  </div>
+                                )}
+                              </div>
+                            </td>
                             {/* Desktop only */}
                             <td className="hidden sm:table-cell py-2.5 px-2 text-right text-gray-500 whitespace-nowrap"
                               title={`Meta mensal: R$ ${fmt(g.meta_mensal)}`}>
