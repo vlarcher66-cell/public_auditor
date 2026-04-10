@@ -328,7 +328,22 @@ export async function getFarol(req: Request, res: Response): Promise<void> {
   const metasRows: any[] = await metasQ;
 
   // ── 2. Pago por grupo × mês (Jan..mesFinal) ────────────────────────────────
-  const pagoRows: any[] = await db('fact_ordem_pagamento as f')
+  // 2a. Pagamentos com classificação manual (fk_grupo_pag preenchido no pagamento)
+  const pagoRowsManual: any[] = await db('fact_ordem_pagamento as f')
+    .modify((q: any) => {
+      applyTenantFilter(q, tf, 'f.fk_entidade', 'f.fk_municipio');
+      q.whereRaw('EXTRACT(YEAR FROM f.data_pagamento) = ?', [ano])
+       .whereNotIn('f.tipo_relatorio', ['DEA', 'RP'])
+       .whereNotNull('f.data_pagamento')
+       .whereNotNull('f.fk_grupo_pag')
+       .whereRaw('EXTRACT(MONTH FROM f.data_pagamento) <= ?', [mesFinal]);
+    })
+    .select('f.fk_grupo_pag as grupo_id', db.raw('EXTRACT(MONTH FROM f.data_pagamento) as mes'))
+    .sum('f.valor_bruto as total')
+    .groupByRaw('f.fk_grupo_pag, EXTRACT(MONTH FROM f.data_pagamento)');
+
+  // 2b. Pagamentos sem classificação manual — usa grupo do credor
+  const pagoRowsCredor: any[] = await db('fact_ordem_pagamento as f')
     .join('dim_credor as c', 'f.fk_credor', 'c.id')
     .join('dim_grupo_despesa as g', 'c.fk_grupo', 'g.id')
     .modify((q: any) => {
@@ -336,11 +351,14 @@ export async function getFarol(req: Request, res: Response): Promise<void> {
       q.whereRaw('EXTRACT(YEAR FROM f.data_pagamento) = ?', [ano])
        .whereNotIn('f.tipo_relatorio', ['DEA', 'RP'])
        .whereNotNull('f.data_pagamento')
+       .whereNull('f.fk_grupo_pag')
        .whereRaw('EXTRACT(MONTH FROM f.data_pagamento) <= ?', [mesFinal]);
     })
     .select('g.id as grupo_id', db.raw('EXTRACT(MONTH FROM f.data_pagamento) as mes'))
     .sum('f.valor_bruto as total')
     .groupByRaw('g.id, EXTRACT(MONTH FROM f.data_pagamento)');
+
+  const pagoRows: any[] = [...pagoRowsManual, ...pagoRowsCredor];
 
   // ── 3. A pagar por grupo no período selecionado (dt_pagamento IS NULL) ─────
   const aPagarRows: any[] = await db('fact_empenho_liquidado as f')
