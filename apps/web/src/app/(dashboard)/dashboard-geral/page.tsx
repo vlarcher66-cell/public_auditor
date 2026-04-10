@@ -401,8 +401,7 @@ export default function DashboardGeralPage() {
                   <BarChart data={chartMensal} margin={{ top: 4, right: 8, left: 0, bottom: 0 }} barCategoryGap="25%" barGap={3}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false}/>
                     <XAxis dataKey="mes" tick={{ fontSize: 10, fill: '#94a3b8' }} axisLine={false} tickLine={false}/>
-                    <YAxis tick={{ fontSize: 10, fill: '#94a3b8' }} axisLine={false} tickLine={false}
-                      tickFormatter={(v: number) => 'R$ ' + Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}/>
+                    <YAxis hide />
                     <Tooltip content={<ChartTooltip />} cursor={{ fill: 'rgba(15,42,78,0.04)' }}/>
                     <Bar dataKey="receita"      name="Receita"      fill="#10b981" radius={[12,12,0,0]}/>
                     <Bar dataKey="despesaPaga"  name="Despesa Paga" fill="#ef4444" stackId="despesa" radius={[0,0,0,0]}/>
