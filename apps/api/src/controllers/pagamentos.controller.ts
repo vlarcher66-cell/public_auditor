@@ -374,7 +374,7 @@ export async function getPorSetor(req: Request, res: Response): Promise<void> {
 }
 
 export async function getSummary(req: Request, res: Response): Promise<void> {
-  const { dataInicio, dataFim, entidadeId, ano, mes } = req.query as Record<string, string>;
+  const { dataInicio, dataFim, entidadeId, ano, mes, fonteRecurso } = req.query as Record<string, string>;
   const tf = getTenantFilter(req.user!);
 
   const baseFilter = (q: any) => {
@@ -384,6 +384,9 @@ export async function getSummary(req: Request, res: Response): Promise<void> {
     if (dataInicio) q.where('f.data_pagamento', '>=', dataInicio);
     if (dataFim) q.where('f.data_pagamento', '<=', dataFim);
     if (entidadeId) q.where('f.fk_entidade', entidadeId);
+    if (fonteRecurso) q.whereIn('f.fk_fonte_recurso',
+      db('dim_fonte_recurso').select('id').where('codigo', fonteRecurso)
+    );
   };
 
   const [totais, topCredores, byElemento, byFonte, porMes] = await Promise.all([
