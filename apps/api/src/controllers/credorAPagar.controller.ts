@@ -18,15 +18,19 @@ export async function listCredoresAPagar(req: Request, res: Response): Promise<v
       .leftJoin('dim_grupo_despesa as g', 'c.fk_grupo', 'g.id')
       .leftJoin('dim_subgrupo_despesa as s', 'c.fk_subgrupo', 's.id');
 
-    // Multi-tenant: filtra por municipio
-    if (tf.type === 'entidade') {
-      // Resolve municipio da entidade
+    // dim_credor_a_pagar só tem fk_municipio — resolve entidade→municipio quando necessário
+    if (tf.entidades_ids && tf.entidades_ids.length > 0) {
       q.whereIn('c.fk_municipio',
-        db('dim_entidade').select('fk_municipio').whereIn('id', tf.ids)
+        db('dim_entidade').select('fk_municipio').whereIn('id', tf.entidades_ids)
       );
-    } else if (tf.type === 'municipio') {
-      q.where('c.fk_municipio', tf.id);
+    } else if (tf.fk_entidade) {
+      q.whereIn('c.fk_municipio',
+        db('dim_entidade').select('fk_municipio').where('id', tf.fk_entidade)
+      );
+    } else if (tf.fk_municipio) {
+      q.where('c.fk_municipio', tf.fk_municipio);
     }
+    // SUPER_ADMIN: tf={}, sem filtro → vê tudo
 
     if (semGrupo) q.whereNull('c.fk_grupo');
     if (search)   q.whereRaw('UPPER(c.nome) LIKE ?', [`%${search.toUpperCase()}%`]);
