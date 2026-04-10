@@ -55,6 +55,12 @@ function fmt(v: number | null | undefined) {
   const n = Number(v ?? 0);
   return n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
+function fmtK(v: number | null | undefined) {
+  const n = Number(v ?? 0);
+  if (n >= 1e6) return (n / 1e6).toFixed(1) + 'M';
+  if (n >= 1e3) return (n / 1e3).toFixed(0) + 'K';
+  return n.toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+}
 function fmtM(v: number | null | undefined) {
   const n = Number(v ?? 0);
   if (n >= 1e6) return 'R$ ' + (n / 1e6).toFixed(2) + 'M';
@@ -487,11 +493,13 @@ export default function DashboardGeralPage() {
                             {/* Mobile + Desktop */}
                             <td className="py-2.5 px-2 text-right text-gray-500 whitespace-nowrap"
                               title={`Média mensal da meta: R$ ${fmt(g.media_meta)}`}>
-                              R$ {fmt(g.media_meta)}
+                              <span className="hidden sm:inline">R$ {fmt(g.media_meta)}</span>
+                              <span className="inline sm:hidden">{fmtK(g.media_meta)}</span>
                             </td>
                             <td className="py-2.5 px-2 text-right text-gray-600 whitespace-nowrap"
                               title={`Média mensal realizada (total Jan→mês ÷ nº meses): R$ ${fmt(g.media_total)}`}>
-                              R$ {fmt(g.media_total)}
+                              <span className="hidden sm:inline">R$ {fmt(g.media_total)}</span>
+                              <span className="inline sm:hidden">{fmtK(g.media_total)}</span>
                             </td>
                             <td className="hidden sm:table-cell py-2.5 px-2 text-right whitespace-nowrap font-semibold"
                               title={`Execução média acumulada: ${g.pct_media.toFixed(2)}%`}
@@ -560,11 +568,13 @@ export default function DashboardGeralPage() {
                             {/* Mobile + Desktop */}
                             <td className="py-2.5 px-2 text-right font-bold text-gray-700 whitespace-nowrap text-[12px]"
                               title={`Média meta total: R$ ${fmt(tot_mmeta)}`}>
-                              R$ {fmt(tot_mmeta)}
+                              <span className="hidden sm:inline">R$ {fmt(tot_mmeta)}</span>
+                              <span className="inline sm:hidden">{fmtK(tot_mmeta)}</span>
                             </td>
                             <td className="py-2.5 px-2 text-right font-bold text-gray-700 whitespace-nowrap text-[12px]"
                               title={`Média realizada total: R$ ${fmt(tot_mtotal)}`}>
-                              R$ {fmt(tot_mtotal)}
+                              <span className="hidden sm:inline">R$ {fmt(tot_mtotal)}</span>
+                              <span className="inline sm:hidden">{fmtK(tot_mtotal)}</span>
                             </td>
                             <td className="hidden sm:table-cell py-2.5 px-2 text-right font-bold whitespace-nowrap text-[12px]"
                               title={`Execução média total: ${pct_media.toFixed(2)}%`}
