@@ -184,7 +184,7 @@ export default function DashboardGeralPage() {
         apiRequest<MetaItem[]>('/metas', { token, params: p }).catch(() => []),
         apiRequest<{ rows: ExecItem[] }>('/metas/executado', { token, params: p }).catch(() => ({ rows: [] })),
         apiRequest<FarolData>('/metas/farol', { token, params: p }).catch(() => null),
-        apiRequest<{ valor_total: number }>('/transferencias/summary', { token, params: p }).catch(() => null),
+        apiRequest<{ valor_total: number }>('/transferencias-bancarias/summary', { token, params: p }).catch(() => null),
       ]);
       setDespesa(desp);
       setReceita(rec ?? null);
