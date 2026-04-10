@@ -374,12 +374,13 @@ export async function getPorSetor(req: Request, res: Response): Promise<void> {
 }
 
 export async function getSummary(req: Request, res: Response): Promise<void> {
-  const { dataInicio, dataFim, entidadeId, ano } = req.query as Record<string, string>;
+  const { dataInicio, dataFim, entidadeId, ano, mes } = req.query as Record<string, string>;
   const tf = getTenantFilter(req.user!);
 
   const baseFilter = (q: any) => {
     applyTenantFilter(q, tf, 'f.fk_entidade', 'f.fk_municipio');
     if (ano) q.whereRaw('EXTRACT(YEAR FROM f.data_pagamento) = ?', [parseInt(ano)]);
+    if (mes) q.whereRaw('EXTRACT(MONTH FROM f.data_pagamento) = ?', [parseInt(mes)]);
     if (dataInicio) q.where('f.data_pagamento', '>=', dataInicio);
     if (dataFim) q.where('f.data_pagamento', '<=', dataFim);
     if (entidadeId) q.where('f.fk_entidade', entidadeId);
