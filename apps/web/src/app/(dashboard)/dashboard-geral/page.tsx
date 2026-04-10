@@ -221,14 +221,16 @@ export default function DashboardGeralPage() {
   // Gráfico Receita × Despesa por mês — usando dados reais dos summaries
   const chartMensal = MESES.map((mes, i) => {
     const mesNum = i + 1;
-    const recMes  = receita?.porMes?.find((m: any) => Number(m.mes) === mesNum);
-    const despMes = despesa?.porMes?.find((m: any) => Number(m.mes) === mesNum);
+    const recMes   = receita?.porMes?.find((m: any) => Number(m.mes) === mesNum);
+    const transfMes = (transferencias as any)?.porMes?.find((m: any) => Number(m.mes) === mesNum);
+    const despMes  = despesa?.porMes?.find((m: any) => Number(m.mes) === mesNum);
     return {
       mes,
-      receita: Number(recMes?.total ?? 0),
-      despesa: Number(despMes?.total ?? 0),
+      receita: Number(recMes?.total ?? 0) + Number(transfMes?.total ?? 0),
+      despesaPaga: Number(despMes?.total ?? 0),
+      contasAPagar: mesNum === (farol?.mes ?? new Date().getMonth() + 1) ? totalContas : 0,
     };
-  }).filter(d => d.receita > 0 || d.despesa > 0);
+  }).filter(d => d.receita > 0 || d.despesaPaga > 0);
 
   // Metas com executado cruzado
   const metasComExec = metas.slice(0, 5).map(m => {
@@ -368,6 +370,7 @@ export default function DashboardGeralPage() {
                   {[
                     { color: '#10b981', label: 'Receita' },
                     { color: '#ef4444', label: 'Despesa Paga' },
+                    { color: '#f59e0b', label: 'A Pagar' },
                   ].map(l => (
                     <div key={l.label} className="flex items-center gap-1">
                       <div className="w-2.5 h-2.5 rounded-sm" style={{ background: l.color }} />
@@ -385,8 +388,9 @@ export default function DashboardGeralPage() {
                     <YAxis tick={{ fontSize: 10, fill: '#94a3b8' }} axisLine={false} tickLine={false}
                       tickFormatter={(v: number) => 'R$ ' + Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}/>
                     <Tooltip content={<ChartTooltip />} cursor={{ fill: 'rgba(15,42,78,0.04)' }}/>
-                    <Bar dataKey="receita"  name="Receita"           fill="#10b981" radius={[12,12,0,0]}/>
-                    <Bar dataKey="despesa"  name="Despesa Paga" fill="#ef4444" radius={[12,12,0,0]}/>
+                    <Bar dataKey="receita"      name="Receita"      fill="#10b981" radius={[12,12,0,0]}/>
+                    <Bar dataKey="despesaPaga"  name="Despesa Paga" fill="#ef4444" stackId="despesa" radius={[0,0,0,0]}/>
+                    <Bar dataKey="contasAPagar" name="A Pagar"      fill="#f59e0b" stackId="despesa" radius={[12,12,0,0]}/>
                   </BarChart>
                 </ResponsiveContainer>
               ) : (

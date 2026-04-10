@@ -97,7 +97,7 @@ export async function getTransferenciaSummary(req: Request, res: Response): Prom
   if (req.query.ano)         base = base.where('f.ano', req.query.ano);
   if (req.query.mes)         base = base.where('f.mes', req.query.mes);
 
-  const [totais, porFonte, porTipoDoc] = await Promise.all([
+  const [totais, porFonte, porTipoDoc, porMes] = await Promise.all([
     base.clone().select(
       db.raw('COUNT(*) as total_registros'),
       db.raw('SUM(f.valor) as valor_total'),
@@ -112,6 +112,11 @@ export async function getTransferenciaSummary(req: Request, res: Response): Prom
       .groupBy('f.tipo_documento')
       .select('f.tipo_documento', db.raw('COUNT(*) as registros'), db.raw('SUM(f.valor) as total'))
       .orderBy('total', 'desc'),
+
+    base.clone()
+      .groupBy('f.mes')
+      .select('f.mes', db.raw('SUM(f.valor) as total'))
+      .orderBy('f.mes'),
   ]);
 
   res.json({
@@ -119,5 +124,6 @@ export async function getTransferenciaSummary(req: Request, res: Response): Prom
     valor_total:     parseFloat((totais as any)?.valor_total ?? 0),
     porFonte,
     porTipoDoc,
+    porMes,
   });
 }
