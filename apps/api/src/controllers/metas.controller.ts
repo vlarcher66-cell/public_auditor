@@ -328,31 +328,35 @@ export async function getFarol(req: Request, res: Response): Promise<void> {
   const metasRows: any[] = await metasQ;
 
   // ── 2. Pago por grupo × mês (Jan..mesFinal) ────────────────────────────────
+  // Usa fk_grupo_pag do pagamento (classificação manual), com fallback para fk_grupo do credor
   const pagoRows: any[] = await db('fact_ordem_pagamento as f')
-    .join('dim_credor as c', 'f.fk_credor', 'c.id')
-    .join('dim_grupo_despesa as g', 'c.fk_grupo', 'g.id')
+    .leftJoin('dim_credor as c', 'f.fk_credor', 'c.id')
     .modify((q: any) => {
       applyTenantFilter(q, tf, 'f.fk_entidade', 'f.fk_municipio');
       q.whereRaw('EXTRACT(YEAR FROM f.data_pagamento) = ?', [ano])
        .whereNotIn('f.tipo_relatorio', ['DEA', 'RP'])
        .whereNotNull('f.data_pagamento')
-       .whereRaw('EXTRACT(MONTH FROM f.data_pagamento) <= ?', [mesFinal]);
+       .whereRaw('EXTRACT(MONTH FROM f.data_pagamento) <= ?', [mesFinal])
+       .whereNotNull(db.raw('COALESCE(f.fk_grupo_pag, c.fk_grupo)'));
     })
-    .select('g.id as grupo_id', db.raw('EXTRACT(MONTH FROM f.data_pagamento) as mes'))
+    .select(
+      db.raw('COALESCE(f.fk_grupo_pag, c.fk_grupo) as grupo_id'),
+      db.raw('EXTRACT(MONTH FROM f.data_pagamento) as mes'),
+    )
     .sum('f.valor_bruto as total')
-    .groupByRaw('g.id, EXTRACT(MONTH FROM f.data_pagamento)');
+    .groupByRaw('COALESCE(f.fk_grupo_pag, c.fk_grupo), EXTRACT(MONTH FROM f.data_pagamento)');
 
   // ── 3. A pagar por grupo no período selecionado (dt_pagamento IS NULL) ─────
   const aPagarRows: any[] = await db('fact_empenho_liquidado as f')
     .leftJoin('dim_credor as c', 'f.fk_credor', 'c.id')
-    .join('dim_grupo_despesa as g', 'c.fk_grupo', 'g.id')
     .modify((q: any) => {
       applyTenantFilter(q, tf, 'f.fk_entidade', 'f.fk_municipio');
-      q.where('f.periodo_ref', periodoRef).whereNull('f.dt_pagamento');
+      q.where('f.periodo_ref', periodoRef).whereNull('f.dt_pagamento')
+       .whereNotNull(db.raw('COALESCE(f.fk_grupo_pag, c.fk_grupo)'));
     })
-    .select('g.id as grupo_id')
+    .select(db.raw('COALESCE(f.fk_grupo_pag, c.fk_grupo) as grupo_id'))
     .sum('f.valor as total')
-    .groupBy('g.id');
+    .groupByRaw('COALESCE(f.fk_grupo_pag, c.fk_grupo)');
 
   // ── 4. Agrega em memória ───────────────────────────────────────────────────
   // pagoMap[grupo_id] = { mes: valor do mês, acumulado: Jan..mes }
