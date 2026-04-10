@@ -422,7 +422,7 @@ export async function getSummary(req: Request, res: Response): Promise<void> {
     db('fact_ordem_pagamento as f')
       .modify(baseFilter)
       .select(db.raw('EXTRACT(MONTH FROM f.data_pagamento) as mes'))
-      .sum('f.valor_liquido as total')
+      .sum('f.valor_bruto as total')
       .groupByRaw('EXTRACT(MONTH FROM f.data_pagamento)')
       .orderByRaw('EXTRACT(MONTH FROM f.data_pagamento)'),
   ]);
