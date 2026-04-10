@@ -361,9 +361,11 @@ export async function getFarol(req: Request, res: Response): Promise<void> {
   const pagoRows: any[] = [...pagoRowsManual, ...pagoRowsCredor];
 
   // ── 3. A pagar por grupo no período selecionado (dt_pagamento IS NULL) ─────
+  // Usa dim_credor OU dim_credor_a_pagar para obter o grupo
   const aPagarRows: any[] = await db('fact_empenho_liquidado as f')
-    .leftJoin('dim_credor as c', 'f.fk_credor', 'c.id')
-    .join('dim_grupo_despesa as g', 'c.fk_grupo', 'g.id')
+    .leftJoin('dim_credor as c',          'f.fk_credor',         'c.id')
+    .leftJoin('dim_credor_a_pagar as cap', 'f.fk_credor_a_pagar', 'cap.id')
+    .joinRaw('JOIN dim_grupo_despesa as g ON g.id = COALESCE(c.fk_grupo, cap.fk_grupo)')
     .modify((q: any) => {
       applyTenantFilter(q, tf, 'f.fk_entidade', 'f.fk_municipio');
       q.where('f.periodo_ref', periodoRef).whereNull('f.dt_pagamento');
