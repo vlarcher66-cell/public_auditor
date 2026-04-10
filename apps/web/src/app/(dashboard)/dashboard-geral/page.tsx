@@ -72,8 +72,13 @@ function fmtM(v: number | null | undefined) {
 
 function ChartTooltip({ active, payload, label }: any) {
   if (!active || !payload?.length) return null;
+  const receita     = Number(payload.find((p: any) => p.dataKey === 'receita')?.value ?? 0);
+  const despesaPaga = Number(payload.find((p: any) => p.dataKey === 'despesaPaga')?.value ?? 0);
+  const contasAPagar = Number(payload.find((p: any) => p.dataKey === 'contasAPagar')?.value ?? 0);
+  const saldo = receita - despesaPaga - contasAPagar;
+  const superavit = saldo >= 0;
   return (
-    <div className="bg-[#0F2A4E] rounded-xl px-4 py-3 shadow-2xl border border-white/10 min-w-[180px]">
+    <div className="bg-[#0F2A4E] rounded-xl px-4 py-3 shadow-2xl border border-white/10 min-w-[200px]">
       <p className="text-[11px] text-blue-300 font-bold uppercase tracking-wider mb-2">{label}</p>
       {payload.map((p: any, i: number) => p.value > 0 && (
         <div key={i} className="flex items-center justify-between gap-4">
@@ -84,30 +89,39 @@ function ChartTooltip({ active, payload, label }: any) {
           <span className="text-[11px] font-bold text-white">R$ {fmt(p.value)}</span>
         </div>
       ))}
+      <div className="border-t border-white/10 mt-2 pt-2 flex items-center justify-between gap-4">
+        <span className="text-[11px] font-bold" style={{ color: superavit ? '#10b981' : '#ef4444' }}>
+          {superavit ? '▲ Superávit' : '▼ Déficit'}
+        </span>
+        <span className="text-[11px] font-bold" style={{ color: superavit ? '#10b981' : '#ef4444' }}>
+          R$ {fmt(Math.abs(saldo))}
+        </span>
+      </div>
     </div>
   );
 }
 
 // ─── KPI Card ─────────────────────────────────────────────────────────────────
 
-function KpiCard({ label, value, sub, icon, color, bg, delay = 0, prefix = 'R$ ', decimals = 2, suffix = '' }: {
+function KpiCard({ label, value, sub, icon, color, bg, delay = 0, prefix = 'R$ ', decimals = 2, suffix = '', highlight = false }: {
   label: string; value: number; sub: string; icon: React.ReactNode;
-  color: string; bg: string; delay?: number; prefix?: string; decimals?: number; suffix?: string;
+  color: string; bg: string; delay?: number; prefix?: string; decimals?: number; suffix?: string; highlight?: boolean;
 }) {
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4, delay }}
-      className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm hover:shadow-md transition-shadow"
+      className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden"
+      style={highlight ? { borderLeft: `4px solid ${color}`, boxShadow: `0 2px 16px ${color}22` } : {}}
     >
       <div className="w-10 h-10 rounded-xl flex items-center justify-center mb-3" style={{ background: bg, color }}>
         {icon}
       </div>
       <p className="text-[11px] font-medium text-gray-400 mb-0.5">{label}</p>
-      <p className="text-xl font-bold text-[#0F2A4E] leading-tight">
+      <p className="text-xl font-bold leading-tight" style={highlight ? { color } : { color: '#0F2A4E' }}>
         {prefix}<CountUp end={value} decimals={decimals} duration={1.6} separator="." decimal="," delay={delay} />{suffix}
       </p>
-      <p className="text-[11px] text-gray-400 mt-1">{sub}</p>
+      <p className="text-[11px] font-semibold mt-1" style={highlight ? { color } : { color: '#94a3b8' }}>{sub}</p>
     </motion.div>
   );
 }
@@ -346,9 +360,11 @@ export default function DashboardGeralPage() {
                 sub={contas?.ultimo_periodo ? `Ref. ${contas.ultimo_periodo}` : 'Último período'}
                 icon={<CreditCard size={18}/>} color="#f59e0b" bg="#fffbeb" delay={0.15} />
               <KpiCard label="Saldo do Período" value={Math.abs(saldo)}
-                sub={saldo >= 0 ? '▲ Superávit' : '▼ Déficit'}
+                sub={saldo >= 0 ? '▲ SUPERÁVIT' : '▼ DÉFICIT'}
                 icon={saldo >= 0 ? <ArrowUpRight size={18}/> : <ArrowDownRight size={18}/>}
-                color={saldo >= 0 ? '#3b82f6' : '#f59e0b'} bg={saldo >= 0 ? '#eff6ff' : '#fffbeb'} delay={0.2} />
+                color={saldo >= 0 ? '#10b981' : '#ef4444'}
+                bg={saldo >= 0 ? '#ecfdf5' : '#fef2f2'}
+                delay={0.2} highlight={true} />
               <KpiCard label="Índice de Saúde" value={pctSaude}
                 sub={`Mín. 15% — ${superavit >= 0 ? '+' : ''}R$ ${fmt(superavit)}`}
                 icon={<ShieldCheck size={18}/>}
