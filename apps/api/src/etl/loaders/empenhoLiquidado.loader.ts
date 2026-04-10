@@ -59,14 +59,14 @@ async function resolveOrCreateCredor(
 
   // 3. Cria o credor automaticamente (sem CNPJ/CPF — relatório não fornece)
   // Preenche historico com o historico do empenho para facilitar classificação pelo usuário
-  const [newId] = await db('dim_credor').insert({
+  const [{ id: newId }] = await db('dim_credor').insert({
     nome:         nomeRaw.trim(),
     fk_municipio: fkMunicipio,
     fk_grupo:     null,
     fk_subgrupo:  null,
     historico:    historicoEmpenho ? historicoEmpenho.trim().slice(0, 500) : null,
     origem:       'A_PAGAR',
-  });
+  }).returning('id');
 
   logger.info({ nome: nomeRaw.trim(), newId }, 'Credor criado automaticamente via importação de empenhos');
   return { id: newId, criado: true };
