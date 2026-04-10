@@ -18,11 +18,21 @@ export async function createGrupo(req: Request, res: Response): Promise<void> {
   const { nome, descricao } = req.body;
   if (!nome?.trim()) { res.status(400).json({ error: 'Nome obrigatório' }); return; }
 
-  const exists = await db('dim_grupo_despesa').where('nome', nome.trim()).first();
-  if (exists) { res.status(409).json({ error: 'Grupo já existe', id: exists.id }); return; }
+  try {
+    const tf = getTenantFilter(req.user!);
+    const q = db('dim_grupo_despesa').where('nome', nome.trim());
+    if (tf.fk_municipio) q.where('fk_municipio', tf.fk_municipio);
+    const exists = await q.first();
+    if (exists) { res.status(409).json({ error: 'Grupo já existe', id: exists.id }); return; }
 
-  const [{ id }] = await db('dim_grupo_despesa').insert({ nome: nome.trim(), descricao: descricao?.trim() || null }).returning('id');
-  res.status(201).json({ id, nome: nome.trim(), descricao: descricao?.trim() || null });
+    const [{ id }] = await db('dim_grupo_despesa')
+      .insert({ nome: nome.trim(), descricao: descricao?.trim() || null, fk_municipio: tf.fk_municipio ?? null })
+      .returning('id');
+    res.status(201).json({ id, nome: nome.trim(), descricao: descricao?.trim() || null });
+  } catch (err: any) {
+    logger.error({ err }, 'createGrupo error');
+    res.status(500).json({ error: 'Erro interno ao salvar grupo' });
+  }
 }
 
 export async function updateGrupo(req: Request, res: Response): Promise<void> {
@@ -69,11 +79,16 @@ export async function createSubgrupo(req: Request, res: Response): Promise<void>
   const { nome, fk_grupo } = req.body;
   if (!nome?.trim() || !fk_grupo) { res.status(400).json({ error: 'Nome e grupo obrigatórios' }); return; }
 
-  const exists = await db('dim_subgrupo_despesa').where({ nome: nome.trim(), fk_grupo }).first();
-  if (exists) { res.status(409).json({ error: 'Subgrupo já existe neste grupo', id: exists.id }); return; }
+  try {
+    const exists = await db('dim_subgrupo_despesa').where({ nome: nome.trim(), fk_grupo }).first();
+    if (exists) { res.status(409).json({ error: 'Subgrupo já existe neste grupo', id: exists.id }); return; }
 
-  const [{ id }] = await db('dim_subgrupo_despesa').insert({ nome: nome.trim(), fk_grupo }).returning('id');
-  res.status(201).json({ id, nome: nome.trim(), fk_grupo });
+    const [{ id }] = await db('dim_subgrupo_despesa').insert({ nome: nome.trim(), fk_grupo }).returning('id');
+    res.status(201).json({ id, nome: nome.trim(), fk_grupo });
+  } catch (err: any) {
+    logger.error({ err }, 'createSubgrupo error');
+    res.status(500).json({ error: 'Erro interno ao salvar subgrupo' });
+  }
 }
 
 export async function updateSubgrupo(req: Request, res: Response): Promise<void> {

@@ -61,7 +61,10 @@ function SubgrupoModal({
       const data = await res.json();
       if (!res.ok) { setError(data.error || 'Erro ao salvar'); setSaving(false); return; }
       onSaved();
-    } catch { /* API offline */ }
+    } catch (err: any) {
+      setError('Erro de conexão com a API');
+      setSaving(false);
+    }
   }
 
   return (
