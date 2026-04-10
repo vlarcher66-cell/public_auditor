@@ -20,7 +20,7 @@ import relatorioQuadrimestralRoutes from './relatorioQuadrimestral.routes';
 import { db } from '../config/database';
 import { authMiddleware } from '../middleware/auth.middleware';
 import { backfillEmpenhoBase } from '../controllers/pagamentos.controller';
-import { listCredoresAPagar, classificarCredorAPagar, classificarLoteCredoresAPagar, getGruposSubgrupos } from '../controllers/credorAPagar.controller';
+import { listCredoresAPagar, classificarCredorAPagar, classificarLoteCredoresAPagar, getGruposSubgrupos, deleteAllCredoresAPagar } from '../controllers/credorAPagar.controller';
 
 const router = Router();
 
@@ -158,5 +158,6 @@ router.get('/credores-a-pagar',           authMiddleware, listCredoresAPagar);
 router.patch('/credores-a-pagar/:id',     authMiddleware, classificarCredorAPagar);
 router.post('/credores-a-pagar/lote',     authMiddleware, classificarLoteCredoresAPagar);
 router.get('/credores-a-pagar/opcoes',    authMiddleware, getGruposSubgrupos);
+router.delete('/credores-a-pagar',        authMiddleware, deleteAllCredoresAPagar);
 
 export default router;

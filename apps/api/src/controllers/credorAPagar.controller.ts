@@ -106,6 +106,16 @@ export async function classificarLoteCredoresAPagar(req: Request, res: Response)
   res.json({ ok: true, updated });
 }
 
+// ── Limpar todos os credores a pagar ─────────────────────────────────────────
+export async function deleteAllCredoresAPagar(_req: Request, res: Response): Promise<void> {
+  try {
+    await db.raw('DELETE FROM dim_credor_a_pagar');
+    res.json({ message: 'Todos os credores a pagar foram excluídos' });
+  } catch (err: any) {
+    res.status(500).json({ error: err?.message ?? 'Erro ao excluir' });
+  }
+}
+
 // ── Grupos e subgrupos disponíveis (para os dropdowns) ────────────────────────
 export async function getGruposSubgrupos(_req: Request, res: Response): Promise<void> {
   const [grupos, subgrupos] = await Promise.all([

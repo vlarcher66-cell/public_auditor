@@ -4,7 +4,7 @@ import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { useSession } from 'next-auth/react';
 import {
   Search, Layers, ChevronUp, ChevronDown, Loader2,
-  CheckCircle2, AlertTriangle, Tag, FileText, X, Check,
+  CheckCircle2, AlertTriangle, Tag, FileText, X, Check, Trash2,
 } from 'lucide-react';
 import TopBar from '@/components/dashboard/TopBar';
 import { SearchSelect } from '@/components/SearchSelect';
@@ -315,6 +315,83 @@ function CredorRow({ credor, grupos, subgrupos, token, onSaved, onOpenHistorico 
   );
 }
 
+// ─── Modal Limpar Credores a Pagar ────────────────────────────────────────────
+function LimparCredoresAPagarModal({ token, onClose, onDone }: { token: string; onClose: () => void; onDone: () => void; }) {
+  const [confirmText, setConfirmText] = useState('');
+  const [deleting, setDeleting] = useState(false);
+  const [error, setError] = useState('');
+  const CONFIRM_WORD = 'LIMPAR';
+
+  async function handleDelete() {
+    if (confirmText !== CONFIRM_WORD) return;
+    setDeleting(true);
+    setError('');
+    try {
+      const res = await fetch(`${API_URL}/api/credores-a-pagar`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setError(data.error || 'Erro ao excluir');
+        setDeleting(false);
+        return;
+      }
+      onDone();
+      onClose();
+    } catch {
+      setError('API indisponível');
+      setDeleting(false);
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
+        <div className="flex items-center justify-between px-6 py-4 border-b">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 bg-red-100 rounded-xl flex items-center justify-center">
+              <Trash2 size={18} className="text-red-600" />
+            </div>
+            <h2 className="font-semibold text-gray-800">Limpar credores a pagar</h2>
+          </div>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600"><X size={20} /></button>
+        </div>
+        <div className="p-6 space-y-4">
+          <div className="bg-red-50 border border-red-200 rounded-xl p-4 text-sm text-red-700 space-y-1">
+            <p className="font-semibold">⚠️ Atenção: esta ação é irreversível!</p>
+            <p>Todos os credores a pagar serão permanentemente excluídos. Os empenhos importados serão mantidos.</p>
+          </div>
+          {error && <p className="text-sm text-red-600 bg-red-50 px-3 py-2 rounded-lg">{error}</p>}
+          <div>
+            <label className="block text-xs font-medium text-gray-600 mb-1">
+              Digite <span className="font-bold text-red-600">{CONFIRM_WORD}</span> para confirmar:
+            </label>
+            <input
+              autoFocus
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-400 font-mono tracking-widest"
+              placeholder={CONFIRM_WORD}
+              value={confirmText}
+              onChange={(e) => setConfirmText(e.target.value.toUpperCase())}
+            />
+          </div>
+        </div>
+        <div className="flex justify-end gap-2 px-6 py-4 border-t">
+          <button onClick={onClose} className="px-4 py-2 text-sm rounded-lg border hover:bg-gray-50">Cancelar</button>
+          <button
+            onClick={handleDelete}
+            disabled={confirmText !== CONFIRM_WORD || deleting}
+            className="flex items-center gap-2 px-4 py-2 text-sm rounded-lg bg-red-600 text-white hover:bg-red-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+          >
+            <Trash2 size={14} />
+            {deleting ? 'Excluindo...' : 'Limpar tudo'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── Página ───────────────────────────────────────────────────────────────────
 export default function CredoresAPagarPage() {
   const { data: session } = useSession();
@@ -336,6 +413,7 @@ export default function CredoresAPagarPage() {
   const [sortDir,        setSortDir]        = useState<'asc' | 'desc'>('asc');
 
   const [modalCredor, setModalCredor] = useState<CredorAPagar | null>(null);
+  const [showLimpar, setShowLimpar] = useState(false);
 
   const searchTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -453,6 +531,13 @@ export default function CredoresAPagarPage() {
             <AlertTriangle size={12} />
             Sem grupo ({semGrupo})
           </button>
+          <button
+            onClick={() => setShowLimpar(true)}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium border border-red-200 text-red-600 hover:bg-red-50 transition-colors ml-auto"
+          >
+            <Trash2 size={12} />
+            Limpar credores
+          </button>
         </div>
 
         {/* Tabela */}
@@ -516,6 +601,15 @@ export default function CredoresAPagarPage() {
           )}
         </div>
       </div>
+
+      {/* Modal limpar */}
+      {showLimpar && token && (
+        <LimparCredoresAPagarModal
+          token={token}
+          onClose={() => setShowLimpar(false)}
+          onDone={() => { setRows([]); setTotal(0); setSemGrupo(0); load(1); }}
+        />
+      )}
 
       {/* Modal histórico */}
       {modalCredor && token && (
