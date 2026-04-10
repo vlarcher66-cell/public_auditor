@@ -25,11 +25,12 @@ export async function getMatrizEmpenhos(req: Request, res: Response): Promise<vo
   }
 
   // Para cada período: saldo a pagar por grupo/subgrupo do credor
-  // Usa LEFT JOIN com dim_credor para obter grupo/subgrupo
+  // Usa dim_credor OU dim_credor_a_pagar (COALESCE)
   const rows = await db('fact_empenho_liquidado as f')
-    .leftJoin('dim_credor as c', 'f.fk_credor', 'c.id')
-    .leftJoin('dim_grupo_despesa as g', 'c.fk_grupo', 'g.id')
-    .leftJoin('dim_subgrupo_despesa as s', 'c.fk_subgrupo', 's.id')
+    .leftJoin('dim_credor as c',          'f.fk_credor',         'c.id')
+    .leftJoin('dim_credor_a_pagar as cap', 'f.fk_credor_a_pagar', 'cap.id')
+    .leftJoin('dim_grupo_despesa as g',    db.raw('COALESCE(c.fk_grupo, cap.fk_grupo)'),    'g.id')
+    .leftJoin('dim_subgrupo_despesa as s', db.raw('COALESCE(c.fk_subgrupo, cap.fk_subgrupo)'), 's.id')
     .modify((q: any) => applyRBAC(q, user))
     .select(
       'f.periodo_ref',
@@ -125,10 +126,11 @@ export async function getEmpenhosPendentes(req: Request, res: Response): Promise
   const fk_grupo = req.query.fk_grupo ? parseInt(req.query.fk_grupo as string) : null;
 
   const q = db('fact_empenho_liquidado as f')
-    .leftJoin('dim_credor as c', 'f.fk_credor', 'c.id')
-    .leftJoin('dim_grupo_despesa as g', 'c.fk_grupo', 'g.id')
-    .leftJoin('dim_subgrupo_despesa as s', 'c.fk_subgrupo', 's.id')
-    .leftJoin('dim_entidade as e', 'f.fk_entidade', 'e.id')
+    .leftJoin('dim_credor as c',           'f.fk_credor',         'c.id')
+    .leftJoin('dim_credor_a_pagar as cap',  'f.fk_credor_a_pagar', 'cap.id')
+    .leftJoin('dim_grupo_despesa as g',     db.raw('COALESCE(c.fk_grupo, cap.fk_grupo)'),       'g.id')
+    .leftJoin('dim_subgrupo_despesa as s',  db.raw('COALESCE(c.fk_subgrupo, cap.fk_subgrupo)'), 's.id')
+    .leftJoin('dim_entidade as e',          'f.fk_entidade', 'e.id')
     .whereNull('f.dt_pagamento')
     .select(
       'f.id', 'f.dt_liquidacao', 'f.num_empenho', 'f.credor_nome',
@@ -167,19 +169,20 @@ export async function getListagem(req: Request, res: Response): Promise<void> {
 
   function buildBase() {
     const q = db('fact_empenho_liquidado as f')
-      .leftJoin('dim_credor as c', 'f.fk_credor', 'c.id')
-      .leftJoin('dim_grupo_despesa as g', 'c.fk_grupo', 'g.id')
-      .leftJoin('dim_subgrupo_despesa as s', 'c.fk_subgrupo', 's.id')
-      .leftJoin('dim_entidade as e', 'f.fk_entidade', 'e.id')
+      .leftJoin('dim_credor as c',           'f.fk_credor',         'c.id')
+      .leftJoin('dim_credor_a_pagar as cap',  'f.fk_credor_a_pagar', 'cap.id')
+      .leftJoin('dim_grupo_despesa as g',     db.raw('COALESCE(c.fk_grupo, cap.fk_grupo)'),       'g.id')
+      .leftJoin('dim_subgrupo_despesa as s',  db.raw('COALESCE(c.fk_subgrupo, cap.fk_subgrupo)'), 's.id')
+      .leftJoin('dim_entidade as e',          'f.fk_entidade', 'e.id')
       .whereNull('f.dt_pagamento')
       .modify((q: any) => applyRBAC(q, user));
 
     if (periodo)     q.where('f.periodo_ref', periodo);
     if (fk_entidade) q.where('f.fk_entidade', fk_entidade);
-    if (fk_grupo)    q.where('c.fk_grupo', fk_grupo);
-    if (fk_subgrupo) q.where('c.fk_subgrupo', fk_subgrupo);
+    if (fk_grupo)    q.where('g.id', fk_grupo);
+    if (fk_subgrupo) q.where('s.id', fk_subgrupo);
     if (credor)      q.whereRaw('UPPER(f.credor_nome) LIKE ?', [`%${credor.toUpperCase()}%`]);
-    if (semGrupo)    q.whereNull('c.fk_grupo');
+    if (semGrupo)    q.whereNull('g.id');
 
     return q;
   }
@@ -196,11 +199,12 @@ export async function getListagem(req: Request, res: Response): Promise<void> {
       .select(
         'f.id', 'f.dt_liquidacao', 'f.num_empenho', 'f.num_reduzido',
         'f.credor_nome', 'f.historico', 'f.tipo_empenho', 'f.dt_empenho',
-        'f.valor', 'f.periodo_ref', 'f.classificacao_orc', 'f.fk_credor',
+        'f.valor', 'f.periodo_ref', 'f.classificacao_orc', 'f.fk_credor', 'f.fk_credor_a_pagar',
         'e.nome as entidade_nome',
-        'c.fk_grupo', 'c.fk_subgrupo',
-        db.raw("COALESCE(g.nome, NULL) as grupo_nome"),
-        db.raw("COALESCE(s.nome, NULL) as subgrupo_nome"),
+        db.raw('COALESCE(c.fk_grupo, cap.fk_grupo) as fk_grupo'),
+        db.raw('COALESCE(c.fk_subgrupo, cap.fk_subgrupo) as fk_subgrupo'),
+        db.raw('g.nome as grupo_nome'),
+        db.raw('s.nome as subgrupo_nome'),
       )
       .orderBy(sortCol, sortDir)
       .limit(limit)
@@ -243,8 +247,9 @@ export async function getTopCredores(req: Request, res: Response): Promise<void>
   if (!ultimoPeriodo) { res.json({ rows: [], total_geral: 0 }); return; }
 
   const rows = await db('fact_empenho_liquidado as f')
-    .leftJoin('dim_credor as c', 'f.fk_credor', 'c.id')
-    .leftJoin('dim_grupo_despesa as g', 'c.fk_grupo', 'g.id')
+    .leftJoin('dim_credor as c',           'f.fk_credor',         'c.id')
+    .leftJoin('dim_credor_a_pagar as cap',  'f.fk_credor_a_pagar', 'cap.id')
+    .leftJoin('dim_grupo_despesa as g',     db.raw('COALESCE(c.fk_grupo, cap.fk_grupo)'), 'g.id')
     .modify((q: any) => applyRBAC(q, user))
     .where('f.periodo_ref', ultimoPeriodo)
     .whereNull('f.dt_pagamento')
