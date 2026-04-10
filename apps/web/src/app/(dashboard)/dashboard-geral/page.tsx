@@ -213,7 +213,7 @@ export default function DashboardGeralPage() {
   // ── Dados derivados ──────────────────────────────────────────────────────────
 
   const totalReceita  = receita ? (Number(receita.totais?.valor_orc ?? 0) + Number(receita.totais?.valor_extra ?? 0)) : 0;
-  const totalDespesa  = Number(despesa?.totalLiquido ?? 0);
+  const totalDespesa  = Number(despesa?.totalBruto ?? 0);
   const totalContas   = Number(contas?.total_a_pagar ?? 0);
   const saldo         = totalReceita - totalDespesa;
   const pctSaude      = Number(indice?.acumulado?.percentual ?? 0);
