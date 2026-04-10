@@ -6,7 +6,7 @@
     "dev:fast": "tsc && node dist/src/server.js",
     "build": "tsc",
     "start": "node dist/src/server.js",
-    "migrate": "NODE_ENV=development knex --knexfile knexfile.ts migrate:latest",
+    "migrate": "NODE_ENV=production knex --knexfile dist/knexfile.js migrate:latest",
     "migrate:rollback": "NODE_ENV=development knex --knexfile knexfile.ts migrate:rollback",
     "seed": "knex --knexfile knexfile.ts seed:run"
   },
