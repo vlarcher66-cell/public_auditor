@@ -214,7 +214,7 @@ export default function DashboardGeralPage() {
   const totalReceita  = totalReceitaPura + totalTransf;
   const totalDespesa  = Number(despesa?.totalBruto ?? 0);
   const totalContas   = Number(contas?.total_a_pagar ?? 0);
-  const saldo         = totalReceita - totalDespesa;
+  const saldo         = totalReceita - totalDespesa - totalContas;
   const pctSaude      = Number(indice?.acumulado?.percentual ?? 0);
   const superavit     = Number(indice?.acumulado?.superavit ?? 0);
 
