@@ -160,6 +160,7 @@ export default function DashboardGeralPage() {
   const [metas,      setMetas]      = useState<MetaItem[]>([]);
   const [exec,       setExec]       = useState<ExecItem[]>([]);
   const [farol,      setFarol]      = useState<FarolData | null>(null);
+  const [transferencias, setTransferencias] = useState<{ valor_total: number } | null>(null);
   const [mesSelecionado, setMesSelecionado] = useState<number | null>(null); // null = ano todo / último
   const [lastUpdate, setLastUpdate] = useState(new Date());
   const [grupoTooltip, setGrupoTooltip] = useState<number | null>(null);
@@ -175,7 +176,7 @@ export default function DashboardGeralPage() {
     const p: Record<string, string> = { ano, ...ctxParams };
     if (mesAtual) p.mes = String(mesAtual);
     try {
-      const [desp, rec, ind, cnt, met, ex, far] = await Promise.all([
+      const [desp, rec, ind, cnt, met, ex, far, transf] = await Promise.all([
         apiRequest<DespesaSummary>('/pagamentos/summary', { token, params: p }).catch(() => null),
         apiRequest<ReceitaSummaryResponse>('/receitas/summary', { token, params: p }).catch(() => null),
         apiRequest<Indice15>('/indice15', { token, params: p }).catch(() => null),
@@ -183,6 +184,7 @@ export default function DashboardGeralPage() {
         apiRequest<MetaItem[]>('/metas', { token, params: p }).catch(() => []),
         apiRequest<{ rows: ExecItem[] }>('/metas/executado', { token, params: p }).catch(() => ({ rows: [] })),
         apiRequest<FarolData>('/metas/farol', { token, params: p }).catch(() => null),
+        apiRequest<{ valor_total: number }>('/transferencias/summary', { token, params: p }).catch(() => null),
       ]);
       setDespesa(desp);
       setReceita(rec ?? null);
@@ -191,6 +193,7 @@ export default function DashboardGeralPage() {
       setMetas(Array.isArray(met) ? met : []);
       setExec((ex as any)?.rows ?? (Array.isArray(ex) ? ex : []));
       setFarol(far);
+      setTransferencias(transf);
       setLastUpdate(new Date());
     } finally {
       setLoading(false);
@@ -206,7 +209,9 @@ export default function DashboardGeralPage() {
 
   // ── Dados derivados ──────────────────────────────────────────────────────────
 
-  const totalReceita  = receita ? (Number(receita.totais?.valor_orc ?? 0) + Number(receita.totais?.valor_extra ?? 0)) : 0;
+  const totalReceitaPura = receita ? (Number(receita.totais?.valor_orc ?? 0) + Number(receita.totais?.valor_extra ?? 0)) : 0;
+  const totalTransf   = Number(transferencias?.valor_total ?? 0);
+  const totalReceita  = totalReceitaPura + totalTransf;
   const totalDespesa  = Number(despesa?.totalBruto ?? 0);
   const totalContas   = Number(contas?.total_a_pagar ?? 0);
   const saldo         = totalReceita - totalDespesa;
@@ -330,7 +335,7 @@ export default function DashboardGeralPage() {
             {/* ── BLOCO 1 — KPI Cards ── */}
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
               <KpiCard label="Receita Arrecadada" value={totalReceita}
-                sub={`${receita?.totais?.total_registros ?? 0} registros`}
+                sub={`Receitas + Transf. recebidas`}
                 icon={<TrendingUp size={18}/>} color="#10b981" bg="#ecfdf5" delay={0.05} />
               <KpiCard label="Despesa Paga" value={totalDespesa}
                 sub={`${despesa?.countRegistros ?? 0} processos`}
