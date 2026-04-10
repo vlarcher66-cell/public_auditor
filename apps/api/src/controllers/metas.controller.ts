@@ -380,7 +380,25 @@ export async function getFarol(req: Request, res: Response): Promise<void> {
     return 'vermelho';
   }
 
-  const grupos = metasRows.map((g: any) => {
+  // Garante que grupos com pagamento mas sem meta também apareçam
+  const gruposComMeta = new Set(metasRows.map((g: any) => Number(g.grupo_id)));
+  const gruposSemMeta: any[] = [];
+  for (const gId of Object.keys(pagoMap)) {
+    if (!gruposComMeta.has(Number(gId))) {
+      // Busca nome do grupo
+      const gInfo = await db('dim_grupo_despesa').where('id', gId).select('id', 'nome').first();
+      if (gInfo) gruposSemMeta.push({ grupo_id: gId, grupo_nome: gInfo.nome, meta_anual: 0 });
+    }
+  }
+  for (const gId of Object.keys(aPagarMap)) {
+    if (!gruposComMeta.has(Number(gId)) && !gruposSemMeta.find(g => Number(g.grupo_id) === Number(gId))) {
+      const gInfo = await db('dim_grupo_despesa').where('id', gId).select('id', 'nome').first();
+      if (gInfo) gruposSemMeta.push({ grupo_id: gId, grupo_nome: gInfo.nome, meta_anual: 0 });
+    }
+  }
+  const todosGrupos = [...metasRows, ...gruposSemMeta];
+
+  const grupos = todosGrupos.map((g: any) => {
     const gId        = Number(g.grupo_id);
     const metaAnual  = Number(g.meta_anual);
     const metaMensal = metaAnual / 12;           // meta uniforme por mês
