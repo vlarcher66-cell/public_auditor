@@ -1,10 +1,10 @@
 'use client';
 
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { useSession } from 'next-auth/react';
 import {
   Search, Layers, ChevronUp, ChevronDown, Loader2,
-  RefreshCw, CheckCircle2, AlertTriangle, Tag,
+  CheckCircle2, AlertTriangle, Tag, FileText, X, Check,
 } from 'lucide-react';
 import TopBar from '@/components/dashboard/TopBar';
 import { SearchSelect } from '@/components/SearchSelect';
@@ -24,6 +24,7 @@ interface CredorAPagar {
   fk_subgrupo: number | null;
   grupo_nome: string | null;
   subgrupo_nome: string | null;
+  detalhar_no_pagamento: boolean;
   criado_em: string;
 }
 
@@ -35,34 +36,197 @@ interface ListagemResponse {
   limit: number;
 }
 
-// ─── Célula de Classificação ──────────────────────────────────────────────────
-function ClassifCell({ credor, grupos, subgrupos, token, onSaved }: {
+// ─── Modal de Histórico ───────────────────────────────────────────────────────
+function HistoricoModal({ credor, grupos, subgrupos, token, onClose, onSaved }: {
   credor: CredorAPagar;
   grupos: Grupo[];
   subgrupos: Subgrupo[];
   token: string;
-  onSaved: (id: number, fkGrupo: number | null, fkSubgrupo: number | null, grupoNome: string | null, subgrupoNome: string | null) => void;
+  onClose: () => void;
+  onSaved: (id: number, updates: Partial<CredorAPagar>) => void;
 }) {
-  const [fkGrupo,    setFkGrupo]    = useState<number | ''>(credor.fk_grupo ?? '');
-  const [fkSubgrupo, setFkSubgrupo] = useState<number | ''>(credor.fk_subgrupo ?? '');
-  const [saving, setSaving] = useState(false);
-  const [saved,  setSaved]  = useState(false);
+  const [texto,      setTexto]      = useState(credor.historico ?? '');
+  const [grupoId,    setGrupoId]    = useState<number | ''>(credor.fk_grupo ?? '');
+  const [subgrupoId, setSubgrupoId] = useState<number | ''>(credor.fk_subgrupo ?? '');
+  const [saving,     setSaving]     = useState(false);
 
-  const subsFiltrados = subgrupos.filter(s => s.fk_grupo === Number(fkGrupo));
+  const subsFiltrados = subgrupos.filter(s => s.fk_grupo === Number(grupoId));
 
-  async function save(g: number | '', s: number | '') {
+  async function handleSave() {
     setSaving(true);
     try {
       await fetch(`${API_URL}/api/credores-a-pagar/${credor.id}`, {
         method: 'PATCH',
         headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ fk_grupo: g || null, fk_subgrupo: s || null }),
+        body: JSON.stringify({
+          fk_grupo:    grupoId    || null,
+          fk_subgrupo: subgrupoId || null,
+          historico:   texto.trim() || null,
+        }),
+      });
+      const grupo_nome    = grupos.find(g => g.id === Number(grupoId))?.nome ?? null;
+      const subgrupo_nome = subsFiltrados.find(s => s.id === Number(subgrupoId))?.nome ?? null;
+      onSaved(credor.id, {
+        fk_grupo: grupoId || null,
+        fk_subgrupo: subgrupoId || null,
+        historico: texto.trim() || null,
+        grupo_nome,
+        subgrupo_nome,
+      });
+      onClose();
+    } catch { /* offline */ }
+    setSaving(false);
+  }
+
+  return (
+    <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4"
+      onClick={e => e.target === e.currentTarget && onClose()}>
+      <div className="bg-white rounded-2xl shadow-2xl w-[95vw] max-w-xl overflow-hidden">
+
+        {/* Header */}
+        <div style={{ background: 'linear-gradient(135deg, #0F2A4E 0%, #1a3a6b 60%, #0F2A4E 100%)' }} className="px-6 py-5">
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
+                style={{ background: 'rgba(201,168,76,0.15)', border: '1.5px solid rgba(201,168,76,0.4)' }}>
+                <FileText size={18} color="#C9A84C" />
+              </div>
+              <div>
+                <h2 className="font-bold text-white text-base leading-tight">{credor.nome}</h2>
+                <p className="text-xs mt-0.5" style={{ color: '#93c5fd' }}>Histórico / Anotações do Credor</p>
+              </div>
+            </div>
+            <button onClick={onClose} className="text-white/50 hover:text-white transition-colors mt-0.5"><X size={18} /></button>
+          </div>
+          <div className="flex flex-wrap gap-2 mt-4">
+            {credor.grupo_nome ? (
+              <span className="text-xs px-2.5 py-1 rounded-full font-semibold" style={{ background: 'rgba(30,77,149,0.4)', color: '#93c5fd' }}>
+                {credor.grupo_nome}
+              </span>
+            ) : (
+              <span className="text-xs px-2.5 py-1 rounded-full font-semibold" style={{ background: 'rgba(234,88,12,0.3)', color: '#fdba74' }}>
+                Sem grupo
+              </span>
+            )}
+            {credor.subgrupo_nome && (
+              <span className="text-xs px-2.5 py-1 rounded-full" style={{ background: 'rgba(201,168,76,0.2)', color: '#fde68a' }}>
+                {credor.subgrupo_nome}
+              </span>
+            )}
+          </div>
+        </div>
+
+        {/* Corpo */}
+        <div className="p-6 space-y-4">
+          <div>
+            <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Classificação</label>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs text-gray-400 mb-1">Grupo</label>
+                <select
+                  value={grupoId}
+                  onChange={e => { setGrupoId(e.target.value ? Number(e.target.value) : ''); setSubgrupoId(''); }}
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 bg-white text-gray-700"
+                >
+                  <option value="">— Sem grupo —</option>
+                  {grupos.map(g => <option key={g.id} value={g.id}>{g.nome}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs text-gray-400 mb-1">Subgrupo</label>
+                <select
+                  value={subgrupoId}
+                  onChange={e => setSubgrupoId(e.target.value ? Number(e.target.value) : '')}
+                  disabled={!grupoId || subsFiltrados.length === 0}
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 bg-white text-gray-700 disabled:bg-gray-50 disabled:text-gray-400"
+                >
+                  <option value="">— Sem subgrupo —</option>
+                  {subsFiltrados.map(s => <option key={s.id} value={s.id}>{s.nome}</option>)}
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <div className="border-t border-dashed border-gray-100" />
+
+          <div>
+            <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
+              Anotações &amp; Observações
+            </label>
+            <textarea
+              autoFocus
+              rows={6}
+              className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:border-transparent resize-none leading-relaxed text-gray-700"
+              placeholder="Ex: Fornecedor de medicamentos. Empenhado conforme contrato nº..."
+              value={texto}
+              onChange={e => setTexto(e.target.value)}
+            />
+            <div className="flex items-center justify-between mt-1.5">
+              <p className="text-xs text-gray-400">Usado para auxiliar a classificação automática.</p>
+              <span className={`text-xs font-mono ${texto.length > 400 ? 'text-orange-500' : 'text-gray-400'}`}>{texto.length} car.</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="flex items-center justify-between px-6 py-4 border-t bg-gray-50">
+          <p className="text-xs text-gray-400 flex items-center gap-1">
+            <Check size={11} className="text-green-500" /> Salvo ao clicar em Salvar
+          </p>
+          <div className="flex gap-2">
+            <button onClick={onClose} className="px-4 py-2 text-sm rounded-lg border border-gray-200 hover:bg-gray-100 text-gray-600 font-medium transition-colors">
+              Cancelar
+            </button>
+            <button
+              onClick={handleSave}
+              disabled={saving}
+              className="px-5 py-2 text-sm rounded-lg text-white font-semibold transition-colors disabled:opacity-60 flex items-center gap-2"
+              style={{ background: saving ? '#94a3b8' : '#0F2A4E' }}
+            >
+              {saving ? <><Loader2 size={13} className="animate-spin" /> Salvando...</> : <><Check size={13} /> Salvar</>}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Linha da tabela ──────────────────────────────────────────────────────────
+function CredorRow({ credor, grupos, subgrupos, token, onSaved, onOpenHistorico }: {
+  credor: CredorAPagar;
+  grupos: Grupo[];
+  subgrupos: Subgrupo[];
+  token: string;
+  onSaved: (id: number, updates: Partial<CredorAPagar>) => void;
+  onOpenHistorico: (c: CredorAPagar) => void;
+}) {
+  const [fkGrupo,    setFkGrupo]    = useState<number | ''>(credor.fk_grupo ?? '');
+  const [fkSubgrupo, setFkSubgrupo] = useState<number | ''>(credor.fk_subgrupo ?? '');
+  const [detalhar,   setDetalhar]   = useState(!!credor.detalhar_no_pagamento);
+  const [saving,     setSaving]     = useState(false);
+  const [saved,      setSaved]      = useState(false);
+
+  const subsFiltrados = subgrupos.filter(s => s.fk_grupo === Number(fkGrupo));
+
+  async function save(g: number | '', s: number | '', det?: boolean) {
+    setSaving(true);
+    setSaved(false);
+    try {
+      await fetch(`${API_URL}/api/credores-a-pagar/${credor.id}`, {
+        method: 'PATCH',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          fk_grupo: g || null,
+          fk_subgrupo: s || null,
+          ...(det !== undefined && { detalhar_no_pagamento: det }),
+        }),
       });
       setSaved(true);
       setTimeout(() => setSaved(false), 1500);
-      const grupoNome    = grupos.find(gr => gr.id === Number(g))?.nome ?? null;
-      const subgrupoNome = subgrupos.find(sb => sb.id === Number(s))?.nome ?? null;
-      onSaved(credor.id, g ? Number(g) : null, s ? Number(s) : null, grupoNome, subgrupoNome);
+      const grupo_nome    = grupos.find(gr => gr.id === Number(g))?.nome ?? null;
+      const subgrupo_nome = subgrupos.find(sb => sb.id === Number(s))?.nome ?? null;
+      onSaved(credor.id, { fk_grupo: g || null, fk_subgrupo: s || null, grupo_nome, subgrupo_nome });
     } catch { /* offline */ }
     setSaving(false);
   }
@@ -80,20 +244,74 @@ function ClassifCell({ credor, grupos, subgrupos, token, onSaved }: {
     save(fkGrupo, v);
   }
 
+  function handleDetalharToggle() {
+    const next = !detalhar;
+    setDetalhar(next);
+    save(fkGrupo, fkSubgrupo, next);
+  }
+
   return (
-    <>
-      <td className="px-2 py-1.5">
-        <div className="flex items-center gap-1">
-          {saving ? <Loader2 size={11} className="animate-spin text-blue-400 shrink-0" />
-            : saved  ? <CheckCircle2 size={11} className="text-emerald-500 shrink-0" />
-            : <Layers size={11} className="text-indigo-400 shrink-0" />}
-          <SearchSelect value={fkGrupo} onChange={handleGrupo} options={grupos} placeholder="sem grupo" />
-        </div>
+    <tr className="border-b hover:bg-gray-50 transition-colors">
+      {/* Nome */}
+      <td className="px-3 py-2 font-medium text-gray-900 max-w-[220px]">
+        <div className="truncate text-[13px]" title={credor.nome}>{credor.nome}</div>
       </td>
+
+      {/* Grupo */}
       <td className="px-2 py-1.5">
-        <SearchSelect value={fkSubgrupo} onChange={handleSubgrupo} options={subsFiltrados} placeholder="sem subgrupo" />
+        <SearchSelect value={fkGrupo} onChange={handleGrupo} options={grupos} placeholder="sem grupo" />
       </td>
-    </>
+
+      {/* Subgrupo */}
+      <td className="px-2 py-1.5">
+        <SearchSelect
+          value={fkSubgrupo}
+          onChange={handleSubgrupo}
+          options={subsFiltrados}
+          placeholder="sem subgrupo"
+          disabled={!fkGrupo || subsFiltrados.length === 0}
+        />
+      </td>
+
+      {/* Histórico */}
+      <td className="px-3 py-2 max-w-[240px]">
+        <button
+          onClick={() => onOpenHistorico(credor)}
+          className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-blue-600 transition-colors group w-full text-left"
+          title={credor.historico ?? 'Adicionar histórico'}
+        >
+          <FileText size={13} className={credor.historico ? 'text-blue-500' : 'text-gray-300 group-hover:text-blue-400'} />
+          <span className="truncate">
+            {credor.historico
+              ? <span className="text-gray-600">{credor.historico}</span>
+              : <span className="text-gray-300 italic">adicionar...</span>
+            }
+          </span>
+        </button>
+      </td>
+
+      {/* Detalhar por pagamento */}
+      <td className="px-3 py-2 text-center">
+        <button
+          onClick={handleDetalharToggle}
+          title={detalhar ? 'Classificando por pagamento — clique para desativar' : 'Ativar classificação por pagamento'}
+          className={`inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium transition-colors ${
+            detalhar
+              ? 'bg-indigo-100 text-indigo-700 hover:bg-indigo-200'
+              : 'bg-gray-100 text-gray-400 hover:bg-gray-200'
+          }`}
+        >
+          <Layers size={12} />
+          {detalhar ? 'Por pag.' : 'Padrão'}
+        </button>
+      </td>
+
+      {/* Status save */}
+      <td className="px-3 py-2 text-center w-8">
+        {saving && <Loader2 size={14} className="animate-spin text-blue-400 mx-auto" />}
+        {saved && !saving && <CheckCircle2 size={14} className="text-emerald-500 mx-auto" />}
+      </td>
+    </tr>
   );
 }
 
@@ -112,10 +330,14 @@ export default function CredoresAPagarPage() {
   const [grupos,    setGrupos]    = useState<Grupo[]>([]);
   const [subgrupos, setSubgrupos] = useState<Subgrupo[]>([]);
 
-  const [search,       setSearch]       = useState('');
+  const [search,         setSearch]         = useState('');
   const [filtroSemGrupo, setFiltroSemGrupo] = useState(false);
-  const [sortBy,  setSortBy]  = useState('nome');
-  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
+  const [sortBy,         setSortBy]         = useState('nome');
+  const [sortDir,        setSortDir]        = useState<'asc' | 'desc'>('asc');
+
+  const [modalCredor, setModalCredor] = useState<CredorAPagar | null>(null);
+
+  const searchTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const LIMIT = 50;
 
@@ -145,6 +367,13 @@ export default function CredoresAPagarPage() {
 
   useEffect(() => { load(1); }, [token, entidadeSelecionada, municipioSelecionado]); // eslint-disable-line
 
+  // Busca automática ao digitar (debounce 400ms)
+  useEffect(() => {
+    if (searchTimeout.current) clearTimeout(searchTimeout.current);
+    searchTimeout.current = setTimeout(() => { load(1); }, 400);
+    return () => { if (searchTimeout.current) clearTimeout(searchTimeout.current); };
+  }, [search, filtroSemGrupo]); // eslint-disable-line
+
   useEffect(() => {
     if (!token) return;
     apiRequest<{ grupos: Grupo[]; subgrupos: Subgrupo[] }>('/credores-a-pagar/opcoes', { token })
@@ -157,15 +386,16 @@ export default function CredoresAPagarPage() {
     else { setSortBy(col); setSortDir('asc'); }
   }
 
-  function SortTh({ label, col, align = 'left', className = '' }: {
-    label: string; col: string; align?: 'left' | 'center' | 'right'; className?: string;
-  }) {
+  function onSaved(id: number, updates: Partial<CredorAPagar>) {
+    setRows(prev => prev.map(r => r.id === id ? { ...r, ...updates } : r));
+  }
+
+  function SortTh({ label, col, className = '' }: { label: string; col: string; className?: string }) {
     const active = sortBy === col;
     return (
       <th onClick={() => handleSort(col)} className={cn(
-        'px-3 py-3 text-xs font-semibold whitespace-nowrap cursor-pointer select-none transition-colors hover:text-blue-600',
+        'px-3 py-3 text-xs font-semibold whitespace-nowrap cursor-pointer select-none transition-colors hover:text-blue-600 text-left',
         active ? 'text-blue-600' : 'text-gray-500',
-        align === 'right' ? 'text-right' : align === 'center' ? 'text-center' : 'text-left',
         className,
       )}>
         <span className="inline-flex items-center gap-1">
@@ -176,13 +406,6 @@ export default function CredoresAPagarPage() {
     );
   }
 
-  function onSaved(id: number, fkGrupo: number | null, fkSubgrupo: number | null, grupoNome: string | null, subgrupoNome: string | null) {
-    setRows(prev => prev.map(r => r.id === id
-      ? { ...r, fk_grupo: fkGrupo, fk_subgrupo: fkSubgrupo, grupo_nome: grupoNome, subgrupo_nome: subgrupoNome }
-      : r
-    ));
-  }
-
   const totalPages = Math.ceil(total / LIMIT);
 
   return (
@@ -191,7 +414,7 @@ export default function CredoresAPagarPage() {
 
       <div className="px-4 py-5 md:px-8 space-y-4">
 
-        {/* ── Stats ── */}
+        {/* Stats */}
         <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
           <div className="bg-white rounded-xl border border-gray-100 p-4 shadow-sm">
             <p className="text-xs text-gray-400 mb-1">Total de credores</p>
@@ -207,20 +430,19 @@ export default function CredoresAPagarPage() {
           </div>
         </div>
 
-        {/* ── Filtros ── */}
+        {/* Filtros */}
         <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4 flex flex-wrap gap-3 items-center">
           <div className="relative flex-1 min-w-[200px]">
             <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
             <input
               value={search}
               onChange={e => setSearch(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && load(1)}
               placeholder="Buscar por nome..."
               className="w-full pl-8 pr-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20"
             />
           </div>
           <button
-            onClick={() => { setFiltroSemGrupo(f => !f); }}
+            onClick={() => setFiltroSemGrupo(f => !f)}
             className={cn(
               'flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium border transition-colors',
               filtroSemGrupo
@@ -231,58 +453,46 @@ export default function CredoresAPagarPage() {
             <AlertTriangle size={12} />
             Sem grupo ({semGrupo})
           </button>
-          <button
-            onClick={() => load(1)}
-            disabled={loading}
-            className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium bg-[#0F2A4E] text-white hover:bg-[#1e4d95] transition-colors"
-          >
-            {loading ? <Loader2 size={12} className="animate-spin" /> : <RefreshCw size={12} />}
-            Buscar
-          </button>
         </div>
 
-        {/* ── Tabela ── */}
+        {/* Tabela */}
         <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead className="bg-slate-50 border-b border-gray-100">
                 <tr>
-                  <SortTh label="Nome do Credor" col="nome" className="w-[35%]" />
-                  <th className="px-3 py-3 text-xs font-semibold text-gray-500 text-left">Histórico</th>
-                  <th className="px-3 py-3 text-xs font-semibold text-gray-500 text-left w-[180px]">
+                  <SortTh label="Nome do Credor" col="nome" className="w-[25%]" />
+                  <th className="px-3 py-3 text-xs font-semibold text-gray-500 text-left w-[160px]">
                     <span className="flex items-center gap-1"><Tag size={11} /> Grupo</span>
                   </th>
-                  <th className="px-3 py-3 text-xs font-semibold text-gray-500 text-left w-[180px]">Subgrupo</th>
+                  <th className="px-3 py-3 text-xs font-semibold text-gray-500 text-left w-[160px]">Subgrupo</th>
+                  <th className="px-3 py-3 text-xs font-semibold text-gray-500 text-left">Histórico</th>
+                  <th className="px-3 py-3 text-xs font-semibold text-gray-500 text-center w-[110px]">Detalhar</th>
+                  <th className="w-8" />
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50">
                 {loading && rows.length === 0 ? (
-                  <tr><td colSpan={4} className="py-16 text-center text-gray-400">
+                  <tr><td colSpan={6} className="py-16 text-center text-gray-400">
                     <Loader2 size={20} className="animate-spin mx-auto mb-2" />
                     <span className="text-sm">Carregando...</span>
                   </td></tr>
                 ) : rows.length === 0 ? (
-                  <tr><td colSpan={4} className="py-16 text-center text-gray-400 text-sm">
+                  <tr><td colSpan={6} className="py-16 text-center text-gray-400 text-sm">
                     Nenhum credor encontrado
                   </td></tr>
                 ) : rows.map(credor => (
-                  <tr key={credor.id} className="hover:bg-slate-50/60 transition-colors">
-                    <td className="px-3 py-2.5">
-                      <span className="text-[13px] font-medium text-gray-800">{credor.nome}</span>
-                    </td>
-                    <td className="px-3 py-2.5 max-w-[260px]">
-                      <span className="text-[11px] text-gray-500 line-clamp-2">{credor.historico ?? '—'}</span>
-                    </td>
-                    {token && (
-                      <ClassifCell
-                        credor={credor}
-                        grupos={grupos}
-                        subgrupos={subgrupos}
-                        token={token}
-                        onSaved={onSaved}
-                      />
-                    )}
-                  </tr>
+                  token && (
+                    <CredorRow
+                      key={credor.id}
+                      credor={credor}
+                      grupos={grupos}
+                      subgrupos={subgrupos}
+                      token={token}
+                      onSaved={onSaved}
+                      onOpenHistorico={setModalCredor}
+                    />
+                  )
                 ))}
               </tbody>
             </table>
@@ -306,6 +516,21 @@ export default function CredoresAPagarPage() {
           )}
         </div>
       </div>
+
+      {/* Modal histórico */}
+      {modalCredor && token && (
+        <HistoricoModal
+          credor={modalCredor}
+          grupos={grupos}
+          subgrupos={subgrupos}
+          token={token}
+          onClose={() => setModalCredor(null)}
+          onSaved={(id, updates) => {
+            onSaved(id, updates);
+            setModalCredor(prev => prev ? { ...prev, ...updates } : null);
+          }}
+        />
+      )}
     </div>
   );
 }

@@ -42,6 +42,7 @@ export async function listCredoresAPagar(req: Request, res: Response): Promise<v
     buildBase()
       .select(
         'c.id', 'c.nome', 'c.historico', 'c.fk_grupo', 'c.fk_subgrupo', 'c.criado_em',
+        'c.detalhar_no_pagamento',
         'g.nome as grupo_nome',
         's.nome as subgrupo_nome',
       )
@@ -65,7 +66,7 @@ export async function listCredoresAPagar(req: Request, res: Response): Promise<v
 // ── Classificar (atribuir grupo/subgrupo) ─────────────────────────────────────
 export async function classificarCredorAPagar(req: Request, res: Response): Promise<void> {
   const { id } = req.params;
-  const { fk_grupo, fk_subgrupo } = req.body;
+  const { fk_grupo, fk_subgrupo, historico, detalhar_no_pagamento } = req.body;
 
   const credor = await db('dim_credor_a_pagar').where('id', id).first();
   if (!credor) {
@@ -73,10 +74,14 @@ export async function classificarCredorAPagar(req: Request, res: Response): Prom
     return;
   }
 
-  await db('dim_credor_a_pagar').where('id', id).update({
+  const update: Record<string, any> = {
     fk_grupo:    fk_grupo    ?? null,
     fk_subgrupo: fk_subgrupo ?? null,
-  });
+  };
+  if (historico !== undefined)            update.historico = historico ?? null;
+  if (detalhar_no_pagamento !== undefined) update.detalhar_no_pagamento = !!detalhar_no_pagamento;
+
+  await db('dim_credor_a_pagar').where('id', id).update(update);
 
   res.json({ ok: true });
 }
