@@ -300,7 +300,7 @@ export default function DashboardGeralPage() {
               <KpiCard label="Receita Arrecadada" value={totalReceita}
                 sub={`${receita?.totais?.total_registros ?? 0} registros`}
                 icon={<TrendingUp size={18}/>} color="#10b981" bg="#ecfdf5" delay={0.05} />
-              <KpiCard label="Despesa Liquidada" value={totalDespesa}
+              <KpiCard label="Despesa Paga" value={totalDespesa}
                 sub={`${despesa?.countRegistros ?? 0} processos`}
                 icon={<TrendingDown size={18}/>} color="#ef4444" bg="#fef2f2" delay={0.1} />
               <KpiCard label="Contas a Pagar" value={totalContas}
@@ -324,13 +324,13 @@ export default function DashboardGeralPage() {
               <div className="flex items-center justify-between px-5 py-3"
                 style={{ background: 'linear-gradient(90deg, #0F2A4E, #1e4d95)' }}>
                 <div>
-                  <h3 className="text-sm font-bold text-white">Receita × Despesa Liquidada</h3>
+                  <h3 className="text-sm font-bold text-white">Receita × Despesa Paga</h3>
                   <p className="text-[11px] text-blue-200 mt-0.5">Comparativo mensal — {ano}</p>
                 </div>
                 <div className="flex items-center gap-3 text-[10px]">
                   {[
                     { color: '#10b981', label: 'Receita' },
-                    { color: '#ef4444', label: 'Despesa Liquidada' },
+                    { color: '#ef4444', label: 'Despesa Paga' },
                   ].map(l => (
                     <div key={l.label} className="flex items-center gap-1">
                       <div className="w-2.5 h-2.5 rounded-sm" style={{ background: l.color }} />
@@ -349,7 +349,7 @@ export default function DashboardGeralPage() {
                       tickFormatter={(v: number) => 'R$ ' + Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}/>
                     <Tooltip content={<ChartTooltip />} cursor={{ fill: 'rgba(15,42,78,0.04)' }}/>
                     <Bar dataKey="receita"  name="Receita"           fill="#10b981" radius={[4,4,0,0]}/>
-                    <Bar dataKey="despesa"  name="Despesa Liquidada" fill="#ef4444" radius={[4,4,0,0]}/>
+                    <Bar dataKey="despesa"  name="Despesa Paga" fill="#ef4444" radius={[4,4,0,0]}/>
                   </BarChart>
                 </ResponsiveContainer>
               ) : (
