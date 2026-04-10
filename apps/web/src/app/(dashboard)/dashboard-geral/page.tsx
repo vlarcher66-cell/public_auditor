@@ -177,7 +177,6 @@ export default function DashboardGeralPage() {
   const [transferencias, setTransferencias] = useState<{ valor_total: number } | null>(null);
   const [mesSelecionado, setMesSelecionado] = useState<number | null>(null); // null = ano todo / último
   const [fonteSelecionada, setFonteSelecionada] = useState<string | null>(null);
-  const [fontes, setFontes] = useState<{ id: number; codigo: string; descricao: string }[]>([]);
   const [lastUpdate, setLastUpdate] = useState(new Date());
   const [grupoTooltip, setGrupoTooltip] = useState<number | null>(null);
 
@@ -185,14 +184,7 @@ export default function DashboardGeralPage() {
   if (entidadeSelecionada?.id) ctxParams.entidadeId = String(entidadeSelecionada.id);
   else if (municipioSelecionado?.id) ctxParams.municipioId = String(municipioSelecionado.id);
 
-  // Carrega fontes de recurso uma única vez
-  useEffect(() => {
-    if (!token) return;
-    apiRequest<{ id: number; codigo: string; descricao: string }[]>('/fontes-recurso', { token })
-      .then(setFontes).catch(() => {});
-  }, [token]); // eslint-disable-line
-
-  const load = useCallback(async (mes?: number | null, fonte?: string | null) => {
+const load = useCallback(async (mes?: number | null, fonte?: string | null) => {
     if (!token) return;
     setLoading(true);
     const mesAtual = mes !== undefined ? mes : mesSelecionado;
@@ -308,7 +300,6 @@ export default function DashboardGeralPage() {
                 <Building2 size={13} />
                 {entidadeSelecionada?.nome ?? municipioSelecionado?.nome ?? 'Consolidado'}
                 {mesSelecionado ? ` · ${MESES[mesSelecionado - 1]}` : ' · Ano todo'}
-                {fonteSelecionada ? ` · Fonte ${fonteSelecionada}` : ''}
               </p>
             </div>
             <div className="flex items-center gap-3">
@@ -322,74 +313,40 @@ export default function DashboardGeralPage() {
               </button>
             </div>
           </div>
-          {/* ── Seletores globais: Período + Fonte de Recurso ── */}
-          <div className="rounded-xl px-4 py-3 flex flex-col gap-3"
+          {/* ── Seletor de mês global ── */}
+          <div className="rounded-xl px-4 py-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3"
             style={{ background: 'linear-gradient(90deg, #0F2A4E, #1e4d95)' }}>
-            {/* Período */}
-            <div className="flex flex-col gap-1.5 sm:flex-row sm:items-start sm:gap-3">
-              <span className="text-[11px] font-bold text-blue-200 uppercase tracking-wider whitespace-nowrap pt-1">Período:</span>
-              <div className="flex flex-col gap-1.5 flex-1">
-                <button
-                  onClick={() => handleMes(null)}
-                  className={`w-full sm:w-auto px-3 py-1.5 rounded-lg text-[11px] font-semibold transition-colors ${
-                    mesSelecionado === null
-                      ? 'bg-white text-[#0F2A4E]'
-                      : 'bg-white/10 text-white/70 hover:bg-white/20'
-                  }`}
-                >
-                  Ano todo
-                </button>
-                <div className="grid grid-cols-4 gap-1 sm:flex sm:flex-wrap sm:gap-1.5">
-                  {MESES.map((m, i) => {
-                    const mesNum = i + 1;
-                    const ativo = mesSelecionado === mesNum;
-                    return (
-                      <button key={m}
-                        onClick={() => handleMes(mesNum)}
-                        className={`py-1.5 rounded-lg text-[11px] font-medium transition-colors sm:px-2.5 ${
-                          ativo
-                            ? 'bg-[#C9A84C] text-white'
-                            : 'bg-white/10 text-white/80 hover:bg-white/20'
-                        }`}
-                      >
-                        {m}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            </div>
-            {/* Fonte de Recurso */}
-            {fontes.length > 0 && (
-              <div className="flex flex-col gap-1.5 sm:flex-row sm:items-start sm:gap-3 border-t border-white/10 pt-3">
-                <span className="text-[11px] font-bold text-blue-200 uppercase tracking-wider whitespace-nowrap pt-1">Fonte:</span>
-                <div className="flex flex-wrap gap-1">
-                  <button
-                    onClick={() => handleFonte(null)}
-                    className={`px-3 py-1.5 rounded-lg text-[11px] font-semibold transition-colors ${
-                      fonteSelecionada === null
-                        ? 'bg-white text-[#0F2A4E]'
-                        : 'bg-white/10 text-white/70 hover:bg-white/20'
-                    }`}
-                  >
-                    Todas
-                  </button>
-                  {fontes.map(f => (
-                    <button key={f.id}
-                      onClick={() => handleFonte(f.codigo)}
-                      title={f.descricao}
-                      className={`px-3 py-1.5 rounded-lg text-[11px] font-medium transition-colors ${
-                        fonteSelecionada === f.codigo
+            <span className="text-[11px] font-bold text-blue-200 uppercase tracking-wider whitespace-nowrap">Período:</span>
+            <div className="flex flex-col gap-1.5 flex-1">
+              <button
+                onClick={() => handleMes(null)}
+                className={`w-full sm:w-auto px-3 py-1.5 rounded-lg text-[11px] font-semibold transition-colors ${
+                  mesSelecionado === null
+                    ? 'bg-white text-[#0F2A4E]'
+                    : 'bg-white/10 text-white/70 hover:bg-white/20'
+                }`}
+              >
+                Ano todo
+              </button>
+              <div className="grid grid-cols-4 gap-1 sm:flex sm:flex-wrap sm:gap-1.5">
+                {MESES.map((m, i) => {
+                  const mesNum = i + 1;
+                  const ativo = mesSelecionado === mesNum;
+                  return (
+                    <button key={m}
+                      onClick={() => handleMes(mesNum)}
+                      className={`py-1.5 rounded-lg text-[11px] font-medium transition-colors sm:px-2.5 ${
+                        ativo
                           ? 'bg-[#C9A84C] text-white'
                           : 'bg-white/10 text-white/80 hover:bg-white/20'
                       }`}
                     >
-                      {f.codigo}
+                      {m}
                     </button>
-                  ))}
-                </div>
+                  );
+                })}
               </div>
-            )}
+            </div>
           </div>
         </motion.div>
 
