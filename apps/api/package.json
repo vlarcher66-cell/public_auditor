@@ -7,7 +7,7 @@
     "build": "tsc",
     "start": "node dist/src/server.js",
     "migrate": "NODE_ENV=production knex --knexfile dist/knexfile.js migrate:latest",
-    "migrate:local": "NODE_ENV=development knex --knexfile knexfile.ts migrate:latest",
+    "migrate:local": "cross-env NODE_ENV=development knex --knexfile knexfile.ts migrate:latest",
     "migrate:rollback": "NODE_ENV=development knex --knexfile knexfile.ts migrate:rollback",
     "seed": "knex --knexfile knexfile.ts seed:run"
   },
@@ -38,6 +38,7 @@
     "@types/multer": "^1.4.12",
     "@types/node": "^22.13.1",
     "@types/uuid": "^10.0.0",
+    "cross-env": "^10.1.0",
     "ts-node": "^10.9.2",
     "ts-node-dev": "^2.0.0",
     "typescript": "^5.7.2"
