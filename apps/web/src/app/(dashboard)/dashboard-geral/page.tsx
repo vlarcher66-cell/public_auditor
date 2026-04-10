@@ -380,8 +380,8 @@ export default function DashboardGeralPage() {
                     <YAxis tick={{ fontSize: 10, fill: '#94a3b8' }} axisLine={false} tickLine={false}
                       tickFormatter={(v: number) => 'R$ ' + Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}/>
                     <Tooltip content={<ChartTooltip />} cursor={{ fill: 'rgba(15,42,78,0.04)' }}/>
-                    <Bar dataKey="receita"  name="Receita"           fill="#10b981" radius={[4,4,0,0]}/>
-                    <Bar dataKey="despesa"  name="Despesa Paga" fill="#ef4444" radius={[4,4,0,0]}/>
+                    <Bar dataKey="receita"  name="Receita"           fill="#10b981" radius={[12,12,0,0]}/>
+                    <Bar dataKey="despesa"  name="Despesa Paga" fill="#ef4444" radius={[12,12,0,0]}/>
                   </BarChart>
                 </ResponsiveContainer>
               ) : (
