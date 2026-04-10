@@ -225,7 +225,7 @@ export default function Sidebar({ collapsed, onToggle, mobileOpen = false, onMob
   const isImportacaoActive = pathname === '/importacao' || pathname === '/importacao-receita' || pathname === '/importacao-transf-bancaria' || pathname === '/importacao-empenhos';
   const isAnaliseActive = pathname === '/pagamentos' || pathname === '/receitas/listagem' || pathname === '/analise/despesa-a-pagar';
   const isCadastrosActive = pathname.startsWith('/cadastros');
-  const isClassificacaoActive = pathname === '/cadastros/credor' || pathname.startsWith('/cadastros/credor/');
+  const isClassificacaoActive = pathname === '/cadastros/credor' || pathname.startsWith('/cadastros/credor/') || pathname === '/analise/credores-a-pagar';
 
   const defaultOpen = isImportacaoActive ? 'importacao'
     : isAnaliseActive ? 'analise'
@@ -363,6 +363,9 @@ export default function Sidebar({ collapsed, onToggle, mobileOpen = false, onMob
             {hasPerm('classificacao.credores') && classificacaoItems.map(item => (
               <SubItem key={item.href} href={item.href} icon={item.icon} label={item.label} active={pathname === item.href} groupOpen={openGroup === 'classificacao'} onNavigate={handleNav} />
             ))}
+            {hasPerm('classificacao.credores') && (
+              <SubItem href="/analise/credores-a-pagar" icon={<Tag size={13} />} label="Credores a Pagar" active={pathname === '/analise/credores-a-pagar'} groupOpen={openGroup === 'classificacao'} onNavigate={handleNav} />
+            )}
             {hasPerm('classificacao.credores') && (
               <button
                 onClick={() => router.push(`/cadastros/credor?conf=diarias&t=${Date.now()}`)}
