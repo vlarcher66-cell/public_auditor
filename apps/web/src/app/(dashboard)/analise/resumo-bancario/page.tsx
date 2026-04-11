@@ -200,7 +200,7 @@ export default function ResumoBancarioPage() {
 
         {/* Tabela detalhada */}
         {periodoSelecionado && (
-          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm">
             <button
               onClick={() => setShowDetalhes(v => !v)}
               className="w-full px-5 py-4 flex items-center justify-between hover:bg-gray-50 transition-colors"
@@ -213,44 +213,44 @@ export default function ResumoBancarioPage() {
             </button>
 
             {showDetalhes && (
-              <div className="overflow-x-auto">
-                <table className="w-full text-xs" style={{ minWidth: 900 }}>
-                  <thead className="bg-slate-50 border-y border-gray-100">
-                    <tr>
-                      <th className="px-4 py-2.5 text-left text-gray-500 font-semibold text-xs">Nº da Conta</th>
-                      <th className="px-4 py-2.5 text-left text-gray-500 font-semibold text-xs">Descrição</th>
-                      <th className="px-4 py-2.5 text-left text-gray-500 font-semibold text-xs">Fonte</th>
-                      <th className="px-4 py-2.5 text-right text-gray-500 font-semibold text-xs">Saldo Anterior</th>
-                      <th className="px-4 py-2.5 text-right text-gray-500 font-semibold text-xs">Débito</th>
-                      <th className="px-4 py-2.5 text-right text-gray-500 font-semibold text-xs">Crédito</th>
-                      <th className="px-4 py-2.5 text-right text-gray-500 font-semibold text-xs">Saldo Atual</th>
+              <div style={{ overflowX: 'auto', width: '100%' }}>
+                <table style={{ minWidth: 1000, width: '100%', fontSize: 12, borderCollapse: 'collapse' }}>
+                  <thead>
+                    <tr style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
+                      <th style={{ padding: '10px 12px', textAlign: 'left', color: '#64748b', fontWeight: 600, whiteSpace: 'nowrap', width: 120 }}>Nº da Conta</th>
+                      <th style={{ padding: '10px 12px', textAlign: 'left', color: '#64748b', fontWeight: 600, width: 300 }}>Descrição</th>
+                      <th style={{ padding: '10px 12px', textAlign: 'left', color: '#64748b', fontWeight: 600, whiteSpace: 'nowrap', width: 100 }}>Fonte</th>
+                      <th style={{ padding: '10px 12px', textAlign: 'right', color: '#64748b', fontWeight: 600, whiteSpace: 'nowrap', width: 140 }}>Saldo Anterior</th>
+                      <th style={{ padding: '10px 12px', textAlign: 'right', color: '#64748b', fontWeight: 600, whiteSpace: 'nowrap', width: 140 }}>Débito</th>
+                      <th style={{ padding: '10px 12px', textAlign: 'right', color: '#64748b', fontWeight: 600, whiteSpace: 'nowrap', width: 140 }}>Crédito</th>
+                      <th style={{ padding: '10px 12px', textAlign: 'right', color: '#64748b', fontWeight: 600, whiteSpace: 'nowrap', width: 140 }}>Saldo Atual</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-gray-50">
+                  <tbody>
                     {loading ? (
-                      <tr><td colSpan={7} className="py-10 text-center text-gray-400">Carregando...</td></tr>
+                      <tr><td colSpan={7} style={{ padding: 40, textAlign: 'center', color: '#94a3b8' }}>Carregando...</td></tr>
                     ) : detalhes.length === 0 ? (
-                      <tr><td colSpan={7} className="py-10 text-center text-gray-400">Nenhum dado para este período.</td></tr>
+                      <tr><td colSpan={7} style={{ padding: 40, textAlign: 'center', color: '#94a3b8' }}>Nenhum dado para este período.</td></tr>
                     ) : detalhes.map(row => (
-                      <tr key={row.id} className="hover:bg-gray-50">
-                        <td className="px-4 py-2 text-gray-500 font-mono text-xs">{row.num_ordem || '—'}</td>
-                        <td className="px-4 py-2 text-gray-800 font-medium text-xs max-w-[280px] truncate">{row.nome_conta}</td>
-                        <td className="px-4 py-2 text-gray-400 text-xs font-mono">{row.fonte || '—'}</td>
-                        <td className="px-4 py-2 text-right text-gray-600 text-xs">{row.saldo_anterior != null ? fmt(row.saldo_anterior) : '—'}</td>
-                        <td className="px-4 py-2 text-right text-red-500 text-xs">{row.debitos != null ? fmt(row.debitos) : '—'}</td>
-                        <td className="px-4 py-2 text-right text-emerald-600 text-xs">{row.creditos != null ? fmt(row.creditos) : '—'}</td>
-                        <td className="px-4 py-2 text-right text-cyan-700 font-bold text-xs">{row.saldo_atual != null ? fmt(row.saldo_atual) : '—'}</td>
+                      <tr key={row.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                        <td style={{ padding: '8px 12px', color: '#64748b', fontFamily: 'monospace', whiteSpace: 'nowrap' }}>{row.num_ordem || '—'}</td>
+                        <td style={{ padding: '8px 12px', color: '#1e293b', fontWeight: 500, maxWidth: 300, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{row.nome_conta}</td>
+                        <td style={{ padding: '8px 12px', color: '#94a3b8', fontFamily: 'monospace', whiteSpace: 'nowrap' }}>{row.fonte || '—'}</td>
+                        <td style={{ padding: '8px 12px', textAlign: 'right', color: '#475569', whiteSpace: 'nowrap' }}>{row.saldo_anterior != null ? fmt(row.saldo_anterior) : '—'}</td>
+                        <td style={{ padding: '8px 12px', textAlign: 'right', color: '#ef4444', whiteSpace: 'nowrap' }}>{row.debitos != null ? fmt(row.debitos) : '—'}</td>
+                        <td style={{ padding: '8px 12px', textAlign: 'right', color: '#10b981', whiteSpace: 'nowrap' }}>{row.creditos != null ? fmt(row.creditos) : '—'}</td>
+                        <td style={{ padding: '8px 12px', textAlign: 'right', color: '#0891b2', fontWeight: 700, whiteSpace: 'nowrap' }}>{row.saldo_atual != null ? fmt(row.saldo_atual) : '—'}</td>
                       </tr>
                     ))}
                   </tbody>
                   {detalhes.length > 0 && (
-                    <tfoot className="bg-slate-50 border-t border-gray-200">
-                      <tr>
-                        <td colSpan={3} className="px-4 py-2.5 text-xs font-bold text-gray-500 uppercase">Total</td>
-                        <td className="px-4 py-2.5 text-right font-bold text-gray-700 text-xs">{fmt(detalhes.reduce((s, r) => s + (r.saldo_anterior ?? 0), 0))}</td>
-                        <td className="px-4 py-2.5 text-right font-bold text-red-500 text-xs">{fmt(detalhes.reduce((s, r) => s + (r.debitos ?? 0), 0))}</td>
-                        <td className="px-4 py-2.5 text-right font-bold text-emerald-600 text-xs">{fmt(detalhes.reduce((s, r) => s + (r.creditos ?? 0), 0))}</td>
-                        <td className="px-4 py-2.5 text-right font-bold text-cyan-700 text-xs">{fmt(detalhes.reduce((s, r) => s + (r.saldo_atual ?? 0), 0))}</td>
+                    <tfoot>
+                      <tr style={{ background: '#f8fafc', borderTop: '2px solid #e2e8f0' }}>
+                        <td colSpan={3} style={{ padding: '10px 12px', fontWeight: 700, color: '#64748b', fontSize: 11, textTransform: 'uppercase' }}>Total</td>
+                        <td style={{ padding: '10px 12px', textAlign: 'right', fontWeight: 700, color: '#475569', whiteSpace: 'nowrap' }}>{fmt(detalhes.reduce((s, r) => s + (r.saldo_anterior ?? 0), 0))}</td>
+                        <td style={{ padding: '10px 12px', textAlign: 'right', fontWeight: 700, color: '#ef4444', whiteSpace: 'nowrap' }}>{fmt(detalhes.reduce((s, r) => s + (r.debitos ?? 0), 0))}</td>
+                        <td style={{ padding: '10px 12px', textAlign: 'right', fontWeight: 700, color: '#10b981', whiteSpace: 'nowrap' }}>{fmt(detalhes.reduce((s, r) => s + (r.creditos ?? 0), 0))}</td>
+                        <td style={{ padding: '10px 12px', textAlign: 'right', fontWeight: 700, color: '#0891b2', whiteSpace: 'nowrap' }}>{fmt(detalhes.reduce((s, r) => s + (r.saldo_atual ?? 0), 0))}</td>
                       </tr>
                     </tfoot>
                   )}

@@ -204,7 +204,14 @@ router.get('/resumo-bancario/detalhado', authMiddleware, async (req, res) => {
     else if (municipioId) q.where('r.fk_municipio', municipioId);
     else if (user?.fk_municipio) q.where('r.fk_municipio', user.fk_municipio);
 
-    res.json(await q);
+    const rows = await q;
+    res.json(rows.map((r: any) => ({
+      ...r,
+      saldo_anterior: r.saldo_anterior != null ? Number(r.saldo_anterior) : null,
+      creditos:       r.creditos       != null ? Number(r.creditos)       : null,
+      debitos:        r.debitos        != null ? Number(r.debitos)        : null,
+      saldo_atual:    r.saldo_atual    != null ? Number(r.saldo_atual)    : null,
+    })));
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }
