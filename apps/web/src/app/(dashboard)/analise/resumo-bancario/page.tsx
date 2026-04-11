@@ -214,7 +214,7 @@ export default function ResumoBancarioPage() {
 
             {showDetalhes && (
               <div className="overflow-x-auto">
-                <table className="w-full text-xs">
+                <table className="w-full text-xs" style={{ minWidth: 900 }}>
                   <thead className="bg-slate-50 border-y border-gray-100">
                     <tr>
                       <th className="px-4 py-2.5 text-left text-gray-500 font-semibold text-xs">Nº da Conta</th>
