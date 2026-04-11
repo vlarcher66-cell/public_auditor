@@ -428,42 +428,58 @@ export default function DespesaAPagarPage() {
         {/* ── KPIs ─────────────────────────────────────────────────────────── */}
         {stats && (
           <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+            {/* Cards informativos */}
             {[
               { icon: <Hash size={16} className="text-blue-400" />, label: 'Total Empenhos', value: stats.total_registros.toLocaleString('pt-BR'), bg: '#eff6ff', border: '#bfdbfe' },
               { icon: <DollarSign size={16} className="text-emerald-400" />, label: 'Valor Total', value: `R$ ${fmt(stats.valor_total)}`, bg: '#ecfdf5', border: '#a7f3d0' },
               { icon: <Users size={16} className="text-violet-400" />, label: 'Credores', value: stats.total_credores.toLocaleString('pt-BR'), bg: '#fdf4ff', border: '#e9d5ff' },
-              { icon: <Layers size={16} className="text-amber-400" />, label: 'Grupo s/ Class.', value: stats.sem_grupo.toLocaleString('pt-BR'), bg: stats.sem_grupo > 0 ? '#fffbeb' : '#f0fdf4', border: stats.sem_grupo > 0 ? '#fde68a' : '#a7f3d0',
-                action: stats.sem_grupo > 0 ? (
-                  <button onClick={() => setFilter('semGrupo', filters.semGrupo === '1' ? '' : '1')}
-                    className={cn('text-[10px] font-medium px-2 py-0.5 rounded-full border transition-all',
-                      filters.semGrupo === '1' ? 'bg-amber-500 text-white border-amber-500' : 'text-amber-600 border-amber-300 hover:bg-amber-50'
-                    )}>
-                    {filters.semGrupo === '1' ? '✕ filtrado' : 'filtrar'}
-                  </button>
-                ) : null,
-              },
-              { icon: <Tag size={16} className="text-purple-400" />, label: 'Subgrupo s/ Class.', value: stats.sem_subgrupo.toLocaleString('pt-BR'), bg: stats.sem_subgrupo > 0 ? '#faf5ff' : '#f0fdf4', border: stats.sem_subgrupo > 0 ? '#e9d5ff' : '#a7f3d0',
-                action: stats.sem_subgrupo > 0 ? (
-                  <button onClick={() => setFilter('semSubgrupo', filters.semSubgrupo === '1' ? '' : '1')}
-                    className={cn('text-[10px] font-medium px-2 py-0.5 rounded-full border transition-all',
-                      filters.semSubgrupo === '1' ? 'bg-purple-500 text-white border-purple-500' : 'text-purple-600 border-purple-300 hover:bg-purple-50'
-                    )}>
-                    {filters.semSubgrupo === '1' ? '✕ filtrado' : 'filtrar'}
-                  </button>
-                ) : null,
-              },
             ].map((k, i) => (
               <div key={i} style={{ background: k.bg, border: `1px solid ${k.border}`, borderRadius: '14px', padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                   <span style={{ fontSize: '10px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{k.label}</span>
                   {k.icon}
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
-                  <span style={{ fontSize: '18px', fontWeight: 900, color: '#0F2A4E', fontVariantNumeric: 'tabular-nums', lineHeight: 1 }}>{k.value}</span>
-                  {(k as any).action}
-                </div>
+                <span style={{ fontSize: '18px', fontWeight: 900, color: '#0F2A4E', fontVariantNumeric: 'tabular-nums', lineHeight: 1 }}>{k.value}</span>
               </div>
             ))}
+            {/* Card clicável — Grupo s/ Class. */}
+            <button
+              onClick={() => { setFilter('semGrupo', filters.semGrupo === '1' ? '' : '1'); setFilter('semSubgrupo', ''); }}
+              style={{
+                background: filters.semGrupo === '1' ? '#fef3c7' : stats.sem_grupo > 0 ? '#fffbeb' : '#f0fdf4',
+                border: `2px solid ${filters.semGrupo === '1' ? '#f59e0b' : stats.sem_grupo > 0 ? '#fde68a' : '#a7f3d0'}`,
+                borderRadius: '14px', padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: '6px',
+                cursor: stats.sem_grupo > 0 ? 'pointer' : 'default', textAlign: 'left', transition: 'all 0.15s',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <span style={{ fontSize: '10px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Grupo s/ Class.</span>
+                <Layers size={16} className={filters.semGrupo === '1' ? 'text-amber-500' : 'text-amber-400'} />
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <span style={{ fontSize: '18px', fontWeight: 900, color: '#0F2A4E', fontVariantNumeric: 'tabular-nums', lineHeight: 1 }}>{stats.sem_grupo.toLocaleString('pt-BR')}</span>
+                {filters.semGrupo === '1' && <span style={{ fontSize: '10px', fontWeight: 700, color: '#f59e0b' }}>✕ filtrado</span>}
+              </div>
+            </button>
+            {/* Card clicável — Subgrupo s/ Class. */}
+            <button
+              onClick={() => { setFilter('semSubgrupo', filters.semSubgrupo === '1' ? '' : '1'); setFilter('semGrupo', ''); }}
+              style={{
+                background: filters.semSubgrupo === '1' ? '#ede9fe' : stats.sem_subgrupo > 0 ? '#faf5ff' : '#f0fdf4',
+                border: `2px solid ${filters.semSubgrupo === '1' ? '#7c3aed' : stats.sem_subgrupo > 0 ? '#e9d5ff' : '#a7f3d0'}`,
+                borderRadius: '14px', padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: '6px',
+                cursor: stats.sem_subgrupo > 0 ? 'pointer' : 'default', textAlign: 'left', transition: 'all 0.15s',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <span style={{ fontSize: '10px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Subgrupo s/ Class.</span>
+                <Tag size={16} className={filters.semSubgrupo === '1' ? 'text-purple-600' : 'text-purple-400'} />
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <span style={{ fontSize: '18px', fontWeight: 900, color: '#0F2A4E', fontVariantNumeric: 'tabular-nums', lineHeight: 1 }}>{stats.sem_subgrupo.toLocaleString('pt-BR')}</span>
+                {filters.semSubgrupo === '1' && <span style={{ fontSize: '10px', fontWeight: 700, color: '#7c3aed' }}>✕ filtrado</span>}
+              </div>
+            </button>
           </div>
         )}
 
