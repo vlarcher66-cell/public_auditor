@@ -23,31 +23,26 @@ export function extractResumoBancarioFromExcel(filePath: string): RawResumoBanca
   // Detecta colunas dinamicamente pelo cabeçalho (linha 1, índice 1)
   const header = allRows[1]?.map((c: any) => String(c ?? '').trim().toLowerCase()) ?? [];
 
+  // Layout real do FATOR (com células mescladas):
+  // A(0)=Nº da Conta | B(1)=Descrição | C(2)=vazia | D(3)=Fonte | E(4)=vazia | F(5)=Saldo Anterior | G(6)=Débito | H(7)=Crédito | I(8)=Saldo Atual
   let colOrdem      = 0;
   let colNome       = 1;
-  let colFonte      = -1;
-  let colSaldoAnt   = -1;
-  let colDebitos    = -1;
-  let colCreditos   = -1;
-  let colSaldoAtual = -1;
+  let colFonte      = 3;
+  let colSaldoAnt   = 5;
+  let colDebitos    = 6;
+  let colCreditos   = 7;
+  let colSaldoAtual = 8;
 
+  // Tenta detectar pelo cabeçalho (caso o layout mude)
   header.forEach((h, i) => {
-    if (/n.*ordem|n.*conta/i.test(h))   colOrdem = i;
-    else if (/descri|^nome/i.test(h))   colNome = i;
-    else if (/^fonte/i.test(h))         colFonte = i;
-    else if (/saldo ant/i.test(h))      colSaldoAnt = i;
-    else if (/d[eé]bito/i.test(h))      colDebitos = i;
-    else if (/cr[eé]dito/i.test(h))     colCreditos = i;
-    else if (/saldo atual/i.test(h))    colSaldoAtual = i;
+    if (/n.*conta|n.*ordem/i.test(h))  colOrdem = i;
+    else if (/descri/i.test(h))        colNome = i;
+    else if (/^fonte/i.test(h))        colFonte = i;
+    else if (/saldo\s*ant/i.test(h))   colSaldoAnt = i;
+    else if (/d[eé]bito/i.test(h))     colDebitos = i;
+    else if (/cr[eé]dito/i.test(h))    colCreditos = i;
+    else if (/saldo\s*atual/i.test(h)) colSaldoAtual = i;
   });
-
-  // Fallback: posições fixas baseadas no layout do relatório FATOR
-  // Nº da Conta | Descrição | Fonte | Saldo Anterior | Débito | Crédito | Saldo Atual
-  if (colFonte      === -1) colFonte      = 2;
-  if (colSaldoAnt   === -1) colSaldoAnt   = 3;
-  if (colDebitos    === -1) colDebitos    = 4;
-  if (colCreditos   === -1) colCreditos   = 5;
-  if (colSaldoAtual === -1) colSaldoAtual = 6;
 
   const rows: RawResumoBancario[] = [];
 
