@@ -222,8 +222,8 @@ export default function Sidebar({ collapsed, onToggle, mobileOpen = false, onMob
   const fullAccess = isSuperAdmin || isGestor;
   function hasPerm(key: string) { return fullAccess || permissoes.includes(key); }
 
-  const isImportacaoActive = pathname === '/importacao' || pathname === '/importacao-receita' || pathname === '/importacao-transf-bancaria' || pathname === '/importacao-empenhos';
-  const isAnaliseActive = pathname === '/pagamentos' || pathname === '/receitas/listagem' || pathname === '/analise/despesa-a-pagar';
+  const isImportacaoActive = pathname === '/importacao' || pathname === '/importacao-receita' || pathname === '/importacao-transf-bancaria' || pathname === '/importacao-empenhos' || pathname === '/importacao-resumo-bancario';
+  const isAnaliseActive = pathname === '/pagamentos' || pathname === '/receitas/listagem' || pathname === '/analise/despesa-a-pagar' || pathname === '/analise/resumo-bancario';
   const isCadastrosActive = pathname.startsWith('/cadastros');
   const isClassificacaoActive = pathname === '/cadastros/credor' || pathname.startsWith('/cadastros/credor/') || pathname === '/analise/credores-a-pagar';
 
@@ -330,6 +330,7 @@ export default function Sidebar({ collapsed, onToggle, mobileOpen = false, onMob
             {hasPerm('analise.despesa') && <SubItem href="/pagamentos" icon={<TrendingDown size={13} />} label="Despesa" active={pathname === '/pagamentos'} groupOpen={openGroup === 'analise'} onNavigate={handleNav} />}
             {hasPerm('analise.receita') && <SubItem href="/receitas/listagem" icon={<TrendingUp size={13} />} label="Receita" active={pathname === '/receitas/listagem'} groupOpen={openGroup === 'analise'} onNavigate={handleNav} />}
             {hasPerm('analise.despesa') && <SubItem href="/analise/despesa-a-pagar" icon={<Receipt size={13} />} label="Despesa a Pagar" active={pathname === '/analise/despesa-a-pagar'} groupOpen={openGroup === 'analise'} onNavigate={handleNav} />}
+            {hasPerm('analise.despesa') && <SubItem href="/analise/resumo-bancario" icon={<Landmark size={13} />} label="Resumo Bancário" active={pathname === '/analise/resumo-bancario'} groupOpen={openGroup === 'analise'} onNavigate={handleNav} />}
           </NavGroup>
         )}
 
@@ -347,6 +348,7 @@ export default function Sidebar({ collapsed, onToggle, mobileOpen = false, onMob
             {hasPerm('importacao.receita') && <SubItem href="/importacao-receita" icon={<TrendingUp size={13} />} label="Receita" active={pathname === '/importacao-receita'} groupOpen={openGroup === 'importacao'} onNavigate={handleNav} />}
             {hasPerm('importacao.despesa') && <SubItem href="/importacao-transf-bancaria" icon={<ArrowLeftRight size={13} />} label="Transf. Bancária" active={pathname === '/importacao-transf-bancaria'} groupOpen={openGroup === 'importacao'} onNavigate={handleNav} />}
             {hasPerm('importacao.despesa') && <SubItem href="/importacao-empenhos" icon={<Receipt size={13} />} label="Empenhos Liq." active={pathname === '/importacao-empenhos'} groupOpen={openGroup === 'importacao'} onNavigate={handleNav} />}
+            {hasPerm('importacao.despesa') && <SubItem href="/importacao-resumo-bancario" icon={<Landmark size={13} />} label="Resumo Bancário" active={pathname === '/importacao-resumo-bancario'} groupOpen={openGroup === 'importacao'} onNavigate={handleNav} />}
           </NavGroup>
         )}
 

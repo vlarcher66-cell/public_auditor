@@ -153,6 +153,63 @@ router.get('/admin/fix-sequences', async (_req, res) => {
   }
 });
 
+// ── Resumo Bancário ───────────────────────────────────────────────────────────
+router.get('/resumo-bancario', authMiddleware, async (req, res) => {
+  try {
+    const { municipioId, entidadeId } = req.query as Record<string, string>;
+    const user = (req as any).user;
+
+    const q = db('fact_resumo_bancario as r')
+      .join('dim_entidade as e', 'r.fk_entidade', 'e.id')
+      .select(
+        'r.periodo_ref', 'r.ano', 'r.mes',
+        'e.id as entidade_id', 'e.nome as entidade_nome',
+        db.raw('SUM(r.saldo_anterior) as saldo_anterior'),
+        db.raw('SUM(r.creditos) as creditos'),
+        db.raw('SUM(r.debitos) as debitos'),
+        db.raw('SUM(r.saldo_atual) as saldo_atual'),
+      )
+      .groupBy('r.periodo_ref', 'r.ano', 'r.mes', 'e.id', 'e.nome')
+      .orderBy('r.periodo_ref');
+
+    if (entidadeId) q.where('r.fk_entidade', entidadeId);
+    else if (municipioId) q.where('r.fk_municipio', municipioId);
+    else if (user?.fk_municipio) q.where('r.fk_municipio', user.fk_municipio);
+
+    const rows = await q;
+    res.json(rows.map((r: any) => ({
+      ...r,
+      saldo_anterior: Number(r.saldo_anterior ?? 0),
+      creditos:       Number(r.creditos ?? 0),
+      debitos:        Number(r.debitos ?? 0),
+      saldo_atual:    Number(r.saldo_atual ?? 0),
+    })));
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.get('/resumo-bancario/detalhado', authMiddleware, async (req, res) => {
+  try {
+    const { municipioId, entidadeId, periodoRef } = req.query as Record<string, string>;
+    const user = (req as any).user;
+
+    const q = db('fact_resumo_bancario as r')
+      .join('dim_entidade as e', 'r.fk_entidade', 'e.id')
+      .select('r.*', 'e.nome as entidade_nome')
+      .orderBy('r.nome_conta');
+
+    if (periodoRef) q.where('r.periodo_ref', periodoRef);
+    if (entidadeId) q.where('r.fk_entidade', entidadeId);
+    else if (municipioId) q.where('r.fk_municipio', municipioId);
+    else if (user?.fk_municipio) q.where('r.fk_municipio', user.fk_municipio);
+
+    res.json(await q);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ── Credores a Pagar ──────────────────────────────────────────────────────────
 router.get('/credores-a-pagar',           authMiddleware, listCredoresAPagar);
 router.patch('/credores-a-pagar/:id',     authMiddleware, classificarCredorAPagar);

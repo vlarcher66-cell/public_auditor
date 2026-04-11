@@ -25,6 +25,7 @@ export async function uploadFile(req: Request, res: Response): Promise<void> {
     : tipoRaw === 'RECEITA' ? 'RECEITA'
     : tipoRaw === 'TRANSF_BANCARIA' ? 'TRANSF_BANCARIA'
     : tipoRaw === 'EMPENHO_LIQUIDADO' ? 'EMPENHO_LIQUIDADO'
+    : tipoRaw === 'RESUMO_BANCARIO' ? 'RESUMO_BANCARIO'
     : 'OR';
   const entidadeId = req.body.entidade_id ? parseInt(req.body.entidade_id) : undefined;
   const sistemaOrigem = req.body.sistema_origem ? String(req.body.sistema_origem).slice(0, 50) : null;

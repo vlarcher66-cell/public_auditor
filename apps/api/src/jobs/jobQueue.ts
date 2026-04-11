@@ -14,6 +14,8 @@ import { extractTransfBancariaFromExcel } from '../etl/extractors/transferenciaB
 import { loadTransfBancariaToMySQL } from '../etl/loaders/transferenciaBancaria.loader';
 import { extractEmpenhoLiquidadoFromExcel } from '../etl/extractors/empenhoLiquidado.extractor';
 import { loadEmpenhoLiquidadoToMySQL } from '../etl/loaders/empenhoLiquidado.loader';
+import { extractResumoBancarioFromExcel } from '../etl/extractors/resumoBancario.extractor';
+import { loadResumoBancario } from '../etl/loaders/resumoBancario.loader';
 
 export interface ETLJobData {
   importJobId: number;
@@ -113,6 +115,40 @@ async function processJob({ importJobId, filePath, tipoRelatorio, entidadeId, pe
       logger.info({ importJobId, ...result }, `EmpenhoLiquidado ETL: done — ${result.credores_criados} credor(es) criado(s) automaticamente`);
     } catch (err: any) {
       logger.error({ importJobId, err: err.message }, 'EmpenhoLiquidado ETL: failed');
+      await db('import_jobs').where({ id: importJobId }).update({
+        status: 'ERROR',
+        error_log: JSON.stringify([{ row_index: -1, field: 'system', message: err.message, raw_value: '' }]),
+        finished_at: new Date().toISOString(),
+      });
+    }
+    return;
+  }
+
+  // ── Resumo Bancário: pipeline dedicado ─────────────────────────────────────
+  if (tipoRelatorio === 'RESUMO_BANCARIO') {
+    try {
+      await db('import_jobs').where({ id: importJobId }).update({ status: 'EXTRACTING', started_at: new Date().toISOString() });
+
+      const rawRows = extractResumoBancarioFromExcel(filePath);
+      logger.info({ count: rawRows.length }, 'ResumoBancario ETL: extracted');
+
+      await db('import_jobs').where({ id: importJobId }).update({ status: 'LOADING', total_rows: rawRows.length });
+
+      const result = await loadResumoBancario(db, rawRows, importJobId, entidadeId!, periodoReferencia || '');
+
+      await db('import_jobs').where({ id: importJobId }).update({
+        status: 'DONE',
+        total_rows: rawRows.length,
+        rows_loaded: result.rows_loaded,
+        rows_skipped: result.rows_skipped,
+        rows_errored: 0,
+        valor_bruto_total: result.valor_total,
+        finished_at: new Date().toISOString(),
+      });
+
+      logger.info({ importJobId, ...result }, 'ResumoBancario ETL: done');
+    } catch (err: any) {
+      logger.error({ importJobId, err: err.message }, 'ResumoBancario ETL: failed');
       await db('import_jobs').where({ id: importJobId }).update({
         status: 'ERROR',
         error_log: JSON.stringify([{ row_index: -1, field: 'system', message: err.message, raw_value: '' }]),
