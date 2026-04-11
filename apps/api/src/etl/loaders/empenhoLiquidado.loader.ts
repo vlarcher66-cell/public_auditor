@@ -123,15 +123,7 @@ export async function loadEmpenhoLiquidadoToMySQL(
       const hash = hashEmpenho(row, periodoRef);
 
       if (existingHashes.has(hash)) {
-        if (row.dt_pagamento) {
-          await db('fact_empenho_liquidado')
-            .where('hash_linha', hash)
-            .whereNull('dt_pagamento')
-            .update({ dt_pagamento: row.dt_pagamento });
-          rows_updated++;
-        } else {
-          rows_skipped++;
-        }
+        rows_skipped++;
         continue;
       }
 
@@ -164,7 +156,7 @@ export async function loadEmpenhoLiquidadoToMySQL(
           tipo_empenho:      row.tipo_empenho || null,
           dt_empenho:        row.dt_empenho || null,
           num_processo:      row.num_processo || null,
-          dt_pagamento:      row.dt_pagamento || null,
+          dt_pagamento:      null, // sempre null — relatório FATOR representa o passivo do período
           valor:             row.valor,
           periodo_ref:       periodoRef,
           hash_linha:        hash,
