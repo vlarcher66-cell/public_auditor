@@ -168,7 +168,7 @@ export async function getListagem(req: Request, res: Response): Promise<void> {
   const semGrupo    = req.query.semGrupo    === '1';
   const semSubgrupo = req.query.semSubgrupo === '1';
 
-  function buildBase() {
+  function buildBase({ ignorarSemFiltros = false } = {}) {
     const q = db('fact_empenho_liquidado as f')
       .leftJoin('dim_credor as c',           'f.fk_credor',         'c.id')
       .leftJoin('dim_credor_a_pagar as cap',  'f.fk_credor_a_pagar', 'cap.id')
@@ -183,8 +183,12 @@ export async function getListagem(req: Request, res: Response): Promise<void> {
     if (fk_grupo)    q.where('g.id', fk_grupo);
     if (fk_subgrupo) q.where('s.id', fk_subgrupo);
     if (credor)      q.whereRaw('UPPER(f.credor_nome) LIKE ?', [`%${credor.toUpperCase()}%`]);
-    if (semGrupo)    q.whereNull('g.id');
-    if (semSubgrupo) q.whereNotNull('g.id').whereNull('s.id');
+
+    // filtros de classificação — ignorados nos stats de contagem
+    if (!ignorarSemFiltros) {
+      if (semGrupo)    q.whereNull('g.id');
+      if (semSubgrupo) q.whereNotNull('g.id').whereNull('s.id');
+    }
 
     return q;
   }
@@ -219,8 +223,8 @@ export async function getListagem(req: Request, res: Response): Promise<void> {
     .count('f.id as total_registros')
     .sum('f.valor as valor_total')
     .countDistinct('f.credor_nome as total_credores');
-  const semGrupoQ    = buildBase().whereNull('g.id').count('f.id as n').first();
-  const semSubgrupoQ = buildBase().whereNotNull('g.id').whereNull('s.id').count('f.id as n').first();
+  const semGrupoQ    = buildBase({ ignorarSemFiltros: true }).whereNull('g.id').count('f.id as n').first();
+  const semSubgrupoQ = buildBase({ ignorarSemFiltros: true }).whereNotNull('g.id').whereNull('s.id').count('f.id as n').first();
 
   const [statsRows, semGrupoRow, semSubgrupoRow] = await Promise.all([statsQ.first(), semGrupoQ, semSubgrupoQ]);
 
