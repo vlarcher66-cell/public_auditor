@@ -165,7 +165,8 @@ export async function getListagem(req: Request, res: Response): Promise<void> {
   const fk_grupo    = req.query.fk_grupo    ? parseInt(req.query.fk_grupo    as string) : null;
   const fk_subgrupo = req.query.fk_subgrupo ? parseInt(req.query.fk_subgrupo as string) : null;
   const credor      = req.query.credor      as string | undefined;
-  const semGrupo    = req.query.semGrupo === '1';
+  const semGrupo    = req.query.semGrupo    === '1';
+  const semSubgrupo = req.query.semSubgrupo === '1';
 
   function buildBase() {
     const q = db('fact_empenho_liquidado as f')
@@ -183,6 +184,7 @@ export async function getListagem(req: Request, res: Response): Promise<void> {
     if (fk_subgrupo) q.where('s.id', fk_subgrupo);
     if (credor)      q.whereRaw('UPPER(f.credor_nome) LIKE ?', [`%${credor.toUpperCase()}%`]);
     if (semGrupo)    q.whereNull('g.id');
+    if (semSubgrupo) q.whereNotNull('g.id').whereNull('s.id');
 
     return q;
   }
@@ -217,9 +219,10 @@ export async function getListagem(req: Request, res: Response): Promise<void> {
     .count('f.id as total_registros')
     .sum('f.valor as valor_total')
     .countDistinct('f.credor_nome as total_credores');
-  const semGrupoQ = buildBase().whereNull('c.fk_grupo').count('f.id as sem_grupo').first();
+  const semGrupoQ    = buildBase().whereNull('g.id').count('f.id as n').first();
+  const semSubgrupoQ = buildBase().whereNotNull('g.id').whereNull('s.id').count('f.id as n').first();
 
-  const [statsRows, semGrupoRow] = await Promise.all([statsQ.first(), semGrupoQ]);
+  const [statsRows, semGrupoRow, semSubgrupoRow] = await Promise.all([statsQ.first(), semGrupoQ, semSubgrupoQ]);
 
   res.json({
     rows,
@@ -230,7 +233,8 @@ export async function getListagem(req: Request, res: Response): Promise<void> {
       total_registros: Number((statsRows as any)?.total_registros ?? 0),
       valor_total: Number((statsRows as any)?.valor_total ?? 0),
       total_credores: Number((statsRows as any)?.total_credores ?? 0),
-      sem_grupo: Number((semGrupoRow as any)?.sem_grupo ?? 0),
+      sem_grupo:     Number((semGrupoRow as any)?.n ?? 0),
+      sem_subgrupo:  Number((semSubgrupoRow as any)?.n ?? 0),
     },
   });
 }

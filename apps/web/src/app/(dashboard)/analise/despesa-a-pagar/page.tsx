@@ -48,6 +48,7 @@ interface ListagemResponse {
     valor_total: number;
     total_credores: number;
     sem_grupo: number;
+    sem_subgrupo: number;
   };
 }
 
@@ -200,7 +201,7 @@ function GrupoCell({ row, grupos, subgrupos, token, onSaved }: {
 
 // ─── Filtros ──────────────────────────────────────────────────────────────────
 const EMPTY_FILTERS = {
-  periodo: '', fk_entidade: '', fk_grupo: '', fk_subgrupo: '', credor: '', semGrupo: '',
+  periodo: '', fk_entidade: '', fk_grupo: '', fk_subgrupo: '', credor: '', semGrupo: '', semSubgrupo: '',
 };
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
@@ -426,18 +427,28 @@ export default function DespesaAPagarPage() {
 
         {/* ── KPIs ─────────────────────────────────────────────────────────── */}
         {stats && (
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
             {[
               { icon: <Hash size={16} className="text-blue-400" />, label: 'Total Empenhos', value: stats.total_registros.toLocaleString('pt-BR'), bg: '#eff6ff', border: '#bfdbfe' },
               { icon: <DollarSign size={16} className="text-emerald-400" />, label: 'Valor Total', value: `R$ ${fmt(stats.valor_total)}`, bg: '#ecfdf5', border: '#a7f3d0' },
               { icon: <Users size={16} className="text-violet-400" />, label: 'Credores', value: stats.total_credores.toLocaleString('pt-BR'), bg: '#fdf4ff', border: '#e9d5ff' },
-              { icon: <AlertTriangle size={16} className="text-amber-400" />, label: 'Sem Grupo', value: stats.sem_grupo.toLocaleString('pt-BR'), bg: stats.sem_grupo > 0 ? '#fffbeb' : '#f0fdf4', border: stats.sem_grupo > 0 ? '#fde68a' : '#a7f3d0',
+              { icon: <Layers size={16} className="text-amber-400" />, label: 'Grupo s/ Class.', value: stats.sem_grupo.toLocaleString('pt-BR'), bg: stats.sem_grupo > 0 ? '#fffbeb' : '#f0fdf4', border: stats.sem_grupo > 0 ? '#fde68a' : '#a7f3d0',
                 action: stats.sem_grupo > 0 ? (
                   <button onClick={() => setFilter('semGrupo', filters.semGrupo === '1' ? '' : '1')}
                     className={cn('text-[10px] font-medium px-2 py-0.5 rounded-full border transition-all',
                       filters.semGrupo === '1' ? 'bg-amber-500 text-white border-amber-500' : 'text-amber-600 border-amber-300 hover:bg-amber-50'
                     )}>
                     {filters.semGrupo === '1' ? '✕ filtrado' : 'filtrar'}
+                  </button>
+                ) : null,
+              },
+              { icon: <Tag size={16} className="text-purple-400" />, label: 'Subgrupo s/ Class.', value: stats.sem_subgrupo.toLocaleString('pt-BR'), bg: stats.sem_subgrupo > 0 ? '#faf5ff' : '#f0fdf4', border: stats.sem_subgrupo > 0 ? '#e9d5ff' : '#a7f3d0',
+                action: stats.sem_subgrupo > 0 ? (
+                  <button onClick={() => setFilter('semSubgrupo', filters.semSubgrupo === '1' ? '' : '1')}
+                    className={cn('text-[10px] font-medium px-2 py-0.5 rounded-full border transition-all',
+                      filters.semSubgrupo === '1' ? 'bg-purple-500 text-white border-purple-500' : 'text-purple-600 border-purple-300 hover:bg-purple-50'
+                    )}>
+                    {filters.semSubgrupo === '1' ? '✕ filtrado' : 'filtrar'}
                   </button>
                 ) : null,
               },
