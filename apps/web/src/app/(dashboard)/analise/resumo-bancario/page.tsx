@@ -5,7 +5,7 @@ import { useSession } from 'next-auth/react';
 import { Landmark, TrendingUp, TrendingDown, DollarSign, ChevronDown, ChevronUp } from 'lucide-react';
 import TopBar from '@/components/dashboard/TopBar';
 import { useMunicipioEntidade } from '@/contexts/MunicipioEntidadeContext';
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, TooltipProps } from 'recharts';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
@@ -25,6 +25,7 @@ interface DetalheRow {
   id: number;
   num_ordem: string;
   nome_conta: string;
+  fonte: string | null;
   saldo_anterior: number;
   creditos: number;
   debitos: number;
@@ -35,6 +36,29 @@ interface DetalheRow {
 
 const fmt = (v: number) => v.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const MESES = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+
+function CustomTooltip({ active, payload, label }: TooltipProps<number, string>) {
+  if (!active || !payload?.length) return null;
+  const d = payload[0]?.payload as any;
+  return (
+    <div style={{ background: '#0F2A4E', borderRadius: 12, padding: '12px 16px', minWidth: 220, boxShadow: '0 8px 24px rgba(0,0,0,0.25)' }}>
+      <p style={{ color: '#94a3b8', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', marginBottom: 8 }}>{label}</p>
+      {[
+        { label: 'Saldo Anterior', value: d.saldo_anterior ?? d.saldo_atual, color: '#94a3b8' },
+        { label: 'Créditos',      value: d.creditos,      color: '#34d399' },
+        { label: 'Débitos',       value: d.debitos,       color: '#f87171' },
+        { label: 'Saldo Atual',   value: d.saldo_atual,   color: '#22d3ee' },
+      ].map((item, i) => (
+        <div key={i} style={{ display: 'flex', justifyContent: 'space-between', gap: 16, marginBottom: 4 }}>
+          <span style={{ color: item.color, fontSize: 12 }}>{item.label}</span>
+          <span style={{ color: '#fff', fontSize: 12, fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>
+            R$ {fmt(item.value ?? 0)}
+          </span>
+        </div>
+      ))}
+    </div>
+  );
+}
 
 function labelPeriodo(ref: string) {
   const [ano, mes] = ref.split('-');
@@ -84,10 +108,11 @@ export default function ResumoBancarioPage() {
   const chartData = periodos.map(p => {
     const rows = resumos.filter(r => r.periodo_ref === p);
     return {
-      periodo: labelPeriodo(p),
-      saldo_atual:    rows.reduce((s, r) => s + r.saldo_atual, 0),
+      periodo:        labelPeriodo(p),
+      saldo_anterior: rows.reduce((s, r) => s + r.saldo_anterior, 0),
       creditos:       rows.reduce((s, r) => s + r.creditos, 0),
       debitos:        rows.reduce((s, r) => s + r.debitos, 0),
+      saldo_atual:    rows.reduce((s, r) => s + r.saldo_atual, 0),
     };
   });
 
@@ -164,7 +189,7 @@ export default function ResumoBancarioPage() {
                 <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
                 <XAxis dataKey="periodo" tick={{ fontSize: 11 }} />
                 <YAxis tick={{ fontSize: 11 }} tickFormatter={v => `R$ ${(v / 1000).toFixed(0)}k`} />
-                <Tooltip formatter={(v: number) => `R$ ${fmt(v)}`} />
+                <Tooltip content={<CustomTooltip />} />
                 <Legend />
                 <Area type="monotone" dataKey="saldo_atual" name="Saldo Atual" stroke="#0891b2" fill="url(#gradSaldo)" strokeWidth={2} dot={{ r: 4 }} />
                 <Area type="monotone" dataKey="creditos"    name="Créditos"    stroke="#10b981" fill="url(#gradCred)"  strokeWidth={1.5} dot={false} strokeDasharray="4 4" />
@@ -192,38 +217,40 @@ export default function ResumoBancarioPage() {
                 <table className="w-full text-xs">
                   <thead className="bg-slate-50 border-y border-gray-100">
                     <tr>
-                      <th className="px-4 py-2.5 text-left text-gray-500 font-semibold">Nº Ordem</th>
-                      <th className="px-4 py-2.5 text-left text-gray-500 font-semibold">Conta</th>
-                      <th className="px-4 py-2.5 text-right text-gray-500 font-semibold">Saldo Anterior</th>
-                      <th className="px-4 py-2.5 text-right text-gray-500 font-semibold">Créditos</th>
-                      <th className="px-4 py-2.5 text-right text-gray-500 font-semibold">Débitos</th>
-                      <th className="px-4 py-2.5 text-right text-gray-500 font-semibold">Saldo Atual</th>
+                      <th className="px-4 py-2.5 text-left text-gray-500 font-semibold text-xs">Nº da Conta</th>
+                      <th className="px-4 py-2.5 text-left text-gray-500 font-semibold text-xs">Descrição</th>
+                      <th className="px-4 py-2.5 text-left text-gray-500 font-semibold text-xs">Fonte</th>
+                      <th className="px-4 py-2.5 text-right text-gray-500 font-semibold text-xs">Saldo Anterior</th>
+                      <th className="px-4 py-2.5 text-right text-gray-500 font-semibold text-xs">Débito</th>
+                      <th className="px-4 py-2.5 text-right text-gray-500 font-semibold text-xs">Crédito</th>
+                      <th className="px-4 py-2.5 text-right text-gray-500 font-semibold text-xs">Saldo Atual</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-50">
                     {loading ? (
-                      <tr><td colSpan={6} className="py-10 text-center text-gray-400">Carregando...</td></tr>
+                      <tr><td colSpan={7} className="py-10 text-center text-gray-400">Carregando...</td></tr>
                     ) : detalhes.length === 0 ? (
-                      <tr><td colSpan={6} className="py-10 text-center text-gray-400">Nenhum dado para este período.</td></tr>
+                      <tr><td colSpan={7} className="py-10 text-center text-gray-400">Nenhum dado para este período.</td></tr>
                     ) : detalhes.map(row => (
                       <tr key={row.id} className="hover:bg-gray-50">
-                        <td className="px-4 py-2.5 text-gray-400 font-mono">{row.num_ordem || '—'}</td>
-                        <td className="px-4 py-2.5 text-gray-800 font-medium max-w-[300px] truncate">{row.nome_conta}</td>
-                        <td className="px-4 py-2.5 text-right text-gray-600">{row.saldo_anterior != null ? `R$ ${fmt(row.saldo_anterior)}` : '—'}</td>
-                        <td className="px-4 py-2.5 text-right text-emerald-600 font-medium">{row.creditos != null ? `R$ ${fmt(row.creditos)}` : '—'}</td>
-                        <td className="px-4 py-2.5 text-right text-red-500 font-medium">{row.debitos != null ? `R$ ${fmt(row.debitos)}` : '—'}</td>
-                        <td className="px-4 py-2.5 text-right text-cyan-700 font-bold">{row.saldo_atual != null ? `R$ ${fmt(row.saldo_atual)}` : '—'}</td>
+                        <td className="px-4 py-2 text-gray-500 font-mono text-xs">{row.num_ordem || '—'}</td>
+                        <td className="px-4 py-2 text-gray-800 font-medium text-xs max-w-[280px] truncate">{row.nome_conta}</td>
+                        <td className="px-4 py-2 text-gray-400 text-xs font-mono">{row.fonte || '—'}</td>
+                        <td className="px-4 py-2 text-right text-gray-600 text-xs">{row.saldo_anterior != null ? fmt(row.saldo_anterior) : '—'}</td>
+                        <td className="px-4 py-2 text-right text-red-500 text-xs">{row.debitos != null ? fmt(row.debitos) : '—'}</td>
+                        <td className="px-4 py-2 text-right text-emerald-600 text-xs">{row.creditos != null ? fmt(row.creditos) : '—'}</td>
+                        <td className="px-4 py-2 text-right text-cyan-700 font-bold text-xs">{row.saldo_atual != null ? fmt(row.saldo_atual) : '—'}</td>
                       </tr>
                     ))}
                   </tbody>
                   {detalhes.length > 0 && (
                     <tfoot className="bg-slate-50 border-t border-gray-200">
                       <tr>
-                        <td colSpan={2} className="px-4 py-2.5 text-xs font-bold text-gray-500 uppercase">Total</td>
-                        <td className="px-4 py-2.5 text-right font-bold text-gray-700">R$ {fmt(detalhes.reduce((s, r) => s + (r.saldo_anterior ?? 0), 0))}</td>
-                        <td className="px-4 py-2.5 text-right font-bold text-emerald-600">R$ {fmt(detalhes.reduce((s, r) => s + (r.creditos ?? 0), 0))}</td>
-                        <td className="px-4 py-2.5 text-right font-bold text-red-500">R$ {fmt(detalhes.reduce((s, r) => s + (r.debitos ?? 0), 0))}</td>
-                        <td className="px-4 py-2.5 text-right font-bold text-cyan-700">R$ {fmt(detalhes.reduce((s, r) => s + (r.saldo_atual ?? 0), 0))}</td>
+                        <td colSpan={3} className="px-4 py-2.5 text-xs font-bold text-gray-500 uppercase">Total</td>
+                        <td className="px-4 py-2.5 text-right font-bold text-gray-700 text-xs">{fmt(detalhes.reduce((s, r) => s + (r.saldo_anterior ?? 0), 0))}</td>
+                        <td className="px-4 py-2.5 text-right font-bold text-red-500 text-xs">{fmt(detalhes.reduce((s, r) => s + (r.debitos ?? 0), 0))}</td>
+                        <td className="px-4 py-2.5 text-right font-bold text-emerald-600 text-xs">{fmt(detalhes.reduce((s, r) => s + (r.creditos ?? 0), 0))}</td>
+                        <td className="px-4 py-2.5 text-right font-bold text-cyan-700 text-xs">{fmt(detalhes.reduce((s, r) => s + (r.saldo_atual ?? 0), 0))}</td>
                       </tr>
                     </tfoot>
                   )}

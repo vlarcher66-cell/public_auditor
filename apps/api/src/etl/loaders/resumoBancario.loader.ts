@@ -43,6 +43,7 @@ export async function loadResumoBancario(
       await db('fact_resumo_bancario').insert({
         num_ordem:      row.num_ordem || null,
         nome_conta:     row.nome_conta,
+        fonte:          row.fonte || null,
         saldo_anterior: row.saldo_anterior,
         creditos:       row.creditos,
         debitos:        row.debitos,

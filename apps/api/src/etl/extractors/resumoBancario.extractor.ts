@@ -3,6 +3,7 @@ import * as XLSX from 'xlsx';
 export interface RawResumoBancario {
   num_ordem: string;
   nome_conta: string;
+  fonte: string | null;
   saldo_anterior: number | null;
   creditos: number | null;
   debitos: number | null;
@@ -12,7 +13,7 @@ export interface RawResumoBancario {
 /**
  * Extractor para "Resumo Bancário" exportado em XLSX.
  * Layout: cabeçalho na linha 2 (índice 1), dados a partir da linha 3 (índice 2).
- * Colunas: Nº Ordem | Nome | Totais | Saldo Anterior | Créditos | Débitos | Saldo Atual
+ * Colunas: Nº da Conta | Descrição | Fonte | Saldo Anterior | Débito | Crédito | Saldo Atual
  */
 export function extractResumoBancarioFromExcel(filePath: string): RawResumoBancario[] {
   const wb = XLSX.readFile(filePath);
@@ -24,24 +25,28 @@ export function extractResumoBancarioFromExcel(filePath: string): RawResumoBanca
 
   let colOrdem      = 0;
   let colNome       = 1;
+  let colFonte      = -1;
   let colSaldoAnt   = -1;
-  let colCreditos   = -1;
   let colDebitos    = -1;
+  let colCreditos   = -1;
   let colSaldoAtual = -1;
 
   header.forEach((h, i) => {
-    if (/n.*ordem/i.test(h) || h === 'nº de ordem') colOrdem = i;
-    else if (/^nome/i.test(h)) colNome = i;
-    else if (/saldo ant/i.test(h)) colSaldoAnt = i;
-    else if (/cr[eé]dito/i.test(h)) colCreditos = i;
-    else if (/d[eé]bito/i.test(h)) colDebitos = i;
-    else if (/saldo atual/i.test(h)) colSaldoAtual = i;
+    if (/n.*ordem|n.*conta/i.test(h))   colOrdem = i;
+    else if (/descri|^nome/i.test(h))   colNome = i;
+    else if (/^fonte/i.test(h))         colFonte = i;
+    else if (/saldo ant/i.test(h))      colSaldoAnt = i;
+    else if (/d[eé]bito/i.test(h))      colDebitos = i;
+    else if (/cr[eé]dito/i.test(h))     colCreditos = i;
+    else if (/saldo atual/i.test(h))    colSaldoAtual = i;
   });
 
-  // Fallback: assume posições fixas se não detectou
+  // Fallback: posições fixas baseadas no layout do relatório FATOR
+  // Nº da Conta | Descrição | Fonte | Saldo Anterior | Débito | Crédito | Saldo Atual
+  if (colFonte      === -1) colFonte      = 2;
   if (colSaldoAnt   === -1) colSaldoAnt   = 3;
-  if (colCreditos   === -1) colCreditos   = 4;
-  if (colDebitos    === -1) colDebitos    = 5;
+  if (colDebitos    === -1) colDebitos    = 4;
+  if (colCreditos   === -1) colCreditos   = 5;
   if (colSaldoAtual === -1) colSaldoAtual = 6;
 
   const rows: RawResumoBancario[] = [];
@@ -57,22 +62,22 @@ export function extractResumoBancarioFromExcel(filePath: string): RawResumoBanca
     if (/^total\s+geral/i.test(nome) || /^totais/i.test(nome)) continue;
     if (/^(João|CPF|CRF|Prefeito|Secretar|Contador)/i.test(nome)) continue;
 
-    const saldo_atual = parseValor(row[colSaldoAtual]);
-    // Só inclui linhas que têm algum valor numérico
-    const temValor = saldo_atual !== null
-      || parseValor(row[colSaldoAnt]) !== null
-      || parseValor(row[colCreditos]) !== null
-      || parseValor(row[colDebitos]) !== null;
+    const saldo_atual    = parseValor(row[colSaldoAtual]);
+    const saldo_anterior = parseValor(row[colSaldoAnt]);
+    const creditos       = parseValor(row[colCreditos]);
+    const debitos        = parseValor(row[colDebitos]);
 
+    const temValor = saldo_atual !== null || saldo_anterior !== null || creditos !== null || debitos !== null;
     if (!temValor) continue;
 
     rows.push({
-      num_ordem:     String(row[colOrdem] ?? '').trim(),
-      nome_conta:    nome,
-      saldo_anterior: parseValor(row[colSaldoAnt]),
-      creditos:       parseValor(row[colCreditos]),
-      debitos:        parseValor(row[colDebitos]),
-      saldo_atual:    parseValor(row[colSaldoAtual]),
+      num_ordem:      String(row[colOrdem] ?? '').trim(),
+      nome_conta:     nome,
+      fonte:          String(row[colFonte] ?? '').trim() || null,
+      saldo_anterior,
+      creditos,
+      debitos,
+      saldo_atual,
     });
   }
 
