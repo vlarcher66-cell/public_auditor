@@ -61,6 +61,292 @@ function EvolTooltip({ active, payload, label }: any) {
   );
 }
 
+// ─── Cores grupos ──────────────────────────────────────────────────────────────
+const MATRIX_COLORS = [
+  '#0F2A4E','#1e4d95','#C9A84C','#2563eb','#7c3aed',
+  '#059669','#dc2626','#ea580c','#0891b2','#65a30d',
+  '#9333ea','#db2777','#0284c7','#16a34a','#ca8a04',
+];
+
+const fmtM = (v: number) =>
+  v.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+// ─── Matriz Contas a Pagar ─────────────────────────────────────────────────────
+const MESES_NOMES = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+
+function MatrizContasAPagar({ matriz }: { matriz: any }) {
+  const [showAll, setShowAll] = React.useState(false);
+
+  // Detecta anos disponíveis nos períodos
+  const periodosData: string[] = matriz?.periodos ?? [];
+  const anos = [...new Set(periodosData.map((p: string) => p.slice(0, 4)))].sort();
+  const [anoSel, setAnoSel] = React.useState<string>(() => anos[anos.length - 1] ?? '');
+
+  // Atualiza anoSel quando os dados chegam
+  React.useEffect(() => {
+    const anosNovos = [...new Set(periodosData.map((p: string) => p.slice(0, 4)))].sort();
+    if (anosNovos.length > 0 && !anosNovos.includes(anoSel)) {
+      setAnoSel(anosNovos[anosNovos.length - 1]);
+    }
+  }, [periodosData.join(',')]); // eslint-disable-line
+
+  if (!matriz?.grupos?.length || !periodosData.length) return null;
+
+  const grupos: any[] = matriz.grupos;
+
+  // 12 meses fixos do ano selecionado
+  const meses12 = MESES_NOMES.map((_, i) => {
+    const mm = String(i + 1).padStart(2, '0');
+    return `${anoSel}-${mm}`;
+  });
+
+  // Ordena grupos por total no ano selecionado desc
+  const totalGrupoAno = (g: any) => meses12.reduce((s, p) => s + (g.totais[p] ?? 0), 0);
+  const gruposOrdenados = [...grupos]
+    .filter(g => totalGrupoAno(g) > 0 || grupos.some(gg => meses12.some(p => gg.totais[p])))
+    .sort((a, b) => totalGrupoAno(b) - totalGrupoAno(a));
+
+  const visiveis = showAll ? gruposOrdenados : gruposOrdenados.slice(0, 12);
+
+  // Total liquidado por mês (linhas dos grupos — agora inclui pago + a pagar)
+  const totalPorMes: Record<string, number> = {};
+  for (const p of meses12) {
+    totalPorMes[p] = grupos.reduce((s, g) => s + (g.totais[p] ?? 0), 0);
+  }
+  const totalGeral = Object.values(totalPorMes).reduce((s, v) => s + v, 0);
+  const mesesComDados = meses12.filter(p => totalPorMes[p] > 0).length;
+
+  // Total pago e liquidado vindos da API
+  const totalPagoPorPeriodo: Record<string, number> = matriz?.total_pago_por_periodo ?? {};
+  const totalLiquidadoPorPeriodo: Record<string, number> = matriz?.total_liquidado_por_periodo ?? {};
+
+  // Saldo a pagar por mês = liquidado - pago
+  const saldoAPagarPorMes: Record<string, number> = {};
+  for (const p of meses12) {
+    const liq = totalLiquidadoPorPeriodo[p] ?? totalPorMes[p] ?? 0;
+    const pago = totalPagoPorPeriodo[p] ?? 0;
+    saldoAPagarPorMes[p] = Math.max(0, liq - pago);
+  }
+
+  // Totalizadores acumulados do ano selecionado
+  const totalPagoGeral    = meses12.reduce((s, p) => s + (totalPagoPorPeriodo[p] ?? 0), 0);
+  const totalLiquidadoGeral = meses12.reduce((s, p) => s + (totalLiquidadoPorPeriodo[p] ?? totalPorMes[p] ?? 0), 0);
+  const totalSaldoAPagar = meses12.reduce((s, p) => s + (saldoAPagarPorMes[p] ?? 0), 0);
+
+  // Cor semáforo do % pago
+  function corPct(pct: number) {
+    if (pct >= 100) return { bg: '#dcfce7', color: '#16a34a' };
+    if (pct >= 50)  return { bg: '#fef9c3', color: '#ca8a04' };
+    if (pct > 0)    return { bg: '#fee2e2', color: '#dc2626' };
+    return { bg: 'transparent', color: '#cbd5e1' };
+  }
+
+  const TH: React.CSSProperties = {
+    padding: '9px 6px', textAlign: 'center', color: '#e2e8f0',
+    fontWeight: 600, fontSize: '10px', letterSpacing: '0.04em',
+    textTransform: 'uppercase' as const, whiteSpace: 'nowrap',
+  };
+
+  return (
+    <div style={{ background: '#fff', borderRadius: '20px', border: '1px solid #e2e8f0', overflow: 'hidden', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
+      {/* Header */}
+      <div style={{ padding: '14px 20px', background: 'linear-gradient(135deg, #0F2A4E, #1e4d95)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <CreditCard size={15} color="rgba(255,255,255,0.7)" />
+          <span style={{ fontSize: '13px', fontWeight: 700, color: '#fff' }}>Matriz do Contas a Pagar</span>
+          <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.45)', marginLeft: '4px' }}>Saldo por grupo × mês</span>
+        </div>
+        {/* Seletor de ano */}
+        <div style={{ display: 'flex', gap: '6px' }}>
+          {anos.map(a => (
+            <button
+              key={a}
+              onClick={() => setAnoSel(a)}
+              style={{
+                padding: '4px 12px', borderRadius: '20px', fontSize: '12px', fontWeight: 700, cursor: 'pointer', border: 'none', transition: 'all 0.15s',
+                background: anoSel === a ? '#C9A84C' : 'rgba(255,255,255,0.12)',
+                color: anoSel === a ? '#0F2A4E' : 'rgba(255,255,255,0.75)',
+              }}
+            >
+              {a}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Tabela */}
+      <div style={{ overflowX: 'auto' }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '11px', tableLayout: 'fixed' }}>
+          <colgroup>
+            <col style={{ width: '180px' }} />
+            {MESES_NOMES.map((_, i) => <col key={i} style={{ width: '62px' }} />)}
+            <col style={{ width: '90px' }} />
+            <col style={{ width: '78px' }} />
+          </colgroup>
+          <thead>
+            <tr style={{ background: '#0F2A4E' }}>
+              <th style={{ ...TH, textAlign: 'left', padding: '9px 14px' }}>Grupo</th>
+              {MESES_NOMES.map(m => (
+                <th key={m} style={TH}>{m}</th>
+              ))}
+              <th style={{ ...TH, color: '#fde68a', borderLeft: '1px solid rgba(255,255,255,0.12)' }}>Total</th>
+              <th style={{ ...TH, color: '#fde68a' }}>Média</th>
+            </tr>
+          </thead>
+          <tbody>
+            {/* TOTAL GERAL LIQUIDADO */}
+            <tr style={{ background: '#dbeafe', borderBottom: '2px solid #93c5fd' }}>
+              <td style={{ padding: '10px 14px', color: '#1e3a5f', fontWeight: 700, fontSize: '11px', letterSpacing: '0.03em', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                TOTAL LIQUIDADO
+              </td>
+              {meses12.map(p => (
+                <td key={p} style={{ padding: '10px 6px', textAlign: 'right', color: (totalPorMes[p] ?? 0) > 0 ? '#1e3a5f' : '#bfdbfe', fontWeight: 700, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
+                  {(totalPorMes[p] ?? 0) > 0 ? fmtM(totalPorMes[p]) : '—'}
+                </td>
+              ))}
+              <td style={{ padding: '10px 8px', textAlign: 'right', color: '#92400e', fontWeight: 700, fontVariantNumeric: 'tabular-nums', borderLeft: '1px solid #93c5fd', whiteSpace: 'nowrap' }}>
+                {fmtM(totalGeral)}
+              </td>
+              <td style={{ padding: '10px 8px', textAlign: 'right', color: '#92400e', fontWeight: 700, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
+                {mesesComDados > 0 ? fmtM(totalGeral / mesesComDados) : '—'}
+              </td>
+            </tr>
+
+            {/* Linhas por grupo */}
+            {gruposOrdenados.length === 0 ? (
+              <tr><td colSpan={15} style={{ padding: '40px', textAlign: 'center', color: '#94a3b8', fontSize: '13px' }}>Nenhum dado para {anoSel}</td></tr>
+            ) : visiveis.map((g, idx) => {
+              const acum = totalGrupoAno(g);
+              const mesesG = meses12.filter(p => (g.totais[p] ?? 0) > 0).length;
+              const media = mesesG > 0 ? acum / mesesG : 0;
+              const cor = MATRIX_COLORS[idx % MATRIX_COLORS.length];
+              return (
+                <tr
+                  key={g.grupo_id}
+                  style={{ background: '#fff', borderTop: `2px solid ${cor}`, borderBottom: '1px solid #eef2f9', transition: 'background 0.12s' }}
+                  onMouseEnter={e => (e.currentTarget.style.background = '#eff6ff')}
+                  onMouseLeave={e => (e.currentTarget.style.background = '#fff')}
+                >
+                  <td style={{ padding: '9px 14px', overflow: 'hidden' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '7px' }}>
+                      <span style={{ width: '4px', height: '16px', borderRadius: '2px', background: cor, flexShrink: 0 }} />
+                      <span style={{ color: '#0f172a', fontWeight: 600, fontSize: '11px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={g.grupo_nome}>{g.grupo_nome}</span>
+                    </div>
+                  </td>
+                  {meses12.map(p => {
+                    const val = g.totais[p] ?? 0;
+                    return (
+                      <td key={p} style={{ padding: '9px 6px', textAlign: 'right', color: val > 0 ? '#1e293b' : '#e2e8f0', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
+                        {val > 0 ? fmtM(val) : '—'}
+                      </td>
+                    );
+                  })}
+                  <td style={{ padding: '9px 8px', textAlign: 'right', color: '#C9A84C', fontWeight: 700, fontVariantNumeric: 'tabular-nums', borderLeft: '1px solid #e2e8f0', whiteSpace: 'nowrap' }}>
+                    {fmtM(acum)}
+                  </td>
+                  <td style={{ padding: '9px 8px', textAlign: 'right', color: '#7c3aed', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
+                    {media > 0 ? fmtM(media) : '—'}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+          <tfoot>
+            {/* TOTAL PAGO */}
+            <tr style={{ background: '#f0fdf4', borderTop: '1px solid #bbf7d0' }}>
+              <td style={{ padding: '9px 14px', color: '#15803d', fontWeight: 700, fontSize: '10px', letterSpacing: '0.04em', textTransform: 'uppercase', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                Total Pago
+              </td>
+              {meses12.map(p => {
+                const v = totalPagoPorPeriodo[p] ?? 0;
+                return (
+                  <td key={p} style={{ padding: '9px 6px', textAlign: 'right', color: v > 0 ? '#15803d' : '#bbf7d0', fontWeight: 600, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
+                    {v > 0 ? fmtM(v) : '—'}
+                  </td>
+                );
+              })}
+              <td style={{ padding: '9px 8px', textAlign: 'right', color: '#15803d', fontWeight: 700, fontVariantNumeric: 'tabular-nums', borderLeft: '1px solid #bbf7d0', whiteSpace: 'nowrap' }}>
+                {fmtM(totalPagoGeral)}
+              </td>
+              <td />
+            </tr>
+
+            {/* SALDO A PAGAR */}
+            <tr style={{ background: '#fef2f2', borderTop: '1px solid #fecaca' }}>
+              <td style={{ padding: '9px 14px', color: '#dc2626', fontWeight: 700, fontSize: '10px', letterSpacing: '0.04em', textTransform: 'uppercase', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                Saldo a Pagar
+              </td>
+              {meses12.map(p => {
+                const v = saldoAPagarPorMes[p] ?? 0;
+                return (
+                  <td key={p} style={{ padding: '9px 6px', textAlign: 'right', color: v > 0 ? '#dc2626' : '#fecaca', fontWeight: 600, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
+                    {v > 0 ? fmtM(v) : '—'}
+                  </td>
+                );
+              })}
+              <td style={{ padding: '9px 8px', textAlign: 'right', color: '#dc2626', fontWeight: 700, fontVariantNumeric: 'tabular-nums', borderLeft: '1px solid #fecaca', whiteSpace: 'nowrap' }}>
+                {fmtM(totalSaldoAPagar)}
+              </td>
+              <td />
+            </tr>
+
+            {/* % PAGO */}
+            <tr style={{ background: '#fafafa', borderTop: '2px solid #e2e8f0' }}>
+              <td style={{ padding: '9px 14px', color: '#475569', fontWeight: 700, fontSize: '10px', letterSpacing: '0.04em', textTransform: 'uppercase', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                % Pago
+              </td>
+              {meses12.map(p => {
+                const liq = totalLiquidadoPorPeriodo[p] ?? 0;
+                const pago = totalPagoPorPeriodo[p] ?? 0;
+                const pct = liq > 0 ? (pago / liq) * 100 : 0;
+                const { bg, color } = corPct(pct);
+                return (
+                  <td key={p} style={{ padding: '7px 6px', textAlign: 'center', whiteSpace: 'nowrap' }}>
+                    {liq > 0 ? (
+                      <span style={{ display: 'inline-block', padding: '2px 6px', borderRadius: '6px', background: bg, color, fontWeight: 700, fontSize: '10px', fontVariantNumeric: 'tabular-nums' }}>
+                        {pct.toFixed(1)}%
+                      </span>
+                    ) : <span style={{ color: '#e2e8f0' }}>—</span>}
+                  </td>
+                );
+              })}
+              {(() => {
+                const pct = totalLiquidadoGeral > 0 ? (totalPagoGeral / totalLiquidadoGeral) * 100 : 0;
+                const { bg, color } = corPct(pct);
+                return (
+                  <td style={{ padding: '7px 8px', textAlign: 'center', borderLeft: '1px solid #e2e8f0' }}>
+                    {totalLiquidadoGeral > 0 ? (
+                      <span style={{ display: 'inline-block', padding: '3px 8px', borderRadius: '8px', background: bg, color, fontWeight: 800, fontSize: '11px' }}>
+                        {pct.toFixed(1)}%
+                      </span>
+                    ) : '—'}
+                  </td>
+                );
+              })()}
+              <td />
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+
+      {/* Ver mais / menos */}
+      {gruposOrdenados.length > 12 && (
+        <div style={{ padding: '12px 20px', borderTop: '1px solid #f1f5f9', textAlign: 'center' }}>
+          <button
+            onClick={() => setShowAll(v => !v)}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px', fontWeight: 600, color: '#1e4d95' }}
+          >
+            {showAll
+              ? <><ChevronDown size={13} style={{ transform: 'rotate(180deg)' }} /> Mostrar menos</>
+              : <><ChevronDown size={13} /> Ver todos {gruposOrdenados.length} grupos</>
+            }
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Tabela de empenhos pendentes ─────────────────────────────────────────────
 function TabelaPendentes({ token, periodo, entidade }: {
   token: string | undefined; periodo: string | undefined; entidade: number | null;
@@ -251,15 +537,22 @@ export default function ContasAPagarPage() {
   const topData = (topCredoresData?.rows ?? []).map((r: any, i: number) => ({ ...r, color: GRUPO_COLORS[i % GRUPO_COLORS.length] }));
   const totalGeralCredores = topCredoresData?.total_geral ?? 0;
 
+  // "Saldo por Grupo" usa top-credores (já filtrado por dt_pagamento IS NULL)
+  // agrupado por grupo_nome para mostrar apenas o saldo pendente real
   const gruposMatriz = useMemo(() => {
-    if (!matriz?.grupos || !matriz.ultimo_periodo) return [];
-    const up = matriz.ultimo_periodo;
-    return matriz.grupos
-      .map((g: any) => ({ nome: g.grupo_nome, total: g.totais[up] ?? 0 }))
-      .filter((g: any) => g.total > 0)
-      .sort((a: any, b: any) => b.total - a.total)
+    const rows: any[] = topCredoresData?.rows ?? [];
+    if (!rows.length) return [];
+    const map: Record<string, number> = {};
+    for (const r of rows) {
+      const g = r.grupo_nome ?? 'Sem Grupo';
+      map[g] = (map[g] ?? 0) + Number(r.total);
+    }
+    return Object.entries(map)
+      .map(([nome, total]) => ({ nome, total }))
+      .filter(g => g.total > 0)
+      .sort((a, b) => b.total - a.total)
       .slice(0, 8);
-  }, [matriz]);
+  }, [topCredoresData]);
 
   const totalGrupos = gruposMatriz.reduce((s: number, g: any) => s + g.total, 0);
 
@@ -399,6 +692,9 @@ export default function ContasAPagarPage() {
             <div style={{ fontSize: '11px', color: '#94a3b8' }}>com saldo pendente</div>
           </div>
         </div>
+
+        {/* ── Matriz Contas a Pagar: Grupos × Períodos ──────────────────────── */}
+        <MatrizContasAPagar matriz={matriz} />
 
         {/* ── Linha 2: Aging + Termômetro ───────────────────────────────────── */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>

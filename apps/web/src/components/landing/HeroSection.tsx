@@ -243,14 +243,14 @@ export default function HeroSection() {
                 fontSize: 'clamp(34px, 4.5vw, 60px)', fontWeight: 900,
                 lineHeight: 1.05, color: '#f8fafc', margin: '0 0 6px 0', letterSpacing: '-0.02em',
               }}>
-                Gestão Pública
+                Painel de Gestão
               </h1>
               <div className="landing-reveal landing-d3 landing-shimmer-text" style={{
                 fontFamily: "'Playfair Display', serif",
                 fontSize: 'clamp(34px, 4.5vw, 60px)', fontWeight: 900,
                 lineHeight: 1.05, margin: '0 0 24px 0', display: 'block', letterSpacing: '-0.02em',
               }}>
-                com Precisão Cirúrgica
+                Pública
               </div>
 
               <p className="landing-reveal landing-d4" style={{

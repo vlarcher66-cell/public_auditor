@@ -24,7 +24,7 @@ export async function getMatrizEmpenhos(req: Request, res: Response): Promise<vo
     return;
   }
 
-  // Para cada período: saldo a pagar por grupo/subgrupo do credor
+  // Para cada período: total liquidado por grupo/subgrupo do credor (todos, pago + a pagar)
   // Usa dim_credor OU dim_credor_a_pagar (COALESCE)
   const rows = await db('fact_empenho_liquidado as f')
     .leftJoin('dim_credor as c',          'f.fk_credor',         'c.id')
@@ -40,9 +40,30 @@ export async function getMatrizEmpenhos(req: Request, res: Response): Promise<vo
       db.raw("COALESCE(s.nome, 'Sem Subgrupo') as subgrupo_nome"),
     )
     .sum('f.valor as total')
-    .whereNull('f.dt_pagamento')   // apenas os A PAGAR
+    // sem filtro de dt_pagamento: a matriz mostra o total liquidado (pago + a pagar)
     .groupBy('f.periodo_ref', 'g.id', 'g.nome', 's.id', 's.nome')
     .orderBy('f.periodo_ref');
+
+  // Total pago por período (dt_pagamento IS NOT NULL)
+  const rowsPago = await db('fact_empenho_liquidado as f')
+    .modify((q: any) => applyRBAC(q, user))
+    .whereNotNull('f.dt_pagamento')
+    .select('f.periodo_ref')
+    .sum('f.valor as total')
+    .groupBy('f.periodo_ref');
+
+  // Total liquidado por período (pago + a pagar)
+  const rowsLiquidado = await db('fact_empenho_liquidado as f')
+    .modify((q: any) => applyRBAC(q, user))
+    .select('f.periodo_ref')
+    .sum('f.valor as total')
+    .groupBy('f.periodo_ref');
+
+  const totalPagoPorPeriodo: Record<string, number> = {};
+  for (const r of rowsPago) totalPagoPorPeriodo[r.periodo_ref] = Number(r.total);
+
+  const totalLiquidadoPorPeriodo: Record<string, number> = {};
+  for (const r of rowsLiquidado) totalLiquidadoPorPeriodo[r.periodo_ref] = Number(r.total);
 
   // Monta estrutura: grupo → subgrupo → período → valor
   const grupoMap: Record<string, {
@@ -80,16 +101,24 @@ export async function getMatrizEmpenhos(req: Request, res: Response): Promise<vo
     }, {} as Record<string, number>),
   })).sort((a, b) => (b.totais[ultimoPeriodo] ?? 0) - (a.totais[ultimoPeriodo] ?? 0));
 
-  res.json({ periodos, grupos, ultimo_periodo: ultimoPeriodo, total_a_pagar: totalAPagar });
+  res.json({
+    periodos,
+    grupos,
+    ultimo_periodo: ultimoPeriodo,
+    total_a_pagar: totalAPagar,
+    total_pago_por_periodo: totalPagoPorPeriodo,
+    total_liquidado_por_periodo: totalLiquidadoPorPeriodo,
+  });
 }
 
 // ── Resumo: total a pagar por entidade no último período ──────────────────────
 export async function getResumoAPagar(req: Request, res: Response): Promise<void> {
   const user = (req as any).user;
 
-  // Último período disponível
+  // Último período que ainda tem empenhos a pagar
   const last = await db('fact_empenho_liquidado as f')
     .modify((q: any) => applyRBAC(q, user))
+    .whereNull('f.dt_pagamento')
     .max('f.periodo_ref as ultimo')
     .first();
 

@@ -83,8 +83,11 @@ function parseExcelDate(value: any): string | null {
     const v = value.trim();
     if (!v) return null;
     // dd/mm/yyyy
-    const m = v.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
-    if (m) return `${m[3]}-${m[2]}-${m[1]}`;
+    const m1 = v.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+    if (m1) return `${m1[3]}-${m1[2]}-${m1[1]}`;
+    // dd.mm.yyyy
+    const m2 = v.match(/^(\d{2})\.(\d{2})\.(\d{4})$/);
+    if (m2) return `${m2[3]}-${m2[2]}-${m2[1]}`;
     // yyyy-mm-dd
     if (/^\d{4}-\d{2}-\d{2}$/.test(v)) return v;
     return null;

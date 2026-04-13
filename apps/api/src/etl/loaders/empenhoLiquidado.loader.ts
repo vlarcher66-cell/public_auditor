@@ -14,9 +14,14 @@ export interface EmpenhoLiquidadoLoadResult {
   credores_criados: number;
 }
 
-function hashEmpenho(row: RawEmpenhoLiquidado, periodoRef: string): string {
+function derivarPeriodo(dtLiquidacao: string): string {
+  // dt_liquidacao = "yyyy-mm-dd" → periodo_ref = "yyyy-mm"
+  return dtLiquidacao.slice(0, 7);
+}
+
+function hashEmpenho(row: RawEmpenhoLiquidado): string {
   const str = [
-    periodoRef,
+    derivarPeriodo(row.dt_liquidacao),
     row.dt_liquidacao,
     row.num_empenho,
     row.num_reduzido,
@@ -92,7 +97,7 @@ export async function loadEmpenhoLiquidadoToMySQL(
   rows: RawEmpenhoLiquidado[],
   importJobId: number,
   entidadeId: number,
-  periodoRef: string,
+  _periodoRef: string, // ignorado — periodo_ref é derivado do dt_liquidacao de cada empenho
 ): Promise<EmpenhoLiquidadoLoadResult> {
   let rows_loaded = 0;
   let rows_skipped = 0;
@@ -105,11 +110,14 @@ export async function loadEmpenhoLiquidadoToMySQL(
   if (!entidade) throw new Error(`Entidade id=${entidadeId} não encontrada`);
   const fkMunicipio = entidade.fk_municipio ?? null;
 
-  // Reimportação limpa — apaga registros do mesmo período+entidade
-  await db('fact_empenho_liquidado')
-    .where('periodo_ref', periodoRef)
-    .where('fk_entidade', entidadeId)
-    .delete();
+  // Detecta todos os períodos presentes no arquivo e apaga só esses
+  const periodosNoArquivo = [...new Set(rows.map(r => derivarPeriodo(r.dt_liquidacao)).filter(Boolean))];
+  for (const p of periodosNoArquivo) {
+    await db('fact_empenho_liquidado')
+      .where('fk_entidade', entidadeId)
+      .where('periodo_ref', p)
+      .delete();
+  }
 
   const existingHashes = new Set<string>();
 
@@ -120,7 +128,8 @@ export async function loadEmpenhoLiquidadoToMySQL(
     const chunk = rows.slice(i, i + CHUNK_SIZE);
 
     for (const row of chunk) {
-      const hash = hashEmpenho(row, periodoRef);
+      const periodoRef = derivarPeriodo(row.dt_liquidacao);
+      const hash = hashEmpenho(row);
 
       if (existingHashes.has(hash)) {
         rows_skipped++;
@@ -156,7 +165,7 @@ export async function loadEmpenhoLiquidadoToMySQL(
           tipo_empenho:      row.tipo_empenho || null,
           dt_empenho:        row.dt_empenho || null,
           num_processo:      row.num_processo || null,
-          dt_pagamento:      null, // sempre null — relatório FATOR representa o passivo do período
+          dt_pagamento:      row.dt_pagamento || null, // preenchido = pago, null = a pagar
           valor:             row.valor,
           periodo_ref:       periodoRef,
           hash_linha:        hash,
@@ -165,7 +174,7 @@ export async function loadEmpenhoLiquidadoToMySQL(
 
         existingHashes.add(hash);
         rows_loaded++;
-        valor_total += row.valor;
+        valor_total   += row.valor;
         if (!row.dt_pagamento) valor_a_pagar += row.valor;
       } catch (err: any) {
         if (err.message?.includes('UNIQUE')) {

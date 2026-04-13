@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { useSession } from 'next-auth/react';
-import { Grip, Plus, Pencil, Trash2, X } from 'lucide-react';
+import { Grip, Plus, Pencil, Trash2, X, ShieldCheck } from 'lucide-react';
 import type { Bloco } from '@public-auditor/shared';
 
 const API = `${process.env.NEXT_PUBLIC_API_URL}/api`;
@@ -91,9 +91,27 @@ function BlocoModal({
   );
 }
 
+function AcessoRestrito() {
+  return (
+    <div className="flex flex-col items-center justify-center h-[60vh] text-center gap-4">
+      <div className="w-16 h-16 rounded-2xl bg-red-50 flex items-center justify-center">
+        <ShieldCheck size={32} className="text-red-400" />
+      </div>
+      <div>
+        <p className="text-lg font-semibold text-gray-700">Acesso Restrito</p>
+        <p className="text-sm text-gray-400 mt-1">Você não tem permissão para acessar este cadastro.</p>
+      </div>
+    </div>
+  );
+}
+
 export default function BlocoPage() {
   const { data: session } = useSession();
   const token = (session as any)?.accessToken ?? '';
+  const role = (session as any)?.user?.role ?? '';
+  const isSuperAdmin = role === 'SUPER_ADMIN' || role === 'ADMIN';
+  const permissoes: string[] = (session as any)?.user?.permissoes ?? [];
+  if (session && !isSuperAdmin && !permissoes.includes('cadastros.entidade')) return <AcessoRestrito />;
 
   const [blocos, setBlocos] = useState<Bloco[]>([]);
   const [loading, setLoading] = useState(true);

@@ -28,36 +28,17 @@ const statusIcon: Record<string, React.ReactNode> = {
   ERROR:       <XCircle size={14} className="text-red-500" />,
 };
 
-// Períodos no formato YYYY-MM para empenhos
-const PERIODOS = [
-  { label: 'Janeiro/2026',    value: '2026-01' },
-  { label: 'Fevereiro/2026',  value: '2026-02' },
-  { label: 'Março/2026',      value: '2026-03' },
-  { label: 'Abril/2026',      value: '2026-04' },
-  { label: 'Maio/2026',       value: '2026-05' },
-  { label: 'Junho/2026',      value: '2026-06' },
-  { label: 'Julho/2026',      value: '2026-07' },
-  { label: 'Agosto/2026',     value: '2026-08' },
-  { label: 'Setembro/2026',   value: '2026-09' },
-  { label: 'Outubro/2026',    value: '2026-10' },
-  { label: 'Novembro/2026',   value: '2026-11' },
-  { label: 'Dezembro/2026',   value: '2026-12' },
-  { label: 'Janeiro/2025',    value: '2025-01' },
-  { label: 'Fevereiro/2025',  value: '2025-02' },
-  { label: 'Março/2025',      value: '2025-03' },
-];
 
 // ─── Modal de configuração ────────────────────────────────────────────────────
 
 function ConfigModal({ filename, token, onConfirm, onCancel }: {
   filename: string;
   token: string;
-  onConfirm: (entidadeId: number, periodoRef: string) => void;
+  onConfirm: (entidadeId: number) => void;
   onCancel: () => void;
 }) {
   const [municipioId, setMunicipioId] = useState('');
   const [entidadeId, setEntidadeId]   = useState('');
-  const [periodoRef, setPeriodoRef]   = useState('2026-01');
 
   const { data: municipios = [], isLoading: loadingMun } = useQuery<{ id: number; nome: string }[]>({
     queryKey: ['municipios-list'],
@@ -73,7 +54,7 @@ function ConfigModal({ filename, token, onConfirm, onCancel }: {
 
   const entidadeSelecionada = entidades.find(e => String(e.id) === entidadeId);
 
-  const canConfirm = !!municipioId && !!entidadeId && !!periodoRef;
+  const canConfirm = !!municipioId && !!entidadeId;
 
   return (
     <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
@@ -143,18 +124,12 @@ function ConfigModal({ filename, token, onConfirm, onCancel }: {
             <p className="text-xs text-gray-400 mt-1">Entidade responsável pelos empenhos deste relatório.</p>
           </div>
 
-          <div>
-            <label className="block text-xs font-medium text-gray-500 mb-1">
-              Período de Referência <span className="text-red-400">*</span>
-            </label>
-            <select
-              value={periodoRef}
-              onChange={e => setPeriodoRef(e.target.value)}
-              className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-orange-400"
-            >
-              {PERIODOS.map(p => <option key={p.value} value={p.value}>{p.label}</option>)}
-            </select>
-            <p className="text-xs text-gray-400 mt-1">Mês/ano de competência da listagem importada.</p>
+          <div className="flex items-start gap-2 bg-blue-50 rounded-xl p-3">
+            <Info size={14} className="text-blue-500 mt-0.5 flex-shrink-0" />
+            <p className="text-xs text-blue-700">
+              O período de cada empenho é detectado automaticamente pela <strong>data de liquidação</strong>.
+              Importe sempre o relatório acumulado (ex: 01/01 a 28/02) para atualizar os pagamentos dos meses anteriores.
+            </p>
           </div>
 
           {/* Sistema herdado da entidade */}
@@ -179,7 +154,7 @@ function ConfigModal({ filename, token, onConfirm, onCancel }: {
             Cancelar
           </button>
           <button
-            onClick={() => canConfirm && onConfirm(parseInt(entidadeId), periodoRef)}
+            onClick={() => canConfirm && onConfirm(parseInt(entidadeId))}
             disabled={!canConfirm}
             className={cn(
               'px-4 py-2 text-sm rounded-xl text-white font-semibold transition-colors',
@@ -235,7 +210,7 @@ export default function ImportacaoEmpenhosPage() {
     }
   };
 
-  const handleConfirmUpload = async (entidadeId: number, periodoRef: string) => {
+  const handleConfirmUpload = async (entidadeId: number) => {
     if (!selectedFile || !token) return;
     setShowConfigModal(false);
     setUploading(true);
@@ -245,7 +220,6 @@ export default function ImportacaoEmpenhosPage() {
       formData.append('file', selectedFile);
       formData.append('tipo_relatorio', 'EMPENHO_LIQUIDADO');
       formData.append('entidade_id', String(entidadeId));
-      formData.append('periodo', periodoRef);
       const result = await apiUpload('/import/upload', formData, token) as any;
       setActiveJobUuid(result.uuid);
       setSelectedFile(null);

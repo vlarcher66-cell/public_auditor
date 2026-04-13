@@ -136,7 +136,7 @@ export default function LoginCard() {
       </form>
 
       <p className="text-center text-xs text-gray-400 mt-6">
-        Sistema de Gestão Pública • Versão 1.0
+        Painel de Gestão Pública • Versão 1.0
       </p>
     </div>
   );

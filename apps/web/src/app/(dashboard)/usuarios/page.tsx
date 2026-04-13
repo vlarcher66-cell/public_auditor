@@ -585,6 +585,22 @@ export default function UsuariosPage() {
   const token = (session as any)?.accessToken ?? '';
   const role = (session as any)?.user?.role ?? '';
   const isSuperAdmin = role === 'SUPER_ADMIN' || role === 'ADMIN';
+  const permissoes: string[] = (session as any)?.user?.permissoes ?? [];
+  const podeAcessar = isSuperAdmin || permissoes.includes('cadastros.usuarios');
+
+  if (session && !podeAcessar) {
+    return (
+      <div className="flex flex-col items-center justify-center h-[60vh] text-center gap-4">
+        <div className="w-16 h-16 rounded-2xl bg-red-50 flex items-center justify-center">
+          <ShieldCheck size={32} className="text-red-400" />
+        </div>
+        <div>
+          <p className="text-lg font-semibold text-gray-700">Acesso Restrito</p>
+          <p className="text-sm text-gray-400 mt-1">Você não tem permissão para acessar o gerenciamento de usuários.</p>
+        </div>
+      </div>
+    );
+  }
 
   const [usuarios, setUsuarios] = useState<Usuario[]>([]);
   const [municipios, setMunicipios] = useState<Municipio[]>([]);

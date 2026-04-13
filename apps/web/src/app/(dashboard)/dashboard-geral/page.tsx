@@ -165,7 +165,9 @@ export default function DashboardGeralPage() {
   const token = (session as any)?.accessToken as string | undefined;
   const { entidadeSelecionada, municipioSelecionado } = useMunicipioEntidade();
 
-  const ano = String(new Date().getFullYear());
+  const anoAtual = new Date().getFullYear();
+  const anosDisponiveis = Array.from({ length: 4 }, (_, i) => String(anoAtual - i));
+  const [ano,        setAno]        = useState(String(anoAtual));
   const [loading,    setLoading]    = useState(true);
   const [despesa,    setDespesa]    = useState<DespesaSummary | null>(null);
   const [receita,    setReceita]    = useState<ReceitaSummaryResponse | null>(null);
@@ -175,7 +177,7 @@ export default function DashboardGeralPage() {
   const [exec,       setExec]       = useState<ExecItem[]>([]);
   const [farol,      setFarol]      = useState<FarolData | null>(null);
   const [transferencias, setTransferencias] = useState<{ valor_total: number } | null>(null);
-  const [mesSelecionado, setMesSelecionado] = useState<number | null>(null); // null = ano todo / último
+  const [mesSelecionado, setMesSelecionado] = useState<number | null>(null);
   const [fonteSelecionada, setFonteSelecionada] = useState<string | null>(null);
   const [lastUpdate, setLastUpdate] = useState(new Date());
   const [grupoTooltip, setGrupoTooltip] = useState<number | null>(null);
@@ -184,12 +186,13 @@ export default function DashboardGeralPage() {
   if (entidadeSelecionada?.id) ctxParams.entidadeId = String(entidadeSelecionada.id);
   else if (municipioSelecionado?.id) ctxParams.municipioId = String(municipioSelecionado.id);
 
-const load = useCallback(async (mes?: number | null, fonte?: string | null) => {
+  const load = useCallback(async (mes?: number | null, fonte?: string | null, anoParam?: string) => {
     if (!token) return;
     setLoading(true);
     const mesAtual = mes !== undefined ? mes : mesSelecionado;
     const fonteAtual = fonte !== undefined ? fonte : fonteSelecionada;
-    const p: Record<string, string> = { ano, ...ctxParams };
+    const anoAtualParam = anoParam ?? ano;
+    const p: Record<string, string> = { ano: anoAtualParam, ...ctxParams };
     if (mesAtual) p.mes = String(mesAtual);
     if (fonteAtual) p.fonteRecurso = fonteAtual;
     const pReceita: Record<string, string> = { ...p };
@@ -217,13 +220,19 @@ const load = useCallback(async (mes?: number | null, fonte?: string | null) => {
     } finally {
       setLoading(false);
     }
-  }, [token, entidadeSelecionada, municipioSelecionado, mesSelecionado, fonteSelecionada]); // eslint-disable-line
+  }, [token, entidadeSelecionada, municipioSelecionado, mesSelecionado, fonteSelecionada, ano]); // eslint-disable-line
 
   useEffect(() => { load(); }, [token, entidadeSelecionada, municipioSelecionado]); // eslint-disable-line
 
   const handleMes = (mes: number | null) => {
     setMesSelecionado(mes);
     load(mes, fonteSelecionada);
+  };
+
+  const handleAno = (novoAno: string) => {
+    setAno(novoAno);
+    setMesSelecionado(null);
+    load(null, fonteSelecionada, novoAno);
   };
 
   const handleFonte = (fonte: string | null) => {
@@ -299,7 +308,7 @@ const load = useCallback(async (mes?: number | null, fonte?: string | null) => {
               <p className="text-sm text-gray-400 mt-0.5 flex items-center gap-1.5">
                 <Building2 size={13} />
                 {entidadeSelecionada?.nome ?? municipioSelecionado?.nome ?? 'Consolidado'}
-                {mesSelecionado ? ` · ${MESES[mesSelecionado - 1]}` : ' · Ano todo'}
+                {mesSelecionado ? ` · ${MESES[mesSelecionado - 1]}/${ano}` : ` · ${ano} (ano todo)`}
               </p>
             </div>
             <div className="flex items-center gap-3">
@@ -313,31 +322,51 @@ const load = useCallback(async (mes?: number | null, fonte?: string | null) => {
               </button>
             </div>
           </div>
-          {/* ── Seletor de mês global ── */}
-          <div className="rounded-xl px-4 py-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3"
+          {/* ── Seletor de ano + mês global ── */}
+          <div className="rounded-xl px-4 py-3 flex flex-col gap-2"
             style={{ background: 'linear-gradient(90deg, #0F2A4E, #1e4d95)' }}>
-            <span className="text-[11px] font-bold text-blue-200 uppercase tracking-wider whitespace-nowrap">Período:</span>
-            <div className="flex flex-col gap-1.5 flex-1">
-              <button
-                onClick={() => handleMes(null)}
-                className={`w-full sm:w-auto px-3 py-1.5 rounded-lg text-[11px] font-semibold transition-colors ${
-                  mesSelecionado === null
-                    ? 'bg-white text-[#0F2A4E]'
-                    : 'bg-white/10 text-white/70 hover:bg-white/20'
-                }`}
-              >
-                Ano todo
-              </button>
-              <div className="grid grid-cols-4 gap-1 sm:flex sm:flex-wrap sm:gap-1.5">
+            {/* Linha 1: Ano */}
+            <div className="flex items-center gap-3 flex-wrap">
+              <span className="text-[11px] font-bold text-blue-200 uppercase tracking-wider whitespace-nowrap">Ano:</span>
+              <div className="flex gap-1.5 flex-wrap">
+                {anosDisponiveis.map(a => (
+                  <button
+                    key={a}
+                    onClick={() => handleAno(a)}
+                    className={`px-4 py-1.5 rounded-lg text-[11px] font-bold transition-colors ${
+                      ano === a
+                        ? 'bg-[#C9A84C] text-[#0F2A4E]'
+                        : 'bg-white/10 text-white/70 hover:bg-white/20'
+                    }`}
+                  >
+                    {a}
+                  </button>
+                ))}
+              </div>
+            </div>
+            {/* Linha 2: Mês */}
+            <div className="flex items-center gap-3 flex-wrap">
+              <span className="text-[11px] font-bold text-blue-200 uppercase tracking-wider whitespace-nowrap">Mês:</span>
+              <div className="flex gap-1 flex-wrap">
+                <button
+                  onClick={() => handleMes(null)}
+                  className={`px-3 py-1.5 rounded-lg text-[11px] font-semibold transition-colors ${
+                    mesSelecionado === null
+                      ? 'bg-white text-[#0F2A4E]'
+                      : 'bg-white/10 text-white/70 hover:bg-white/20'
+                  }`}
+                >
+                  Todos
+                </button>
                 {MESES.map((m, i) => {
                   const mesNum = i + 1;
                   const ativo = mesSelecionado === mesNum;
                   return (
                     <button key={m}
                       onClick={() => handleMes(mesNum)}
-                      className={`py-1.5 rounded-lg text-[11px] font-medium transition-colors sm:px-2.5 ${
+                      className={`px-2.5 py-1.5 rounded-lg text-[11px] font-medium transition-colors ${
                         ativo
-                          ? 'bg-[#C9A84C] text-white'
+                          ? 'bg-white text-[#0F2A4E] font-bold'
                           : 'bg-white/10 text-white/80 hover:bg-white/20'
                       }`}
                     >

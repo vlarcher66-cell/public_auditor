@@ -218,9 +218,16 @@ export default function Sidebar({ collapsed, onToggle, mobileOpen = false, onMob
   const userName = (session as any)?.user?.name ?? '';
   const permissoes: string[] = (session as any)?.user?.permissoes ?? [];
 
-  // SUPER_ADMIN, ADMIN e GESTOR têm acesso total; outros dependem das permissões
-  const fullAccess = isSuperAdmin || isGestor;
-  function hasPerm(key: string) { return fullAccess || permissoes.includes(key); }
+  // Apenas SUPER_ADMIN/ADMIN têm acesso total; GESTOR tem acesso ao menu operacional mas não a Cadastros/Usuários
+  const fullAccess = isSuperAdmin;
+  function hasPerm(key: string) {
+    if (fullAccess) return true;
+    // Cadastros e Usuários: sempre por permissão explícita, mesmo para GESTOR
+    if (key.startsWith('cadastros.')) return permissoes.includes(key);
+    // Restante: GESTOR tem acesso total ao operacional
+    if (isGestor) return true;
+    return permissoes.includes(key);
+  }
 
   const isImportacaoActive = pathname === '/importacao' || pathname === '/importacao-receita' || pathname === '/importacao-transf-bancaria' || pathname === '/importacao-empenhos' || pathname === '/importacao-resumo-bancario';
   const isAnaliseActive = pathname === '/pagamentos' || pathname === '/receitas/listagem' || pathname === '/analise/despesa-a-pagar' || pathname === '/analise/resumo-bancario';
