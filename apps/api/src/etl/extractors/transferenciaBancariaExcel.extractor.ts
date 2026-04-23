@@ -2,44 +2,19 @@
  * Extractor para "Listagem Transferência Bancária / Transferência Financeira"
  * exportado em XLSX pelo sistema FATOR.
  *
- * Layout real (inspecionado do arquivo):
- *   Linha 0-4: cabeçalho do relatório
- *   Linha 5:   título + período (col 33: "Período: 01/01/2026 a 31/01/2026")
- *   Linha 6:   cabeçalho das colunas (células mescladas)
- *   Linhas 7+: pares alternados:
- *     - Linha de DADOS: col[2]=Data | col[5]=Órgão orig | col[8]=Conta orig |
- *                       col[19]=Fonte orig | col[23]=Órgão dest | col[24]=Conta dest |
- *                       col[30]=Fonte dest | col[32]=Nº Doc | col[35]=Tipo | col[36]=Valor
- *     - Linha VAZIA (skip)
- *     - Linha HISTÓRICO: col[0]="Histórico:" | col[5]=texto | col[33]=tipo lançamento
- *     - Linha VAZIA (skip)
+ * Detecta colunas dinamicamente pelo cabeçalho (linha 6) para suportar
+ * arquivos com diferente número de colunas mescladas entre meses.
  */
 
 import * as XLSX from 'xlsx';
 import type { RawTransfBancaria } from './transferenciaBancaria.extractor';
-
-// Índices reais das colunas (baseado na inspeção do arquivo real)
-const C_DATA        = 2;
-const C_ORGAO_ORIG  = 5;
-const C_CONTA_ORIG  = 8;
-const C_FONTE_ORIG  = 19;
-const C_ORGAO_DEST  = 23;
-const C_CONTA_DEST  = 24;
-const C_FONTE_DEST  = 30;
-const C_NUM_DOC     = 32;
-const C_TIPO_DOC    = 35;
-const C_VALOR       = 36;
-// Histórico (linha seguinte)
-const C_HIST_LABEL  = 0;   // "Histórico:"
-const C_HIST_TEXT   = 5;   // texto do histórico
-const C_TIPO_LANC   = 33;  // "TRANSFERÊNCIA FINANCEIRA RECEBIDA"
 
 export function extractTransfBancariaFromExcel(filePath: string): RawTransfBancaria[] {
   const wb = XLSX.readFile(filePath, { raw: true });
   const ws = wb.Sheets[wb.SheetNames[0]];
   const allRows: any[][] = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '', raw: true });
 
-  // ── Período (linha 5, col 33 ou 34) ──────────────────────────────────────
+  // ── Período ──────────────────────────────────────────────────────────────
   let periodo_inicio = '';
   let periodo_fim    = '';
   for (let i = 0; i < Math.min(8, allRows.length); i++) {
@@ -51,12 +26,87 @@ export function extractTransfBancariaFromExcel(filePath: string): RawTransfBanca
     if (periodo_inicio) break;
   }
 
+  // ── Detecta linha de cabeçalho e índices das colunas ─────────────────────
+  let headerRow = -1;
+  for (let i = 0; i < Math.min(10, allRows.length); i++) {
+    const joined = allRows[i].map((c: any) => String(c ?? '').trim()).join('|');
+    if (/Data/i.test(joined) && /Valor/i.test(joined)) {
+      headerRow = i;
+      break;
+    }
+  }
+
+  // Fallback: usa índices fixos do layout de Janeiro se não achar cabeçalho
+  let C_DATA       = 2;
+  let C_ORGAO_ORIG = 5;
+  let C_CONTA_ORIG = 8;
+  let C_FONTE_ORIG = 19;
+  let C_ORGAO_DEST = 23;
+  let C_CONTA_DEST = 25;
+  let C_FONTE_DEST = 30;
+  let C_NUM_DOC    = 32;
+  let C_TIPO_DOC   = 35;
+  let C_VALOR      = 36;
+  let C_HIST_TEXT  = 5;
+  let C_TIPO_LANC  = 33;
+  let dataStart    = 7;
+
+  if (headerRow >= 0) {
+    const hdr = allRows[headerRow].map((c: any) => String(c ?? '').trim());
+    dataStart = headerRow + 1;
+
+    // Encontra cada coluna pelo texto do cabeçalho
+    const find = (...terms: string[]) => {
+      for (let i = 0; i < hdr.length; i++) {
+        if (terms.some(t => hdr[i].toLowerCase().includes(t.toLowerCase()))) return i;
+      }
+      return -1;
+    };
+
+    const iValor    = find('Valor');
+    const iFontOrig = find('Fonte Origem', 'Fonte\nOrigem');
+    const iFontDest = find('Fonte Destino', 'Fonte\nDestino');
+    const iNumDoc   = find('Nº Documento', 'No Documento', 'Documento');
+    const iTipo     = find('Tipo');
+
+    if (iValor    >= 0) C_VALOR      = iValor;
+    if (iFontOrig >= 0) C_FONTE_ORIG = iFontOrig;
+    if (iFontDest >= 0) C_FONTE_DEST = iFontDest;
+    if (iNumDoc   >= 0) C_NUM_DOC    = iNumDoc;
+    if (iTipo     >= 0) C_TIPO_DOC   = iTipo;
+
+    // Órgão origem = primeira coluna com "Órgão" antes de Fonte Origem
+    // Órgão destino = segunda coluna com "Órgão" depois de Fonte Origem
+    const orgaoCols: number[] = [];
+    hdr.forEach((h, i) => { if (/^Órgão$/i.test(h) || /^Orgao$/i.test(h)) orgaoCols.push(i); });
+    if (orgaoCols.length >= 1) C_ORGAO_ORIG = orgaoCols[0];
+    if (orgaoCols.length >= 2) C_ORGAO_DEST = orgaoCols[1];
+
+    // Conta origem = primeira "Conta", Conta destino = segunda "Conta"
+    const contaCols: number[] = [];
+    hdr.forEach((h, i) => { if (/Conta/i.test(h)) contaCols.push(i); });
+    if (contaCols.length >= 1) C_CONTA_ORIG = contaCols[0];
+    if (contaCols.length >= 2) C_CONTA_DEST = contaCols[1];
+
+    // Histórico: texto na coluna do Órgão origem, tipo lançamento antes do Valor
+    C_HIST_TEXT = C_ORGAO_ORIG > 0 ? C_ORGAO_ORIG : 5;
+    C_TIPO_LANC = C_VALOR > 0 ? C_VALOR - 1 : 33;
+
+    // C_DATA: cabeçalho tem "Data" na col 0 mas dado real pode estar em col 2
+    // por causa de mesclagem — detecta na primeira linha de dados
+    const firstDataRow = allRows[dataStart];
+    if (firstDataRow) {
+      const dataCol = firstDataRow.findIndex((v: any) => typeof v === 'number' && v >= 40000);
+      if (dataCol >= 0) C_DATA = dataCol;
+    }
+  }
+
   const results: RawTransfBancaria[] = [];
 
-  for (let i = 7; i < allRows.length; i++) {
+  for (let i = dataStart; i < allRows.length; i++) {
     const row = allRows[i];
 
-    // ── Linha de DADOS: identificada pela presença de data (número Excel ou string DD/MM/YYYY) na col 2 ──
+    // ── Linha de DADOS: data numérica Excel ou string DD/MM/YYYY na col C_DATA ──
     const dataVal = row[C_DATA];
     let data_transf: string | null = null;
 
@@ -77,20 +127,17 @@ export function extractTransfBancariaFromExcel(filePath: string): RawTransfBanca
     const { codigo: conta_origem_codigo, nome: conta_origem_nome } = parseConta(contaOrigRaw);
     const { codigo: conta_destino_codigo, nome: conta_destino_nome } = parseConta(contaDestRaw);
 
-    // ── Próximas linhas: vazia + histórico + vazia ────────────────────────
+    // ── Linha de histórico (próximas até 3 linhas) ────────────────────────
     let historico       = '';
     let tipo_lancamento = '';
 
-    // Varre as próximas até 3 linhas buscando a de histórico
     for (let j = i + 1; j <= i + 3 && j < allRows.length; j++) {
       const nrow = allRows[j];
-      const label = String(nrow[C_HIST_LABEL] ?? '').trim();
+      const label = String(nrow[0] ?? '').trim();
       if (/^Histórico[:\s]*/i.test(label)) {
         historico       = String(nrow[C_HIST_TEXT] ?? '').trim();
-        tipo_lancamento = String(nrow[C_TIPO_LANC] ?? '').replace(/\s+/g, ' ').trim().toUpperCase();
-        // Remove \r\n do fim
-        tipo_lancamento = tipo_lancamento.replace(/[\r\n]+/g, '').trim();
-        i = j; // avança o índice para não reprocessar
+        tipo_lancamento = String(nrow[C_TIPO_LANC] ?? '').replace(/\s+/g, ' ').trim().toUpperCase().replace(/[\r\n]+/g, '').trim();
+        i = j;
         break;
       }
     }
@@ -132,7 +179,6 @@ function parseValor(raw: any): number {
   return parseFloat(s) || 0;
 }
 
-/** "15000000" → "1500" | "15001002" → "1500" — pega os 4 primeiros dígitos */
 function normalizeFonte(raw: string): string {
   const digits = raw.trim().replace(/\D/g, '');
   return digits.slice(0, 4);
@@ -143,16 +189,9 @@ function parseOrgao(raw: any): number | null {
   return isNaN(n) ? null : n;
 }
 
-/**
- * "22039 -6  - ICMS"          → { codigo: "22039-6",       nome: "ICMS" }
- * "575244352-7 - PMI - FUNDO" → { codigo: "575244352-7",   nome: "PMI - FUNDO" }
- * "574427359-6 - RECURSOS PROPRIO FUS." → { codigo: "574427359-6", nome: "RECURSOS PROPRIO FUS." }
- */
 function parseConta(raw: string): { codigo: string; nome: string } {
   if (!raw) return { codigo: '', nome: '' };
-  // Normaliza múltiplos espaços + espaço antes/depois do traço numérico
   const s = raw.replace(/\s*-\s*(\d)/g, '-$1').replace(/\s+/g, ' ').trim();
-  // Primeiro " - " que antecede texto (letra) é o separador código/nome
   const sep = s.search(/\s+-\s+[A-Za-zÀ-ÿ0-9]/);
   if (sep !== -1) {
     return {
