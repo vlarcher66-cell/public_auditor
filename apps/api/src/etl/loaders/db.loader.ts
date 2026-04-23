@@ -25,20 +25,17 @@ export async function loadToDB(
   let rows_loaded = 0;
   let rows_skipped = 0;
 
-  // Upsert helpers for SQLite (INSERT OR IGNORE)
   const upsertStr = async (table: string, col: string, values: string[]) => {
     for (const val of values) {
       if (!val) continue;
-      const exists = await db(table).where(col, val).first();
-      if (!exists) await db(table).insert({ [col]: val });
+      await db(table).insert({ [col]: val }).onConflict(col).ignore();
     }
   };
 
   const upsertNum = async (table: string, col: string, values: number[]) => {
     for (const val of values) {
       if (!val) continue;
-      const exists = await db(table).where(col, val).first();
-      if (!exists) await db(table).insert({ [col]: val });
+      await db(table).insert({ [col]: val }).onConflict(col).ignore();
     }
   };
 
@@ -94,8 +91,9 @@ export async function loadToDB(
   for (const r of periodos) {
     const di = toDateStr(r.periodo_inicio);
     const df = toDateStr(r.periodo_fim);
-    const exists = await db('dim_periodo').where({ data_inicio: di, data_fim: df }).first();
-    if (!exists) await db('dim_periodo').insert({ data_inicio: di, data_fim: df, ano: r.periodo_inicio.getFullYear(), mes: r.periodo_inicio.getMonth() + 1 });
+    await db('dim_periodo')
+      .insert({ data_inicio: di, data_fim: df, ano: r.periodo_inicio.getFullYear(), mes: r.periodo_inicio.getMonth() + 1 })
+      .onConflict(['data_inicio', 'data_fim']).ignore();
   }
 
   // 5-9. other dimensions
