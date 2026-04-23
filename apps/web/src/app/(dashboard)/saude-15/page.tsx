@@ -434,7 +434,7 @@ export default function Indice15Page() {
 
                       {/* % aplicado */}
                       <tr style={{ background: '#0F2A4E' }}>
-                        <td style={{ padding: '12px 16px', color: '#fff', fontWeight: 800, fontSize: '12px' }}>% APLICADO EM SAÚDE</td>
+                        <td style={{ padding: '12px 16px', color: '#fff', fontWeight: 800, fontSize: '12px' }}>% DE REPASSE</td>
                         {data.matrix.map((m, i) => {
                           const st = statusConfig(m.percentual);
                           return (
