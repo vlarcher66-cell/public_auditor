@@ -61,9 +61,9 @@ export async function getIndice15(req: Request, res: Response): Promise<void> {
       .groupBy('r.codigo_rubrica', 'r.descricao', 'r.mes')
   );
 
-  // Receitas do Fundo de Saúde (aplicado)
+  // Repasse ao Fundo de Saúde — via transferências bancárias importadas com entidade FUNDO
   const saudeRows: any[] = await applyRBAC(
-    db('fact_receita as r')
+    db('fact_transf_bancaria as r')
       .join('dim_entidade as e', 'r.fk_entidade', 'e.id')
       .where('r.ano', ano)
       .where('e.tipo', 'FUNDO')

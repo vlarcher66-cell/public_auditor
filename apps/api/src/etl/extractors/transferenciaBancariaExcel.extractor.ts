@@ -56,11 +56,17 @@ export function extractTransfBancariaFromExcel(filePath: string): RawTransfBanca
   for (let i = 7; i < allRows.length; i++) {
     const row = allRows[i];
 
-    // ── Linha de DADOS: identificada pela presença de data numérica na col 2 ──
+    // ── Linha de DADOS: identificada pela presença de data (número Excel ou string DD/MM/YYYY) na col 2 ──
     const dataVal = row[C_DATA];
-    if (typeof dataVal !== 'number' || dataVal < 40000) continue;
+    let data_transf: string | null = null;
 
-    const data_transf = parseExcelDate(dataVal);
+    if (typeof dataVal === 'number' && dataVal >= 40000) {
+      data_transf = parseExcelDate(dataVal);
+    } else if (typeof dataVal === 'string') {
+      const m = dataVal.trim().match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+      if (m) data_transf = `${m[3]}-${m[2]}-${m[1]}`;
+    }
+
     if (!data_transf) continue;
 
     const valor = parseValor(row[C_VALOR]);

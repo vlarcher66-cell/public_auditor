@@ -419,8 +419,8 @@ export default function Indice15Page() {
                       {/* Saúde aplicada */}
                       <tr style={{ background: '#ecfdf5', borderTop: '1px solid #6ee7b7' }}>
                         <td style={{ padding: '10px 16px', color: '#065f46', fontWeight: 700, fontSize: '11px' }}>
-                          <span style={{ background: '#6ee7b7', borderRadius: '4px', padding: '1px 6px', fontSize: '9px', fontWeight: 800, marginRight: '6px' }}>APLICADO</span>
-                          Aplicado em Saúde (FMS)
+                          <span style={{ background: '#6ee7b7', borderRadius: '4px', padding: '1px 6px', fontSize: '9px', fontWeight: 800, marginRight: '6px' }}>REPASSE</span>
+                          Repasse ao Fundo de Saúde (FMS)
                         </td>
                         {data.matrix.map((m, i) => (
                           <td key={i} style={{ padding: '10px 8px', textAlign: 'right', color: m.saude > 0 ? '#065f46' : '#a7f3d0', fontWeight: 700, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
@@ -480,7 +480,7 @@ export default function Indice15Page() {
               <div style={{ padding: '16px 24px', background: 'linear-gradient(135deg, #0F2A4E, #1e4d95)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                   <TrendingUp size={16} color="rgba(255,255,255,0.7)" />
-                  <span style={{ fontWeight: 700, fontSize: '13px', color: '#fff' }}>Evolução Mensal — % Aplicado em Saúde</span>
+                  <span style={{ fontWeight: 700, fontSize: '13px', color: '#fff' }}>Evolução Mensal — % Repasse ao Fundo de Saúde</span>
                 </div>
                 <div style={{ display: 'flex', gap: '16px', fontSize: '10px' }}>
                   <span style={{ display: 'flex', alignItems: 'center', gap: '5px', color: '#93c5fd' }}>
