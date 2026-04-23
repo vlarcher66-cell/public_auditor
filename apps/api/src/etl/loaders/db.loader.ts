@@ -28,14 +28,16 @@ export async function loadToDB(
   const upsertStr = async (table: string, col: string, values: string[]) => {
     for (const val of values) {
       if (!val) continue;
-      await db(table).insert({ [col]: val }).onConflict(col).ignore();
+      const exists = await db(table).where(col, val).first();
+      if (!exists) { try { await db(table).insert({ [col]: val }); } catch { /* já existe */ } }
     }
   };
 
   const upsertNum = async (table: string, col: string, values: number[]) => {
     for (const val of values) {
       if (!val) continue;
-      await db(table).insert({ [col]: val }).onConflict(col).ignore();
+      const exists = await db(table).where(col, val).first();
+      if (!exists) { try { await db(table).insert({ [col]: val }); } catch { /* já existe */ } }
     }
   };
 
@@ -91,9 +93,12 @@ export async function loadToDB(
   for (const r of periodos) {
     const di = toDateStr(r.periodo_inicio);
     const df = toDateStr(r.periodo_fim);
-    await db('dim_periodo')
-      .insert({ data_inicio: di, data_fim: df, ano: r.periodo_inicio.getFullYear(), mes: r.periodo_inicio.getMonth() + 1 })
-      .onConflict(['data_inicio', 'data_fim']).ignore();
+    const exists = await db('dim_periodo').where({ data_inicio: di, data_fim: df }).first();
+    if (!exists) {
+      try {
+        await db('dim_periodo').insert({ data_inicio: di, data_fim: df, ano: r.periodo_inicio.getFullYear(), mes: r.periodo_inicio.getMonth() + 1 });
+      } catch { /* já existe, ignora */ }
+    }
   }
 
   // 5-9. other dimensions
