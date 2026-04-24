@@ -326,66 +326,73 @@ export default function DashboardGeralPage() {
             </div>
           </div>
           {/* ── Seletor de ano + mês global ── */}
-          <div className="rounded-xl px-5 py-2.5 flex items-center gap-0"
-            style={{ background: 'linear-gradient(90deg, #0F2A4E, #1e4d95)' }}>
-            {/* Ano */}
-            <span className="text-[10px] font-bold text-blue-300 uppercase tracking-widest whitespace-nowrap mr-2">Ano</span>
-            <div className="flex gap-1">
-              {anosDisponiveis.map(a => (
-                <button
-                  key={a}
-                  onClick={() => handleAno(a)}
-                  className={`px-3 py-1 rounded-md text-[11px] font-semibold transition-all ${
-                    ano === a
-                      ? 'bg-[#C9A84C] text-[#0F2A4E] shadow-sm'
-                      : 'text-white/60 hover:text-white hover:bg-white/10'
-                  }`}
-                >
-                  {a}
-                </button>
-              ))}
+          <div className="rounded-xl px-4 py-2 flex items-center justify-between bg-[#0F2A4E]">
+            {/* Título */}
+            <div>
+              <p className="text-[11px] font-bold text-white leading-tight">Filtros do Painel</p>
+              <p className="text-[10px] text-blue-300">Ano todo — {ano}</p>
             </div>
-            {/* Divisor */}
-            <div className="w-px h-5 bg-white/20 mx-6" />
-            {/* Mês */}
-            <span className="text-[10px] font-bold text-blue-300 uppercase tracking-widest whitespace-nowrap mr-2">Mês</span>
-            <div className="flex gap-1 flex-wrap">
-              <button
-                onClick={() => handleMes(null)}
-                className={`px-3 py-1 rounded-md text-[11px] font-semibold transition-all ${
-                  mesSelecionado === null
-                    ? 'bg-white text-[#0F2A4E] shadow-sm'
-                    : 'text-white/60 hover:text-white hover:bg-white/10'
-                }`}
-              >
-                Todos
-              </button>
-              {MESES.map((m, i) => {
-                const mesNum = i + 1;
-                const ativo = mesSelecionado === mesNum;
-                const fechado = ultimoMesFechado > 0 && mesNum <= ultimoMesFechado;
-                const futuro  = ultimoMesFechado > 0 && mesNum > ultimoMesFechado;
-                return (
-                  <button key={m}
-                    onClick={() => !futuro && handleMes(mesNum)}
-                    title={fechado ? 'Mês fechado' : futuro ? 'Sem dados' : undefined}
-                    className={`relative px-3 py-1 rounded-md text-[11px] font-semibold transition-all ${
-                      ativo
-                        ? 'bg-white text-[#0F2A4E] shadow-sm font-bold'
-                        : fechado
-                          ? 'text-white/90 hover:text-white hover:bg-white/10 cursor-pointer'
-                          : futuro
-                            ? 'text-white/20 cursor-not-allowed'
-                            : 'text-white/60 hover:text-white hover:bg-white/10'
+            {/* Controles */}
+            <div className="flex items-center gap-0">
+              {/* Ano */}
+              <span className="text-[10px] font-bold text-blue-300 uppercase tracking-widest whitespace-nowrap mr-2">Ano</span>
+              <div className="flex gap-1">
+                {anosDisponiveis.map(a => (
+                  <button
+                    key={a}
+                    onClick={() => handleAno(a)}
+                    className={`px-3 py-1 rounded-md text-[11px] font-semibold transition-all ${
+                      ano === a
+                        ? 'bg-[#C9A84C] text-[#0F2A4E] shadow-sm'
+                        : 'text-white/50 hover:text-white hover:bg-white/10'
                     }`}
                   >
-                    {m}
-                    {fechado && !ativo && (
-                      <span className="absolute -top-1 -right-1 w-1.5 h-1.5 rounded-full bg-emerald-400" />
-                    )}
+                    {a}
                   </button>
-                );
-              })}
+                ))}
+              </div>
+              {/* Divisor */}
+              <div className="w-px h-4 bg-white/20 mx-4" />
+              {/* Mês */}
+              <span className="text-[10px] font-bold text-blue-300 uppercase tracking-widest whitespace-nowrap mr-2">Mês</span>
+              <div className="flex gap-1">
+                <button
+                  onClick={() => handleMes(null)}
+                  className={`px-3 py-1 rounded-md text-[11px] font-semibold transition-all ${
+                    mesSelecionado === null
+                      ? 'bg-white text-[#0F2A4E] shadow-sm'
+                      : 'text-white/50 hover:text-white hover:bg-white/10'
+                  }`}
+                >
+                  Todos
+                </button>
+                {MESES.map((m, i) => {
+                  const mesNum = i + 1;
+                  const ativo = mesSelecionado === mesNum;
+                  const fechado = ultimoMesFechado > 0 && mesNum <= ultimoMesFechado;
+                  const futuro  = ultimoMesFechado > 0 && mesNum > ultimoMesFechado;
+                  return (
+                    <button key={m}
+                      onClick={() => !futuro && handleMes(mesNum)}
+                      title={fechado ? 'Mês fechado' : futuro ? 'Sem dados' : undefined}
+                      className={`relative px-3 py-1 rounded-md text-[11px] font-semibold transition-all ${
+                        ativo
+                          ? 'bg-white text-[#0F2A4E] shadow-sm font-bold'
+                          : fechado
+                            ? 'text-white/80 hover:text-white hover:bg-white/10 cursor-pointer'
+                            : futuro
+                              ? 'text-white/15 cursor-not-allowed'
+                              : 'text-white/50 hover:text-white hover:bg-white/10'
+                      }`}
+                    >
+                      {m}
+                      {fechado && !ativo && (
+                        <span className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
           </div>
         </motion.div>
