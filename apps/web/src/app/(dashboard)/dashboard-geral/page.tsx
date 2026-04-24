@@ -86,7 +86,7 @@ function ChartTooltip({ active, payload, label }: any) {
             <div className="w-2 h-2 rounded-full" style={{ background: p.color }} />
             <span className="text-[11px] text-white/60">{p.name}</span>
           </div>
-          <span className="text-[11px] font-bold text-white">R$ {fmt(p.value)}</span>
+          <span className="text-[11px] font-bold text-white">{fmtM(p.value)}</span>
         </div>
       ))}
       <div className="border-t border-white/10 mt-2 pt-2 flex items-center justify-between gap-4">
@@ -94,7 +94,7 @@ function ChartTooltip({ active, payload, label }: any) {
           {superavit ? '▲ Superávit' : '▼ Déficit'}
         </span>
         <span className="text-[11px] font-bold" style={{ color: superavit ? '#10b981' : '#ef4444' }}>
-          R$ {fmt(Math.abs(saldo))}
+          {fmtM(Math.abs(saldo))}
         </span>
       </div>
     </div>
