@@ -63,9 +63,7 @@ function fmtK(v: number | null | undefined) {
 }
 function fmtM(v: number | null | undefined) {
   const n = Number(v ?? 0);
-  if (n >= 1e6) return 'R$ ' + (n / 1e6).toFixed(2) + 'M';
-  if (n >= 1e3) return 'R$ ' + (n / 1e3).toFixed(0) + 'K';
-  return 'R$ ' + fmt(n);
+  return 'R$ ' + n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
 // ─── Tooltip customizado ──────────────────────────────────────────────────────
