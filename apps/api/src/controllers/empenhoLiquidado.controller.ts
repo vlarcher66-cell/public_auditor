@@ -346,12 +346,11 @@ export async function getAging(req: Request, res: Response): Promise<void> {
   const rows = await db('fact_empenho_liquidado as f')
     .modify((q: any) => applyRBAC(q, user))
     .whereNull('f.dt_pagamento')
-    .whereNotNull('f.dt_empenho')
     .whereNotNull('f.dt_liquidacao')
     .whereRaw('f.dt_liquidacao::date >= ?', [dataInicio])
     .whereRaw('f.dt_liquidacao::date <= ?', [dataFim])
     .select(
-      db.raw("(CURRENT_DATE - f.dt_empenho::date) as dias"),
+      db.raw("(CURRENT_DATE - f.dt_liquidacao::date) as dias"),
       'f.valor',
     );
 
