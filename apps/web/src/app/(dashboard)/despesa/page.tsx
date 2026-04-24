@@ -1621,21 +1621,21 @@ function TabSintetica({
               ? `Dados até ${mesesNomes[ultimoMesComDados - 1]} (mês ${ultimoMesComDados} de 12)`
               : 'Aguardando dados lançados'}
           </div>
-          <div style={{ display: 'flex', gap: '3px', alignItems: 'center' }}>
+          <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
             {mesesNomes.map((nome, i) => {
               const mesNum = i + 1;
               const comDados = mesNum <= ultimoMesComDados;
               const atual = mesNum === ultimoMesComDados + 1;
               return (
-                <div key={nome} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '3px' }}>
+                <div key={nome} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
                   <div style={{
-                    height: '6px', width: '100%', borderRadius: '3px',
+                    height: '10px', width: '100%', borderRadius: '4px',
                     background: comDados ? '#C9A84C' : atual ? 'rgba(201,168,76,0.35)' : 'rgba(255,255,255,0.1)',
                     transition: 'background 0.3s ease',
-                    boxShadow: comDados ? '0 0 4px rgba(201,168,76,0.5)' : 'none',
+                    boxShadow: comDados ? '0 0 6px rgba(201,168,76,0.6)' : 'none',
                   }} />
-                  <span style={{ fontSize: '8px', color: comDados ? 'rgba(255,255,255,0.7)' : 'rgba(255,255,255,0.25)', fontWeight: comDados ? 600 : 400 }}>
-                    {nome.slice(0, 1)}
+                  <span style={{ fontSize: '9px', color: comDados ? 'rgba(255,255,255,0.8)' : 'rgba(255,255,255,0.25)', fontWeight: comDados ? 600 : 400 }}>
+                    {nome.slice(0, 3)}
                   </span>
                 </div>
               );
