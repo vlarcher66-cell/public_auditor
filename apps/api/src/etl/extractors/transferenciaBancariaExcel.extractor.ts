@@ -48,7 +48,6 @@ export function extractTransfBancariaFromExcel(filePath: string): RawTransfBanca
   let C_TIPO_DOC   = 35;
   let C_VALOR      = 36;
   let C_HIST_TEXT  = 5;
-  let C_TIPO_LANC  = 33;
   let dataStart    = 7;
 
   if (headerRow >= 0) {
@@ -88,9 +87,9 @@ export function extractTransfBancariaFromExcel(filePath: string): RawTransfBanca
     if (contaCols.length >= 1) C_CONTA_ORIG = contaCols[0];
     if (contaCols.length >= 2) C_CONTA_DEST = contaCols[1];
 
-    // Histórico: texto na coluna do Órgão origem, tipo lançamento antes do Valor
+    // Histórico: texto na coluna do Órgão origem
     C_HIST_TEXT = C_ORGAO_ORIG > 0 ? C_ORGAO_ORIG : 5;
-    C_TIPO_LANC = C_VALOR > 0 ? C_VALOR - 1 : 33;
+    // C_TIPO_LANC não é usado mais — tipo_lancamento é extraído do texto da linha de histórico
 
     // C_DATA: cabeçalho tem "Data" na col 0 mas dado real pode estar em col 2
     // por causa de mesclagem — detecta na primeira linha de dados
@@ -134,9 +133,30 @@ export function extractTransfBancariaFromExcel(filePath: string): RawTransfBanca
     for (let j = i + 1; j <= i + 3 && j < allRows.length; j++) {
       const nrow = allRows[j];
       const label = String(nrow[0] ?? '').trim();
-      if (/^Histórico[:\s]*/i.test(label)) {
-        historico       = String(nrow[C_HIST_TEXT] ?? '').trim();
-        tipo_lancamento = String(nrow[C_TIPO_LANC] ?? '').replace(/\s+/g, ' ').trim().toUpperCase().replace(/[\r\n]+/g, '').trim();
+      if (/^Hist[oó]rico[:\s]*/i.test(label)) {
+        // Junta todas as células da linha num texto único para extrair histórico e tipo
+        const fullText = nrow
+          .map((c: any) => String(c ?? '').trim())
+          .filter(Boolean)
+          .join(' ')
+          .replace(/^Hist[oó]rico[:\s]*/i, '')
+          .trim();
+
+        // Separa o tipo (ex: "TRANSFERÊNCIA FINANCEIRA RECEBIDA") do histórico
+        const typeMatch = fullText.match(/^(.+?)\s{2,}(TRANSFER[EÊ]NCIA\s+FINANCEIRA\s+\w+)\s*$/i);
+        if (typeMatch) {
+          historico       = typeMatch[1].trim();
+          tipo_lancamento = typeMatch[2].trim().toUpperCase();
+        } else {
+          const typeOnly = fullText.match(/(TRANSFER[EÊ]NCIA\s+FINANCEIRA\s+\w+)/i);
+          if (typeOnly) {
+            tipo_lancamento = typeOnly[1].trim().toUpperCase();
+            historico       = fullText.replace(typeOnly[1], '').trim();
+          } else {
+            historico = fullText;
+          }
+        }
+
         i = j;
         break;
       }
