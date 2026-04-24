@@ -731,7 +731,7 @@ export default function ContasAPagarPage() {
                 <span key={i} style={{ fontSize: '10px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em', textAlign: i < 2 ? 'left' : 'right' }}>{h}</span>
               ))}
             </div>
-            <div style={{ overflowY: 'auto', flex: 1 }}>
+            <div style={{ overflowY: 'auto', maxHeight: '616px' }}>
               {topData.length > 0 ? topData.map((r: any, i: number) => (
                 <div
                   key={i}
