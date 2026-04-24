@@ -262,39 +262,31 @@ function MatrizContasAPagar({ matriz, onAnoChange }: { matriz: any; onAnoChange?
               <td />
             </tr>
 
-            {/* % PAGO */}
+            {/* % DO TOTAL */}
             <tr style={{ background: '#fafafa', borderTop: '2px solid #e2e8f0' }}>
-              <td style={{ padding: '9px 14px', color: '#475569', fontWeight: 700, fontSize: '10px', letterSpacing: '0.04em', textTransform: 'uppercase', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                % Pago
+              <td style={{ padding: '9px 14px', color: '#0F2A4E', fontWeight: 700, fontSize: '10px', letterSpacing: '0.04em', textTransform: 'uppercase', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                % do Total
               </td>
               {meses12.map(p => {
                 const liq = totalLiquidadoPorPeriodo[p] ?? 0;
-                const pago = totalPagoPorPeriodo[p] ?? 0;
-                const pct = liq > 0 ? (pago / liq) * 100 : 0;
-                const { bg, color } = corPct(pct);
+                const pct = totalLiquidadoGeral > 0 ? (liq / totalLiquidadoGeral) * 100 : 0;
+                const bg = pct >= 20 ? '#fef2f2' : pct >= 10 ? '#fffbeb' : pct > 0 ? '#f0fdf4' : 'transparent';
+                const color = pct >= 20 ? '#dc2626' : pct >= 10 ? '#d97706' : pct > 0 ? '#16a34a' : '#e2e8f0';
                 return (
                   <td key={p} style={{ padding: '7px 6px', textAlign: 'center', whiteSpace: 'nowrap' }}>
                     {liq > 0 ? (
-                      <span style={{ display: 'inline-block', padding: '2px 6px', borderRadius: '6px', background: bg, color, fontWeight: 700, fontSize: '10px', fontVariantNumeric: 'tabular-nums' }}>
+                      <span style={{ display: 'inline-block', padding: '2px 6px', borderRadius: '6px', background: bg, color, fontWeight: 800, fontSize: '10px', fontVariantNumeric: 'tabular-nums' }}>
                         {pct.toFixed(1)}%
                       </span>
                     ) : <span style={{ color: '#e2e8f0' }}>—</span>}
                   </td>
                 );
               })}
-              {(() => {
-                const pct = totalLiquidadoGeral > 0 ? (totalPagoGeral / totalLiquidadoGeral) * 100 : 0;
-                const { bg, color } = corPct(pct);
-                return (
-                  <td style={{ padding: '7px 8px', textAlign: 'center', borderLeft: '1px solid #e2e8f0' }}>
-                    {totalLiquidadoGeral > 0 ? (
-                      <span style={{ display: 'inline-block', padding: '3px 8px', borderRadius: '8px', background: bg, color, fontWeight: 800, fontSize: '11px' }}>
-                        {pct.toFixed(1)}%
-                      </span>
-                    ) : '—'}
-                  </td>
-                );
-              })()}
+              <td style={{ padding: '7px 8px', textAlign: 'center', borderLeft: '1px solid #e2e8f0' }}>
+                <span style={{ display: 'inline-block', padding: '3px 8px', borderRadius: '8px', background: '#eff6ff', color: '#1e4d95', fontWeight: 800, fontSize: '11px' }}>
+                  100%
+                </span>
+              </td>
               <td />
             </tr>
           </tfoot>
