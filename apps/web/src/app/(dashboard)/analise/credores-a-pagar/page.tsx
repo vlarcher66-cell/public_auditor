@@ -159,19 +159,23 @@ function HistoricoModal({ credor, grupos, subgrupos, token, onClose, onSaved }: 
 }
 
 // ─── Linha da tabela (abas classificados / sem_classificacao) ─────────────────
-function CredorRow({ credor, grupos, subgrupos, token, onSaved, onOpenHistorico }: {
+function CredorRow({ credor, grupos, subgrupos, token, isSuperAdmin, onSaved, onOpenHistorico, onDeleted }: {
   credor: CredorAPagar;
   grupos: Grupo[];
   subgrupos: Subgrupo[];
   token: string;
+  isSuperAdmin: boolean;
   onSaved: (id: number, updates: Partial<CredorAPagar>) => void;
   onOpenHistorico: (c: CredorAPagar) => void;
+  onDeleted: (id: number) => void;
 }) {
   const [fkGrupo,    setFkGrupo]    = useState<number | ''>(credor.fk_grupo ?? '');
   const [fkSubgrupo, setFkSubgrupo] = useState<number | ''>(credor.fk_subgrupo ?? '');
   const [detalhar,   setDetalhar]   = useState(!!credor.detalhar_no_pagamento);
   const [saving,     setSaving]     = useState(false);
   const [saved,      setSaved]      = useState(false);
+  const [confirming, setConfirming] = useState(false);
+  const [deleting,   setDeleting]   = useState(false);
 
   const subsFiltrados = subgrupos.filter(s => s.fk_grupo === Number(fkGrupo));
 
@@ -204,6 +208,19 @@ function CredorRow({ credor, grupos, subgrupos, token, onSaved, onOpenHistorico 
 
   function handleDetalharToggle() {
     const next = !detalhar; setDetalhar(next); save(fkGrupo, fkSubgrupo, next);
+  }
+
+  async function handleDelete() {
+    setDeleting(true);
+    try {
+      await fetch(`${API_URL}/api/credores-a-pagar/${credor.id}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      onDeleted(credor.id);
+    } catch { /* offline */ }
+    setDeleting(false);
+    setConfirming(false);
   }
 
   return (
@@ -244,6 +261,27 @@ function CredorRow({ credor, grupos, subgrupos, token, onSaved, onOpenHistorico 
         {saving && <Loader2 size={14} className="animate-spin text-blue-400 mx-auto" />}
         {saved && !saving && <CheckCircle2 size={14} className="text-emerald-500 mx-auto" />}
       </td>
+      {isSuperAdmin && (
+        <td className="px-2 py-2 text-center w-[90px]">
+          {confirming ? (
+            <div className="flex items-center gap-1 justify-center">
+              <button onClick={handleDelete} disabled={deleting}
+                className="px-2 py-1 text-xs rounded bg-red-600 text-white hover:bg-red-700 disabled:opacity-50 flex items-center gap-1">
+                {deleting ? <Loader2 size={11} className="animate-spin" /> : <Check size={11} />}
+                Sim
+              </button>
+              <button onClick={() => setConfirming(false)} className="px-2 py-1 text-xs rounded border border-gray-200 hover:bg-gray-100">
+                <X size={11} />
+              </button>
+            </div>
+          ) : (
+            <button onClick={() => setConfirming(true)}
+              className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium border border-red-200 text-red-500 hover:bg-red-50 transition-colors">
+              <Trash2 size={12} /> Excluir
+            </button>
+          )}
+        </td>
+      )}
     </tr>
   );
 }
@@ -600,6 +638,7 @@ export default function CredoresAPagarPage() {
                     <th className="px-3 py-3 text-xs font-semibold text-gray-500 text-left">Histórico</th>
                     <th className="px-3 py-3 text-xs font-semibold text-gray-500 text-center w-[110px]">Detalhar</th>
                     <th className="w-8" />
+                    {isSuperAdmin && <th className="px-3 py-3 text-xs font-semibold text-gray-500 text-center w-[90px]">Ação</th>}
                   </tr>
                 )}
               </thead>
@@ -620,7 +659,8 @@ export default function CredoresAPagarPage() {
                 ) : (
                   rows.map(credor => token && (
                     <CredorRow key={credor.id} credor={credor} grupos={grupos} subgrupos={subgrupos}
-                      token={token} onSaved={onSaved} onOpenHistorico={setModalCredor} />
+                      token={token} isSuperAdmin={isSuperAdmin} onSaved={onSaved}
+                      onOpenHistorico={setModalCredor} onDeleted={onDeleted} />
                   ))
                 )}
               </tbody>

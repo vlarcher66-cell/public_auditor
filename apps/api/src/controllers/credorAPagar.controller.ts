@@ -42,8 +42,8 @@ export async function listCredoresAPagar(req: Request, res: Response): Promise<v
     if (aba === 'classificados')      q.whereNotNull('c.fk_grupo');
     if (aba === 'sem_classificacao')  q.whereNull('c.fk_grupo');
     if (aba === 'revisao') {
-      // classificados por alguém que não é o super admin (classificado_por preenchido)
-      q.whereNotNull('c.classificado_por');
+      // classificados por alguém diferente do usuário atual (não pelo próprio SUPER_ADMIN)
+      q.whereNotNull('c.classificado_por').whereNot('c.classificado_por', user.sub);
     }
 
     if (search) q.whereRaw('UPPER(c.nome) LIKE ?', [`%${search.toUpperCase()}%`]);
