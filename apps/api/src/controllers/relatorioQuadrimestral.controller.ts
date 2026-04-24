@@ -106,10 +106,10 @@ export async function getRelatorioQuadrimestral(req: Request, res: Response): Pr
   // ── 5. Monta índice 15% por mês ───────────────────────────────────────────────
   const indice15Meses = meses.map(mes => {
     const baseRows = prefRows.filter(r =>
-      r.mes === mes && BASE_PREFIXES.some(p => r.codigo_rubrica?.startsWith(p))
+      Number(r.mes) === mes && BASE_PREFIXES.some(p => r.codigo_rubrica?.startsWith(p))
     );
     const dedRows = prefRows.filter(r =>
-      r.mes === mes && DEDUCAO_PREFIXES.some(p => r.codigo_rubrica?.startsWith(p))
+      Number(r.mes) === mes && DEDUCAO_PREFIXES.some(p => r.codigo_rubrica?.startsWith(p))
     );
     const saude = Number(saudeReceitaRows.find(r => Number(r.mes) === mes)?.total ?? 0);
 
@@ -148,7 +148,7 @@ export async function getRelatorioQuadrimestral(req: Request, res: Response): Pr
     mes,
     label: MESES_LABEL[mes],
     total: despesaRows
-      .filter(r => r.mes === mes)
+      .filter(r => Number(r.mes) === mes)
       .reduce((s, r) => s + Number(r.total), 0),
   }));
 
