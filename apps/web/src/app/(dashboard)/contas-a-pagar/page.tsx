@@ -111,6 +111,10 @@ function MatrizContasAPagar({ matriz, onAnoChange }: { matriz: any; onAnoChange?
 
   const visiveis = showAll ? gruposOrdenados : gruposOrdenados.slice(0, 12);
 
+  // Total pago e liquidado vindos da API
+  const totalPagoPorPeriodo: Record<string, number> = matriz?.total_pago_por_periodo ?? {};
+  const totalLiquidadoPorPeriodo: Record<string, number> = matriz?.total_liquidado_por_periodo ?? {};
+
   // Total a pagar por mês (soma das linhas dos grupos — só empenhos não pagos)
   const totalPorMes: Record<string, number> = {};
   for (const p of meses12) {
@@ -118,10 +122,6 @@ function MatrizContasAPagar({ matriz, onAnoChange }: { matriz: any; onAnoChange?
   }
   const totalGeral = Object.values(totalPorMes).reduce((s, v) => s + v, 0);
   const mesesComDados = meses12.filter(p => (totalLiquidadoPorPeriodo[p] ?? 0) > 0).length;
-
-  // Total pago e liquidado vindos da API
-  const totalPagoPorPeriodo: Record<string, number> = matriz?.total_pago_por_periodo ?? {};
-  const totalLiquidadoPorPeriodo: Record<string, number> = matriz?.total_liquidado_por_periodo ?? {};
 
   // Saldo a pagar por mês = liquidado - pago
   const saldoAPagarPorMes: Record<string, number> = {};
