@@ -117,10 +117,15 @@ function getGrupoKey(cod: string): '1' | '2' {
 // Abrevia descrições longas de rubricas para a aba Analítica
 function abreviarDesc(desc: string): string {
   return desc
-    .replace(/^Transferência[s]? de Recursos do SUS\s*[-–]\s*/i, 'Transf. Rec. SUS — ')
-    .replace(/^Transferência[s]? de Recursos do Bloco\s*[-–]\s*/i, 'Transf. Rec. Bloco — ')
-    .replace(/^Remuneração de Depósitos Bancários\s*[-–]\s*/i, 'Rem. Dep. Bancários — ')
-    .replace(/^Gestão Dupla Estadual/i, 'Gestão Dupla Estadual');
+    // SUS Manutenção
+    .replace(/^Transferência[s]? de Recursos do SUS\s*[-–]\s*/i, '')
+    // SUS Bloco Unificado (desc longa)
+    .replace(/^Transferências de Recursos do Sistema Único de Saúde\s*[-–]\s*SUS destinados à\s*/i, '')
+    // Bloco Estruturação
+    .replace(/^Transferências de Recursos do Bloco de Estruturação da Rede de Serviços Públicos de Saúde\s*[-–]\s*/i, 'Estruturação — ')
+    // Remuneração depósitos
+    .replace(/^Remuneração de Depósitos Bancários de Recursos Vinculados\s*[-–]\s*/i, 'Rem. Dep. Vinculados — ')
+    .replace(/^Remuneração de Depósitos Bancários\s*[-–]\s*/i, 'Rem. Dep. Bancários — ');
 }
 
 function agrupar(rows: DRERow[]): Grupo[] {
