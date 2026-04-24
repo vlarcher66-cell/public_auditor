@@ -243,25 +243,6 @@ function MatrizContasAPagar({ matriz, onAnoChange }: { matriz: any; onAnoChange?
             })}
           </tbody>
           <tfoot>
-            {/* TOTAL PAGO */}
-            <tr style={{ background: '#f0fdf4', borderTop: '1px solid #bbf7d0' }}>
-              <td style={{ padding: '9px 14px', color: '#15803d', fontWeight: 700, fontSize: '10px', letterSpacing: '0.04em', textTransform: 'uppercase', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                Total Pago
-              </td>
-              {meses12.map(p => {
-                const v = totalPagoPorPeriodo[p] ?? 0;
-                return (
-                  <td key={p} style={{ padding: '9px 6px', textAlign: 'right', color: v > 0 ? '#15803d' : '#bbf7d0', fontWeight: 600, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
-                    {v > 0 ? fmtM(v) : '—'}
-                  </td>
-                );
-              })}
-              <td style={{ padding: '9px 8px', textAlign: 'right', color: '#15803d', fontWeight: 700, fontVariantNumeric: 'tabular-nums', borderLeft: '1px solid #bbf7d0', whiteSpace: 'nowrap' }}>
-                {fmtM(totalPagoGeral)}
-              </td>
-              <td />
-            </tr>
-
             {/* SALDO A PAGAR */}
             <tr style={{ background: '#fef2f2', borderTop: '1px solid #fecaca' }}>
               <td style={{ padding: '9px 14px', color: '#dc2626', fontWeight: 700, fontSize: '10px', letterSpacing: '0.04em', textTransform: 'uppercase', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
