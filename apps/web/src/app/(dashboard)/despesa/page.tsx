@@ -1637,20 +1637,22 @@ function TabSintetica({
       </div>
 
       {/* 2. KPI CARDS */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-3">
         {/* Card 1 — Total Bruto */}
-        <div style={{ background: '#fff', borderRadius: '16px', border: '1px solid #e2e8f0', boxShadow: '0 1px 4px rgba(0,0,0,0.06)', padding: '20px 24px' }}>
-          <div style={{ background: 'rgba(15,42,78,0.08)', borderRadius: '10px', padding: '8px', display: 'inline-flex', marginBottom: '12px' }}>
-            <DollarSign size={18} color="#0F2A4E" />
+        <div style={{ background: '#fff', borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 1px 3px rgba(0,0,0,0.05)', padding: '14px 16px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+            <div style={{ background: 'rgba(15,42,78,0.08)', borderRadius: '8px', padding: '5px', display: 'inline-flex' }}>
+              <DollarSign size={14} color="#0F2A4E" />
+            </div>
+            <span style={{ fontSize: '11px', color: '#94a3b8', fontWeight: 500 }}>Total Bruto</span>
           </div>
-          <div style={{ fontSize: '12px', color: '#94a3b8', marginBottom: '4px', fontWeight: 500 }}>Total Bruto</div>
-          {isLoading ? <div style={{ height: '28px', background: '#e2e8f0', borderRadius: '6px' }} /> : (
-            <div style={{ fontSize: '20px', fontWeight: 700, color: '#0F2A4E', lineHeight: 1.2 }}>{formatCurrency(summary?.totalBruto ?? 0)}</div>
+          {isLoading ? <div style={{ height: '22px', background: '#e2e8f0', borderRadius: '6px' }} /> : (
+            <div style={{ fontSize: '17px', fontWeight: 700, color: '#0F2A4E', lineHeight: 1.2 }}>{formatCurrency(summary?.totalBruto ?? 0)}</div>
           )}
-          <div style={{ fontSize: '11px', color: '#94a3b8', marginTop: '4px' }}>Valor total empenhado</div>
+          <div style={{ fontSize: '10px', color: '#94a3b8', marginTop: '3px' }}>Valor total empenhado</div>
           {!loadingSintetica && ultimos6.length > 0 && (
-            <div style={{ marginTop: '12px', height: '32px' }}>
-              <ResponsiveContainer width="100%" height={32}>
+            <div style={{ marginTop: '8px', height: '24px' }}>
+              <ResponsiveContainer width="100%" height={24}>
                 <LineChart data={ultimos6} margin={{ top: 2, right: 2, left: 2, bottom: 2 }}>
                   <Line type="monotone" dataKey="v" stroke="#C9A84C" strokeWidth={2} dot={false} />
                 </LineChart>
@@ -1660,46 +1662,52 @@ function TabSintetica({
         </div>
 
         {/* Card 2 — Total Retido */}
-        <div style={{ background: '#fff', borderRadius: '16px', border: '1px solid #e2e8f0', boxShadow: '0 1px 4px rgba(0,0,0,0.06)', padding: '20px 24px' }}>
-          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '12px' }}>
-            <div style={{ background: 'rgba(220,38,38,0.08)', borderRadius: '10px', padding: '8px', display: 'inline-flex' }}>
-              <TrendingDown size={18} color="#dc2626" />
+        <div style={{ background: '#fff', borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 1px 3px rgba(0,0,0,0.05)', padding: '14px 16px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <div style={{ background: 'rgba(220,38,38,0.08)', borderRadius: '8px', padding: '5px', display: 'inline-flex' }}>
+                <TrendingDown size={14} color="#dc2626" />
+              </div>
+              <span style={{ fontSize: '11px', color: '#94a3b8', fontWeight: 500 }}>Total Retido</span>
             </div>
             {!isLoading && (
-              <span style={{ fontSize: '11px', background: 'rgba(220,38,38,0.08)', color: '#dc2626', borderRadius: '6px', padding: '2px 8px', fontWeight: 600 }}>
+              <span style={{ fontSize: '10px', background: 'rgba(220,38,38,0.08)', color: '#dc2626', borderRadius: '5px', padding: '1px 6px', fontWeight: 600 }}>
                 {pctRetido}% do bruto
               </span>
             )}
           </div>
-          <div style={{ fontSize: '12px', color: '#94a3b8', marginBottom: '4px', fontWeight: 500 }}>Total Retido</div>
-          {isLoading ? <div style={{ height: '28px', background: '#e2e8f0', borderRadius: '6px' }} /> : (
-            <div style={{ fontSize: '20px', fontWeight: 700, color: '#dc2626', lineHeight: 1.2 }}>{formatCurrency(summary?.totalRetido ?? 0)}</div>
+          {isLoading ? <div style={{ height: '22px', background: '#e2e8f0', borderRadius: '6px' }} /> : (
+            <div style={{ fontSize: '17px', fontWeight: 700, color: '#dc2626', lineHeight: 1.2 }}>{formatCurrency(summary?.totalRetido ?? 0)}</div>
           )}
-          <div style={{ fontSize: '11px', color: '#94a3b8', marginTop: '4px' }}>Impostos e retenções</div>
+          <div style={{ fontSize: '10px', color: '#94a3b8', marginTop: '3px' }}>Impostos e retenções</div>
         </div>
 
         {/* Card 3 — Total Líquido */}
-        <div style={{ background: '#fff', borderRadius: '16px', border: '1px solid #e2e8f0', borderLeft: '3px solid #059669', boxShadow: '0 1px 4px rgba(0,0,0,0.06)', padding: '20px 24px' }}>
-          <div style={{ background: 'rgba(5,150,105,0.08)', borderRadius: '10px', padding: '8px', display: 'inline-flex', marginBottom: '12px' }}>
-            <Banknote size={18} color="#059669" />
+        <div style={{ background: '#fff', borderRadius: '12px', border: '1px solid #e2e8f0', borderLeft: '3px solid #059669', boxShadow: '0 1px 3px rgba(0,0,0,0.05)', padding: '14px 16px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+            <div style={{ background: 'rgba(5,150,105,0.08)', borderRadius: '8px', padding: '5px', display: 'inline-flex' }}>
+              <Banknote size={14} color="#059669" />
+            </div>
+            <span style={{ fontSize: '11px', color: '#94a3b8', fontWeight: 500 }}>Total Líquido</span>
           </div>
-          <div style={{ fontSize: '12px', color: '#94a3b8', marginBottom: '4px', fontWeight: 500 }}>Total Líquido</div>
-          {isLoading ? <div style={{ height: '28px', background: '#e2e8f0', borderRadius: '6px' }} /> : (
-            <div style={{ fontSize: '20px', fontWeight: 700, color: '#059669', lineHeight: 1.2 }}>{formatCurrency(summary?.totalLiquido ?? 0)}</div>
+          {isLoading ? <div style={{ height: '22px', background: '#e2e8f0', borderRadius: '6px' }} /> : (
+            <div style={{ fontSize: '17px', fontWeight: 700, color: '#059669', lineHeight: 1.2 }}>{formatCurrency(summary?.totalLiquido ?? 0)}</div>
           )}
-          <div style={{ fontSize: '11px', color: '#94a3b8', marginTop: '4px' }}>Valor efetivamente pago</div>
+          <div style={{ fontSize: '10px', color: '#94a3b8', marginTop: '3px' }}>Valor efetivamente pago</div>
         </div>
 
         {/* Card 4 — Ordens de Pagamento */}
-        <div style={{ background: '#fff', borderRadius: '16px', border: '1px solid #e2e8f0', boxShadow: '0 1px 4px rgba(0,0,0,0.06)', padding: '20px 24px' }}>
-          <div style={{ background: 'rgba(201,168,76,0.12)', borderRadius: '10px', padding: '8px', display: 'inline-flex', marginBottom: '12px' }}>
-            <FileCheck size={18} color="#a8832a" />
+        <div style={{ background: '#fff', borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 1px 3px rgba(0,0,0,0.05)', padding: '14px 16px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+            <div style={{ background: 'rgba(201,168,76,0.12)', borderRadius: '8px', padding: '5px', display: 'inline-flex' }}>
+              <FileCheck size={14} color="#a8832a" />
+            </div>
+            <span style={{ fontSize: '11px', color: '#94a3b8', fontWeight: 500 }}>Ordens de Pagamento</span>
           </div>
-          <div style={{ fontSize: '12px', color: '#94a3b8', marginBottom: '4px', fontWeight: 500 }}>Ordens de Pagamento</div>
-          {isLoading ? <div style={{ height: '28px', background: '#e2e8f0', borderRadius: '6px' }} /> : (
-            <div style={{ fontSize: '20px', fontWeight: 700, color: '#0F2A4E', lineHeight: 1.2 }}>{(summary?.countRegistros ?? 0).toLocaleString('pt-BR')}</div>
+          {isLoading ? <div style={{ height: '22px', background: '#e2e8f0', borderRadius: '6px' }} /> : (
+            <div style={{ fontSize: '17px', fontWeight: 700, color: '#0F2A4E', lineHeight: 1.2 }}>{(summary?.countRegistros ?? 0).toLocaleString('pt-BR')}</div>
           )}
-          <div style={{ fontSize: '11px', color: '#94a3b8', marginTop: '4px' }}>
+          <div style={{ fontSize: '10px', color: '#94a3b8', marginTop: '3px' }}>
             {!isLoading && diasNoAno > 0 && summary?.countRegistros
               ? `≈ ${(summary.countRegistros / diasNoAno).toFixed(1)} por dia`
               : 'Registros processados'}
