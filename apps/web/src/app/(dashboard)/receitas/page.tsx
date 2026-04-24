@@ -175,6 +175,8 @@ function agrupar(rows: DRERow[]): Grupo[] {
 }
 
 function soma(meses: number[]): number { return meses.reduce((a, v) => a + v, 0); }
+function mesesExecutados(meses: number[]): number { return Math.max(1, meses.filter(v => v > 0).length); }
+function media(meses: number[]): number { return soma(meses) / mesesExecutados(meses); }
 
 // Converte rows de transferência bancária em Grupo[] para inserir na DRE
 function agruparTransf(rows: TransfDRERow[]): Grupo[] {
@@ -336,7 +338,7 @@ function TabelaDRE({
                       <td key={i} style={{ padding: '10px 6px', textAlign: 'right', color: 'rgba(255,255,255,0.7)', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>{v > 0 ? fmtFull(v) : '—'}</td>
                     ))}
                     <td style={{ padding: '10px 8px', textAlign: 'right', color: '#fff', fontWeight: 700, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap', borderLeft: '1px solid rgba(255,255,255,0.12)' }}>{gTotal > 0 ? fmtFull(gTotal) : '—'}</td>
-                    <td style={{ padding: '10px 6px', textAlign: 'right', color: 'rgba(255,255,255,0.5)', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>{gTotal > 0 ? fmtFull(gTotal / 12) : '—'}</td>
+                    <td style={{ padding: '10px 6px', textAlign: 'right', color: 'rgba(255,255,255,0.5)', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>{gTotal > 0 ? fmtFull(media(grupo.meses)) : '—'}</td>
                   </tr>
 
                   {gOpen && grupo.subgrupos.map(sg => {
@@ -363,7 +365,7 @@ function TabelaDRE({
                             <td key={i} style={{ padding: '9px 6px', textAlign: 'right', color: v > 0 ? '#1e293b' : '#e2e8f0', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>{v > 0 ? fmtFull(v) : '—'}</td>
                           ))}
                           <td style={{ padding: '9px 8px', textAlign: 'right', color: '#0F2A4E', fontWeight: 700, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap', borderLeft: '1px solid #e2e8f0' }}>{sgTotal > 0 ? fmtFull(sgTotal) : '—'}</td>
-                          <td style={{ padding: '9px 6px', textAlign: 'right', color: '#7c3aed', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>{sgTotal > 0 ? fmtFull(sgTotal / 12) : '—'}</td>
+                          <td style={{ padding: '9px 6px', textAlign: 'right', color: '#7c3aed', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>{sgTotal > 0 ? fmtFull(media(sg.meses)) : '—'}</td>
                         </tr>
 
                         {/* N3 — Contas */}
@@ -385,7 +387,7 @@ function TabelaDRE({
                                 <td key={i} style={{ padding: '8px 6px', textAlign: 'right', color: v > 0 ? '#334155' : '#e2e8f0', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>{v > 0 ? fmtFull(v) : '—'}</td>
                               ))}
                               <td style={{ padding: '8px 8px', textAlign: 'right', color: '#C9A84C', fontWeight: 600, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap', borderLeft: '1px solid #e2e8f0' }}>{cTotal > 0 ? fmtFull(cTotal) : '—'}</td>
-                              <td style={{ padding: '8px 6px', textAlign: 'right', color: '#7c3aed', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>{cTotal > 0 ? fmtFull(cTotal / 12) : '—'}</td>
+                              <td style={{ padding: '8px 6px', textAlign: 'right', color: '#7c3aed', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>{cTotal > 0 ? fmtFull(media(conta.meses)) : '—'}</td>
                             </tr>
                           );
                         })}
@@ -403,7 +405,7 @@ function TabelaDRE({
                 <td key={i} style={{ padding: '10px 6px', textAlign: 'right', color: v > 0 ? '#1e3a5f' : '#bfdbfe', fontWeight: 700, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>{v > 0 ? fmtFull(v) : '—'}</td>
               ))}
               <td style={{ padding: '10px 8px', textAlign: 'right', color: '#92400e', fontWeight: 700, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap', borderLeft: '1px solid #93c5fd' }}>{totalGeral > 0 ? fmtFull(totalGeral) : '—'}</td>
-              <td style={{ padding: '10px 8px', textAlign: 'right', color: '#92400e', fontWeight: 700, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>{totalGeral > 0 ? fmtFull(totalGeral / 12) : '—'}</td>
+              <td style={{ padding: '10px 8px', textAlign: 'right', color: '#92400e', fontWeight: 700, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>{totalGeral > 0 ? fmtFull(media(totaisMeses)) : '—'}</td>
             </tr>
           </tbody>
         </table>
@@ -465,7 +467,7 @@ function TabelaSintetica({ grupos, titulo, ano }: { grupos: Grupo[]; titulo: str
                     </td>
                     {grupo.meses.map((v, i) => <td key={i} style={{ padding: '10px 6px', textAlign: 'right', color: 'rgba(255,255,255,0.7)', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>{v > 0 ? fmtFull(v) : '—'}</td>)}
                     <td style={{ padding: '10px 8px', textAlign: 'right', color: '#fff', fontWeight: 700, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap', borderLeft: '1px solid rgba(255,255,255,0.12)' }}>{gTotal > 0 ? fmtFull(gTotal) : '—'}</td>
-                    <td style={{ padding: '10px 6px', textAlign: 'right', color: 'rgba(255,255,255,0.5)', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>{gTotal > 0 ? fmtFull(gTotal / 12) : '—'}</td>
+                    <td style={{ padding: '10px 6px', textAlign: 'right', color: 'rgba(255,255,255,0.5)', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>{gTotal > 0 ? fmtFull(media(grupo.meses)) : '—'}</td>
                   </tr>
 
                   {gOpen && grupo.subgrupos.map(sg => {
@@ -479,7 +481,7 @@ function TabelaSintetica({ grupos, titulo, ano }: { grupos: Grupo[]; titulo: str
                         <td style={{ padding: '9px 14px 9px 32px', color: '#1e293b', fontWeight: 500, fontSize: '11px', overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis' }}>{sg.desc}</td>
                         {sg.meses.map((v, i) => <td key={i} style={{ padding: '9px 6px', textAlign: 'right', color: v > 0 ? '#334155' : '#e2e8f0', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>{v > 0 ? fmtFull(v) : '—'}</td>)}
                         <td style={{ padding: '9px 8px', textAlign: 'right', color: '#0F2A4E', fontWeight: 700, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap', borderLeft: '1px solid #e2e8f0' }}>{sgTotal > 0 ? fmtFull(sgTotal) : '—'}</td>
-                        <td style={{ padding: '9px 6px', textAlign: 'right', color: '#7c3aed', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>{sgTotal > 0 ? fmtFull(sgTotal / 12) : '—'}</td>
+                        <td style={{ padding: '9px 6px', textAlign: 'right', color: '#7c3aed', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>{sgTotal > 0 ? fmtFull(media(sg.meses)) : '—'}</td>
                       </tr>
                     );
                   })}
@@ -490,7 +492,7 @@ function TabelaSintetica({ grupos, titulo, ano }: { grupos: Grupo[]; titulo: str
               <td style={{ padding: '10px 14px', color: '#1e3a5f', fontWeight: 700, fontSize: '11px' }}>TOTAL GERAL DA RECEITA</td>
               {totaisMeses.map((v, i) => <td key={i} style={{ padding: '10px 6px', textAlign: 'right', color: v > 0 ? '#1e3a5f' : '#bfdbfe', fontWeight: 700, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>{v > 0 ? fmtFull(v) : '—'}</td>)}
               <td style={{ padding: '10px 8px', textAlign: 'right', color: '#92400e', fontWeight: 700, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap', borderLeft: '1px solid #93c5fd' }}>{totalGeral > 0 ? fmtFull(totalGeral) : '—'}</td>
-              <td style={{ padding: '10px 8px', textAlign: 'right', color: '#92400e', fontWeight: 700, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>{totalGeral > 0 ? fmtFull(totalGeral / 12) : '—'}</td>
+              <td style={{ padding: '10px 8px', textAlign: 'right', color: '#92400e', fontWeight: 700, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>{totalGeral > 0 ? fmtFull(media(totaisMeses)) : '—'}</td>
             </tr>
           </tbody>
         </table>
