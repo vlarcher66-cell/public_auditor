@@ -145,7 +145,20 @@ export async function getResumoAPagar(req: Request, res: Response): Promise<void
   const user = (req as any).user;
   const ano = new Date().getFullYear();
   const dataInicio = `${ano}-01-01`;
-  const dataFim = new Date().toISOString().slice(0, 10);
+
+  // Descobre o último mês fechado com dados (maior mes_liq com dt_pagamento IS NULL)
+  const ultimoMesRow = await db('fact_empenho_liquidado as f')
+    .modify((q: any) => applyRBAC(q, user))
+    .whereNull('f.dt_pagamento')
+    .whereNotNull('f.dt_liquidacao')
+    .whereRaw('f.dt_liquidacao::date >= ?', [dataInicio])
+    .max(db.raw("TO_CHAR(f.dt_liquidacao, 'YYYY-MM') as mes_liq"))
+    .first();
+
+  const ultimoMes: string = (ultimoMesRow as any)?.mes_liq ?? new Date().toISOString().slice(0, 7);
+  // Último dia do mês fechado
+  const [anoMes, numMes] = ultimoMes.split('-').map(Number);
+  const dataFim = new Date(anoMes, numMes, 0).toISOString().slice(0, 10);
 
   const baseQuery = () => db('fact_empenho_liquidado as f')
     .modify((q: any) => applyRBAC(q, user))
@@ -173,7 +186,7 @@ export async function getResumoAPagar(req: Request, res: Response): Promise<void
   for (const r of rowsMes) por_mes[r.mes_liq] = Number(r.total);
 
   res.json({
-    ultimo_periodo: `${ano}-01 a ${dataFim.slice(0, 7)}`,
+    ultimo_periodo: `${ano}-01 a ${ultimoMes}`,
     total_a_pagar: total,
     por_entidade: rows.map((r: any) => ({ ...r, total: Number(r.total) })),
     por_mes,
