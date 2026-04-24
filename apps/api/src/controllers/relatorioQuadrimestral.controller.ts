@@ -67,7 +67,7 @@ export async function getRelatorioQuadrimestral(req: Request, res: Response): Pr
       .leftJoin('dim_grupo_despesa as g', 'c.fk_grupo', 'g.id')
       .leftJoin('dim_subgrupo_despesa as s', 'c.fk_subgrupo', 's.id')
       .whereRaw('EXTRACT(YEAR FROM r.data_pagamento) = ?', [ano])
-      .whereRaw('EXTRACT(MONTH FROM r.data_pagamento) = ANY(?::int[])', [[meses]])
+      .whereRaw(`EXTRACT(MONTH FROM r.data_pagamento) = ANY(ARRAY[${meses.join(',')}]::int[])`)
       .where('e.tipo', 'FUNDO')
       .select(
         db.raw('EXTRACT(MONTH FROM r.data_pagamento) as mes'),
@@ -89,7 +89,7 @@ export async function getRelatorioQuadrimestral(req: Request, res: Response): Pr
       .leftJoin('dim_credor as c', 'r.fk_credor', 'c.id')
       .leftJoin('dim_grupo_despesa as g', 'c.fk_grupo', 'g.id')
       .whereRaw('EXTRACT(YEAR FROM r.data_pagamento) = ?', [ano])
-      .whereRaw('EXTRACT(MONTH FROM r.data_pagamento) = ANY(?::int[])', [[meses]])
+      .whereRaw(`EXTRACT(MONTH FROM r.data_pagamento) = ANY(ARRAY[${meses.join(',')}]::int[])`)
       .where('e.tipo', 'FUNDO')
       .select(
         db.raw("COALESCE(c.nome, r.credor_nome, 'Desconhecido') as credor_nome"),
