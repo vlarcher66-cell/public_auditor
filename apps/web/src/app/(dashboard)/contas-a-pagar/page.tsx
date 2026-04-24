@@ -684,68 +684,38 @@ export default function ContasAPagarPage() {
                 </div>
                 <span style={{ fontSize: '11px', background: 'rgba(255,255,255,0.15)', color: 'rgba(255,255,255,0.8)', padding: '3px 9px', borderRadius: '20px', fontWeight: 600 }}>{ultimoPeriodo}</span>
               </div>
-              {gruposMatriz.length > 0 ? (() => {
-                const chartData = gruposMatriz.map((g: any, i: number) => ({
-                  nome: g.nome.length > 18 ? g.nome.slice(0, 16) + '…' : g.nome,
-                  nomeCompleto: g.nome,
-                  total: g.total,
-                  pct: totalGrupos > 0 ? Math.round((g.total / totalGrupos) * 1000) / 10 : 0,
-                  color: GRUPO_COLORS[i % GRUPO_COLORS.length],
-                }));
-                return (
-                  <div style={{ padding: '12px 4px 8px 4px' }}>
-                    <ResponsiveContainer width="100%" height={chartData.length * 28 + 8}>
-                      <BarChart
-                        data={chartData}
-                        layout="vertical"
-                        margin={{ top: 0, right: 52, left: 8, bottom: 0 }}
-                        barCategoryGap="35%"
-                      >
-                        <XAxis type="number" hide />
-                        <YAxis
-                          type="category"
-                          dataKey="nome"
-                          width={130}
-                          tick={{ fontSize: 11, fill: '#334155', fontWeight: 500 }}
-                          axisLine={false}
-                          tickLine={false}
-                        />
-                        <RTooltip
-                          cursor={{ fill: 'rgba(15,42,78,0.04)' }}
-                          content={({ active, payload }: any) => {
-                            if (!active || !payload?.length) return null;
-                            const d = payload[0].payload;
-                            return (
-                              <div style={{ background: '#0F2A4E', borderRadius: '10px', padding: '10px 14px', boxShadow: '0 8px 24px rgba(0,0,0,0.2)', fontSize: '12px' }}>
-                                <div style={{ color: '#C9A84C', fontWeight: 700, marginBottom: '4px' }}>{d.nomeCompleto}</div>
-                                <div style={{ color: '#fff', fontVariantNumeric: 'tabular-nums' }}>R$ {fmt(d.total)}</div>
-                                <div style={{ color: 'rgba(255,255,255,0.6)', marginTop: '2px' }}>{d.pct.toFixed(1)}% do total</div>
-                              </div>
-                            );
-                          }}
-                        />
-                        <Bar dataKey="total" radius={[0, 6, 6, 0]} isAnimationActive={true} animationDuration={800}>
-                          {chartData.map((entry: any, i: number) => (
-                            <Cell key={i} fill={entry.color} />
-                          ))}
-                          <LabelList
-                            dataKey="pct"
-                            position="right"
-                            formatter={(v: number) => `${v.toFixed(1)}%`}
-                            style={{
-                              fontSize: '11px',
-                              fontWeight: 700,
-                              fill: '#475569',
-                            }}
-                          />
-                        </Bar>
-                      </BarChart>
-                    </ResponsiveContainer>
-                  </div>
-                );
-              })() : (
-                <div style={{ height: '100px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8', fontSize: '13px' }}>Sem dados por grupo</div>
-              )}
+              <div style={{ padding: '10px 16px 14px' }}>
+                {gruposMatriz.length > 0 ? gruposMatriz.map((g: any, i: number) => {
+                  const pct = totalGrupos > 0 ? (g.total / totalGrupos) * 100 : 0;
+                  const cor = GRUPO_COLORS[i % GRUPO_COLORS.length];
+                  const badgeBg = pct >= 20 ? '#fef2f2' : pct >= 10 ? '#fffbeb' : '#f0fdf4';
+                  const badgeColor = pct >= 20 ? '#dc2626' : pct >= 10 ? '#d97706' : '#16a34a';
+                  return (
+                    <div key={i} style={{ marginBottom: '10px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '5px' }}>
+                        <span style={{ fontSize: '11px', color: '#1e293b', fontWeight: 600, maxWidth: '160px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={g.nome}>{g.nome}</span>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <span style={{ fontSize: '11px', fontWeight: 700, color: '#0F2A4E', fontVariantNumeric: 'tabular-nums' }}>R$ {fmt(g.total)}</span>
+                          <span style={{ fontSize: '10px', fontWeight: 800, color: badgeColor, background: badgeBg, padding: '2px 7px', borderRadius: '20px', minWidth: '42px', textAlign: 'center' }}>
+                            {pct.toFixed(1)}%
+                          </span>
+                        </div>
+                      </div>
+                      <div style={{ height: '7px', background: '#f1f5f9', borderRadius: '99px', overflow: 'hidden' }}>
+                        <div style={{
+                          height: '100%',
+                          width: `${pct}%`,
+                          background: `linear-gradient(90deg, ${cor}99, ${cor})`,
+                          borderRadius: '99px',
+                          transition: 'width 0.8s cubic-bezier(0.4,0,0.2,1)',
+                        }} />
+                      </div>
+                    </div>
+                  );
+                }) : (
+                  <div style={{ height: '100px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8', fontSize: '13px' }}>Sem dados por grupo</div>
+                )}
+              </div>
             </div>
           </div>
 
