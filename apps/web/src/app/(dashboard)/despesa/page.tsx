@@ -1610,29 +1610,29 @@ function TabSintetica({
     <div className="p-3 md:p-6" style={{ background: '#f8fafc', minHeight: '100%' }}>
 
       {/* 1. HERO HEADER */}
-      <div className="p-4 md:px-8 md:py-6" style={{ background: 'linear-gradient(135deg, #0c2240 0%, #0F2A4E 100%)', borderRadius: '16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '24px', flexWrap: 'wrap' }}>
+      <div className="px-5 py-3" style={{ background: 'linear-gradient(135deg, #0c2240 0%, #0F2A4E 100%)', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px', flexWrap: 'wrap' }}>
         <div>
-          <div style={{ fontSize: '22px', fontWeight: 700, color: '#fff', lineHeight: 1.2 }}>Despesa Municipal</div>
-          <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.6)', marginTop: '4px' }}>Exercício {anoAtual} — Visão Geral Consolidada</div>
+          <div style={{ fontSize: '16px', fontWeight: 700, color: '#fff', lineHeight: 1.2 }}>Despesa Municipal</div>
+          <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.5)', marginTop: '2px' }}>Exercício {anoAtual} — Visão Geral Consolidada</div>
         </div>
-        <div style={{ flex: 1, minWidth: '200px', maxWidth: '340px' }}>
-          <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.7)', marginBottom: '8px', textAlign: 'center' }}>
+        <div style={{ flex: 1, minWidth: '180px', maxWidth: '300px' }}>
+          <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.6)', marginBottom: '5px', textAlign: 'center' }}>
             {ultimoMesComDados > 0
               ? `Dados até ${mesesNomes[ultimoMesComDados - 1]} (mês ${ultimoMesComDados} de 12)`
               : 'Aguardando dados lançados'}
           </div>
-          <div style={{ background: 'rgba(255,255,255,0.1)', borderRadius: '999px', height: '8px', overflow: 'hidden' }}>
+          <div style={{ background: 'rgba(255,255,255,0.1)', borderRadius: '999px', height: '5px', overflow: 'hidden' }}>
             <div style={{ width: `${(mesReferencia / 12) * 100}%`, height: '100%', background: '#C9A84C', borderRadius: '999px', transition: 'width 0.6s ease' }} />
           </div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '4px' }}>
-            <span style={{ fontSize: '10px', color: 'rgba(255,255,255,0.5)' }}>Jan</span>
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '3px' }}>
+            <span style={{ fontSize: '10px', color: 'rgba(255,255,255,0.4)' }}>Jan</span>
             <span style={{ fontSize: '10px', color: '#C9A84C', fontWeight: 600 }}>{Math.round((mesReferencia / 12) * 100)}% do ano</span>
-            <span style={{ fontSize: '10px', color: 'rgba(255,255,255,0.5)' }}>Dez</span>
+            <span style={{ fontSize: '10px', color: 'rgba(255,255,255,0.4)' }}>Dez</span>
           </div>
         </div>
-        <div style={{ background: 'rgba(201,168,76,0.15)', border: '1.5px solid #C9A84C', borderRadius: '12px', padding: '10px 20px', textAlign: 'center' }}>
-          <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.6)', letterSpacing: '0.08em', textTransform: 'uppercase' }}>Exercício</div>
-          <div style={{ fontSize: '26px', fontWeight: 800, color: '#C9A84C', lineHeight: 1.1 }}>{anoAtual}</div>
+        <div style={{ background: 'rgba(201,168,76,0.15)', border: '1.5px solid #C9A84C', borderRadius: '10px', padding: '6px 16px', textAlign: 'center' }}>
+          <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.5)', letterSpacing: '0.08em', textTransform: 'uppercase' }}>Exercício</div>
+          <div style={{ fontSize: '20px', fontWeight: 800, color: '#C9A84C', lineHeight: 1.1 }}>{anoAtual}</div>
         </div>
       </div>
 
