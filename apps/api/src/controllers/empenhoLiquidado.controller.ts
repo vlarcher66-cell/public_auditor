@@ -140,28 +140,20 @@ export async function getMatrizEmpenhos(req: Request, res: Response): Promise<vo
   });
 }
 
-// ── Resumo: total a pagar por entidade no último período ──────────────────────
+// ── Resumo: total a pagar acumulado do ano ────────────────────────────────────
 export async function getResumoAPagar(req: Request, res: Response): Promise<void> {
   const user = (req as any).user;
-
-  // Último período que ainda tem empenhos a pagar
-  const last = await db('fact_empenho_liquidado as f')
-    .modify((q: any) => applyRBAC(q, user))
-    .whereNull('f.dt_pagamento')
-    .max('f.periodo_ref as ultimo')
-    .first();
-
-  const ultimoPeriodo = last?.ultimo;
-  if (!ultimoPeriodo) {
-    res.json({ ultimo_periodo: null, total_a_pagar: 0, por_entidade: [] });
-    return;
-  }
+  const ano = new Date().getFullYear();
+  const dataInicio = `${ano}-01-01`;
+  const dataFim = new Date().toISOString().slice(0, 10);
 
   const rows = await db('fact_empenho_liquidado as f')
     .join('dim_entidade as e', 'f.fk_entidade', 'e.id')
     .modify((q: any) => applyRBAC(q, user))
-    .where('f.periodo_ref', ultimoPeriodo)
     .whereNull('f.dt_pagamento')
+    .whereNotNull('f.dt_liquidacao')
+    .whereRaw('f.dt_liquidacao::date >= ?', [dataInicio])
+    .whereRaw('f.dt_liquidacao::date <= ?', [dataFim])
     .select('e.id as entidade_id', 'e.nome as entidade_nome')
     .sum('f.valor as total')
     .groupBy('e.id', 'e.nome')
@@ -170,18 +162,20 @@ export async function getResumoAPagar(req: Request, res: Response): Promise<void
   const total = rows.reduce((a: number, r: any) => a + Number(r.total), 0);
 
   res.json({
-    ultimo_periodo: ultimoPeriodo,
+    ultimo_periodo: `${ano}-01 a ${dataFim.slice(0, 7)}`,
     total_a_pagar: total,
     por_entidade: rows.map((r: any) => ({ ...r, total: Number(r.total) })),
   });
 }
 
-// ── Listagem detalhada de empenhos a pagar ────────────────────────────────────
+// ── Listagem detalhada de empenhos a pagar (acumulado do ano) ────────────────
 export async function getEmpenhosPendentes(req: Request, res: Response): Promise<void> {
   const user = (req as any).user;
-  const periodo = req.query.periodo as string | undefined;
   const fk_entidade = req.query.fk_entidade ? parseInt(req.query.fk_entidade as string) : null;
-  const fk_grupo = req.query.fk_grupo ? parseInt(req.query.fk_grupo as string) : null;
+  const fk_grupo    = req.query.fk_grupo    ? parseInt(req.query.fk_grupo    as string) : null;
+  const ano = new Date().getFullYear();
+  const dataInicio = `${ano}-01-01`;
+  const dataFim = new Date().toISOString().slice(0, 10);
 
   const q = db('fact_empenho_liquidado as f')
     .leftJoin('dim_credor as c',           'f.fk_credor',         'c.id')
@@ -190,6 +184,9 @@ export async function getEmpenhosPendentes(req: Request, res: Response): Promise
     .joinRaw('LEFT JOIN dim_subgrupo_despesa as s ON s.id = COALESCE(c.fk_subgrupo, cap.fk_subgrupo)')
     .leftJoin('dim_entidade as e',          'f.fk_entidade', 'e.id')
     .whereNull('f.dt_pagamento')
+    .whereNotNull('f.dt_liquidacao')
+    .whereRaw('f.dt_liquidacao::date >= ?', [dataInicio])
+    .whereRaw('f.dt_liquidacao::date <= ?', [dataFim])
     .select(
       'f.id', 'f.dt_liquidacao', 'f.num_empenho', 'f.credor_nome',
       'f.historico', 'f.tipo_empenho', 'f.dt_empenho', 'f.valor',
@@ -200,7 +197,6 @@ export async function getEmpenhosPendentes(req: Request, res: Response): Promise
     .orderBy('f.valor', 'desc');
 
   applyRBAC(q, user);
-  if (periodo)     q.where('f.periodo_ref', periodo);
   if (fk_entidade) q.where('f.fk_entidade', fk_entidade);
   if (fk_grupo)    q.where('g.id', fk_grupo);
 
@@ -301,24 +297,22 @@ export async function getListagem(req: Request, res: Response): Promise<void> {
   });
 }
 
-// ── Credores com maior saldo a pagar (todos, com qtd empenhos e % sobre total) ─
+// ── Credores com maior saldo a pagar — acumulado do ano ──────────────────────
 export async function getTopCredores(req: Request, res: Response): Promise<void> {
   const user = (req as any).user;
-  const periodo = req.query.periodo as string | undefined;
-
-  const last = await db('fact_empenho_liquidado as f')
-    .modify((q: any) => applyRBAC(q, user))
-    .max('f.periodo_ref as ultimo').first();
-  const ultimoPeriodo = periodo || last?.ultimo;
-  if (!ultimoPeriodo) { res.json({ rows: [], total_geral: 0 }); return; }
+  const ano = new Date().getFullYear();
+  const dataInicio = `${ano}-01-01`;
+  const dataFim = new Date().toISOString().slice(0, 10);
 
   const rows = await db('fact_empenho_liquidado as f')
     .leftJoin('dim_credor as c',           'f.fk_credor',         'c.id')
     .leftJoin('dim_credor_a_pagar as cap',  'f.fk_credor_a_pagar', 'cap.id')
     .joinRaw('LEFT JOIN dim_grupo_despesa as g ON g.id = COALESCE(c.fk_grupo, cap.fk_grupo)')
     .modify((q: any) => applyRBAC(q, user))
-    .where('f.periodo_ref', ultimoPeriodo)
     .whereNull('f.dt_pagamento')
+    .whereNotNull('f.dt_liquidacao')
+    .whereRaw('f.dt_liquidacao::date >= ?', [dataInicio])
+    .whereRaw('f.dt_liquidacao::date <= ?', [dataFim])
     .select(
       'f.credor_nome',
       db.raw("COALESCE(g.nome, 'Sem Grupo') as grupo_nome"),
@@ -342,21 +336,20 @@ export async function getTopCredores(req: Request, res: Response): Promise<void>
   });
 }
 
-// ── Aging: distribuição por faixa de tempo em aberto ─────────────────────────
+// ── Aging: distribuição por faixa de tempo — acumulado do ano ────────────────
 export async function getAging(req: Request, res: Response): Promise<void> {
   const user = (req as any).user;
-
-  const last = await db('fact_empenho_liquidado as f')
-    .modify((q: any) => applyRBAC(q, user))
-    .max('f.periodo_ref as ultimo').first();
-  const ultimoPeriodo = last?.ultimo;
-  if (!ultimoPeriodo) { res.json({ faixas: [] }); return; }
+  const ano = new Date().getFullYear();
+  const dataInicio = `${ano}-01-01`;
+  const dataFim = new Date().toISOString().slice(0, 10);
 
   const rows = await db('fact_empenho_liquidado as f')
     .modify((q: any) => applyRBAC(q, user))
-    .where('f.periodo_ref', ultimoPeriodo)
     .whereNull('f.dt_pagamento')
     .whereNotNull('f.dt_empenho')
+    .whereNotNull('f.dt_liquidacao')
+    .whereRaw('f.dt_liquidacao::date >= ?', [dataInicio])
+    .whereRaw('f.dt_liquidacao::date <= ?', [dataFim])
     .select(
       db.raw("(CURRENT_DATE - f.dt_empenho::date) as dias"),
       'f.valor',
@@ -379,7 +372,7 @@ export async function getAging(req: Request, res: Response): Promise<void> {
 
   const maisAntigo = rows.length > 0 ? Math.max(...rows.map((r: any) => Number(r.dias))) : 0;
 
-  res.json({ faixas, mais_antigo_dias: maisAntigo, ultimo_periodo: ultimoPeriodo });
+  res.json({ faixas, mais_antigo_dias: maisAntigo, ultimo_periodo: `${ano}-01 a ${dataFim.slice(0, 7)}` });
 }
 
 // ── Evolução mensal do saldo a pagar ─────────────────────────────────────────

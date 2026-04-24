@@ -5,8 +5,8 @@ import { useQuery } from '@tanstack/react-query';
 import { useSession } from 'next-auth/react';
 import {
   AlertTriangle, Clock, TrendingDown, CalendarClock, ChevronDown, ChevronRight,
-  Search, X, Building2, Users, RefreshCw, CreditCard, Activity, Filter,
-  CheckCircle2, XCircle, BarChart3, Banknote,
+  Search, X, Building2, Users, RefreshCw, CreditCard, Activity,
+  CheckCircle2, BarChart3, Banknote,
 } from 'lucide-react';
 import TopBar from '@/components/dashboard/TopBar';
 import { apiRequest } from '@/lib/api';
@@ -354,17 +354,16 @@ function MatrizContasAPagar({ matriz, onAnoChange }: { matriz: any; onAnoChange?
 }
 
 // ─── Tabela de empenhos pendentes ─────────────────────────────────────────────
-function TabelaPendentes({ token, periodo, entidade }: {
-  token: string | undefined; periodo: string | undefined; entidade: number | null;
+function TabelaPendentes({ token, entidade }: {
+  token: string | undefined; entidade: number | null;
 }) {
   const [busca, setBusca] = useState('');
   const [expanded, setExpanded] = useState(false);
 
   const { data: rows = [] as any[], isLoading } = useQuery<any[]>({
-    queryKey: ['empenhos-pendentes', token, periodo, entidade],
+    queryKey: ['empenhos-pendentes', token, entidade],
     queryFn: () => {
       const p = new URLSearchParams();
-      if (periodo)  p.set('periodo', periodo);
       if (entidade) p.set('fk_entidade', String(entidade));
       return apiRequest(`/empenhos-liquidados/pendentes?${p}`, { token });
     },
@@ -489,17 +488,10 @@ export default function ContasAPagarPage() {
   const { data: session } = useSession();
   const token = (session as any)?.accessToken as string | undefined;
 
-  const [periodoFiltro, setPeriodoFiltro] = useState('');
   const [entidadeFiltro, setEntidadeFiltro] = useState<number | null>(null);
   const [anoMatriz, setAnoMatriz] = useState<string>(String(new Date().getFullYear()));
 
   // ── Queries ────────────────────────────────────────────────────────────────
-  const { data: periodos = [] } = useQuery<string[]>({
-    queryKey: ['empenhos-periodos', token],
-    queryFn: () => apiRequest('/empenhos-liquidados/periodos', { token }),
-    enabled: !!token,
-  });
-
   const { data: resumo, isLoading: loadingResumo } = useQuery<any>({
     queryKey: ['empenhos-resumo', token],
     queryFn: () => apiRequest('/empenhos-liquidados/resumo', { token }),
@@ -519,12 +511,8 @@ export default function ContasAPagarPage() {
   });
 
   const { data: topCredoresData } = useQuery<any>({
-    queryKey: ['empenhos-top-credores', token, periodoFiltro],
-    queryFn: () => {
-      const p = new URLSearchParams();
-      if (periodoFiltro) p.set('periodo', periodoFiltro);
-      return apiRequest(`/empenhos-liquidados/top-credores?${p}`, { token });
-    },
+    queryKey: ['empenhos-top-credores', token],
+    queryFn: () => apiRequest('/empenhos-liquidados/top-credores', { token }),
     enabled: !!token,
   });
 
@@ -536,8 +524,7 @@ export default function ContasAPagarPage() {
   });
 
   // ── Dados derivados ────────────────────────────────────────────────────────
-  const ultimoPeriodo = resumo?.ultimo_periodo ?? periodos[periodos.length - 1] ?? '';
-  const periodoAtivo = periodoFiltro || ultimoPeriodo;
+  const ultimoPeriodo = resumo?.ultimo_periodo ?? '';
   const entidades: any[] = resumo?.por_entidade ?? [];
 
   const agingData = (aging?.faixas ?? []).map((f: any) => ({ ...f, total: Number(f.total) }));
@@ -584,67 +571,29 @@ export default function ContasAPagarPage() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', background: '#f0f4f8' }}>
-      <TopBar title="Contas a Pagar" subtitle="Empenhos liquidados pendentes de pagamento" />
+      <TopBar title="Contas a Pagar" subtitle={`Empenhos liquidados pendentes de pagamento — acumulado ${new Date().getFullYear()}`} />
 
       <div className="p-3 md:p-6" style={{ maxWidth: '1600px', margin: '0 auto', width: '100%', display: 'flex', flexDirection: 'column', gap: '20px' }}>
 
-        {/* ── Filtros de período ─────────────────────────────────────────────── */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <Filter size={13} style={{ color: '#94a3b8' }} />
-            <span style={{ fontSize: '11px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Período</span>
-          </div>
-          <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-            <button
-              onClick={() => setPeriodoFiltro('')}
-              style={{
-                padding: '7px 14px', borderRadius: '9px', cursor: 'pointer', fontSize: '12px', fontWeight: 700, transition: 'all 0.15s',
-                background: !periodoFiltro ? 'linear-gradient(135deg, #0F2A4E, #1e4d95)' : '#fff',
-                color: !periodoFiltro ? '#fff' : '#64748b',
-                boxShadow: !periodoFiltro ? '0 3px 10px rgba(15,42,78,0.25)' : '0 1px 3px rgba(0,0,0,0.08)',
-                border: !periodoFiltro ? 'none' : '1px solid #e2e8f0',
-              } as React.CSSProperties}
+        {/* ── Filtro de entidade (quando houver mais de uma) ─────────────────── */}
+        {entidades.length > 1 && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+            <Building2 size={13} style={{ color: '#94a3b8' }} />
+            <select
+              value={entidadeFiltro ?? ''}
+              onChange={e => setEntidadeFiltro(e.target.value ? Number(e.target.value) : null)}
+              style={{ fontSize: '12px', fontWeight: 600, border: '1px solid #e2e8f0', background: '#fff', borderRadius: '9px', padding: '7px 12px', color: '#334155', outline: 'none', cursor: 'pointer' }}
             >
-              Último
-            </button>
-            {periodos.slice().reverse().slice(0, 8).map(p => (
-              <button
-                key={p}
-                onClick={() => setPeriodoFiltro(periodoFiltro === p ? '' : p)}
-                style={{
-                  padding: '7px 14px', borderRadius: '9px', cursor: 'pointer', fontSize: '12px', fontWeight: 700, transition: 'all 0.15s',
-                  background: periodoFiltro === p ? 'linear-gradient(135deg, #0F2A4E, #1e4d95)' : '#fff',
-                  color: periodoFiltro === p ? '#fff' : '#64748b',
-                  boxShadow: periodoFiltro === p ? '0 3px 10px rgba(15,42,78,0.25)' : '0 1px 3px rgba(0,0,0,0.08)',
-                  border: periodoFiltro === p ? 'none' : '1px solid #e2e8f0',
-                } as React.CSSProperties}
-              >
-                {p}
-              </button>
-            ))}
+              <option value="">Todas as entidades</option>
+              {entidades.map((e: any) => (
+                <option key={e.entidade_id} value={e.entidade_id}>{e.entidade_nome}</option>
+              ))}
+            </select>
+            <span style={{ marginLeft: 'auto', fontSize: '11px', color: '#94a3b8' }}>
+              Acumulado: <strong style={{ color: '#475569' }}>{ultimoPeriodo || '—'}</strong>
+            </span>
           </div>
-
-          {entidades.length > 1 && (
-            <>
-              <span style={{ color: '#e2e8f0', fontSize: '18px', margin: '0 4px' }}>|</span>
-              <Building2 size={13} style={{ color: '#94a3b8' }} />
-              <select
-                value={entidadeFiltro ?? ''}
-                onChange={e => setEntidadeFiltro(e.target.value ? Number(e.target.value) : null)}
-                style={{ fontSize: '12px', fontWeight: 600, border: '1px solid #e2e8f0', background: '#fff', borderRadius: '9px', padding: '7px 12px', color: '#334155', outline: 'none', cursor: 'pointer' }}
-              >
-                <option value="">Todas as entidades</option>
-                {entidades.map((e: any) => (
-                  <option key={e.entidade_id} value={e.entidade_id}>{e.entidade_nome}</option>
-                ))}
-              </select>
-            </>
-          )}
-
-          <span style={{ marginLeft: 'auto', fontSize: '11px', color: '#94a3b8' }}>
-            Referência: <strong style={{ color: '#475569' }}>{ultimoPeriodo || '—'}</strong>
-          </span>
-        </div>
+        )}
 
         {/* ── KPIs ──────────────────────────────────────────────────────────── */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px' }}>
@@ -868,7 +817,7 @@ export default function ContasAPagarPage() {
         </div>
 
         {/* ── Tabela detalhada ──────────────────────────────────────────────── */}
-        <TabelaPendentes token={token} periodo={periodoAtivo || undefined} entidade={entidadeFiltro} />
+        <TabelaPendentes token={token} entidade={entidadeFiltro} />
 
       </div>
 
