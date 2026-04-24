@@ -59,7 +59,18 @@ export async function getRelatorioQuadrimestral(req: Request, res: Response): Pr
       .groupBy('r.mes')
   );
 
-  // ── 3. Despesas pagas do Fundo de Saúde ─────────────────────────────────────
+  // ── 3. Receitas do Fundo de Saúde no quadrimestre (para KPI total receitas) ──
+  const fundoReceitaRows: any[] = await applyRBAC(
+    db('fact_receita as r')
+      .join('dim_entidade as e', 'r.fk_entidade', 'e.id')
+      .where('r.ano', ano)
+      .whereIn('r.mes', meses)
+      .where('e.tipo', 'FUNDO')
+      .sum('r.valor as total')
+  );
+  const totalReceitas = Number(fundoReceitaRows[0]?.total ?? 0);
+
+  // ── 4. Despesas pagas do Fundo de Saúde ─────────────────────────────────────
   const despesaRows: any[] = await applyRBAC(
     db('fact_ordem_pagamento as r')
       .join('dim_entidade as e', 'r.fk_entidade', 'e.id')
@@ -159,7 +170,6 @@ export async function getRelatorioQuadrimestral(req: Request, res: Response): Pr
     total: Number(saudeReceitaRows.find(r => Number(r.mes) === mes)?.total ?? 0),
   }));
 
-  const totalReceitas = receitaPorMes.reduce((s, m) => s + m.total, 0);
   const totalDespesas = despesaPorMes.reduce((s, m) => s + m.total, 0);
 
   res.json({

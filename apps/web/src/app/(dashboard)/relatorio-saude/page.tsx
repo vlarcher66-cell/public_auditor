@@ -292,7 +292,7 @@ export default function RelatorioSaudePage() {
                 icon={<TrendingUp size={18} />}
                 label="Total Receitas"
                 value={`R$ ${fmt(data.totalReceitas)}`}
-                sub="Repasse ao Fundo de Saúde"
+                sub="Fundo Municipal de Saúde"
                 accent="#1e4d95"
               />
               <KpiCard
