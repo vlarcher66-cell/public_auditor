@@ -263,6 +263,11 @@ export default function DashboardGeralPage() {
     };
   }).filter(d => d.receita > 0 || d.despesaPaga > 0);
 
+  // Último mês fechado = último mês com despesa paga > 0
+  const ultimoMesFechado = (despesa?.porMes ?? [])
+    .filter((m: any) => Number(m.total) > 0)
+    .reduce((max: number, m: any) => Math.max(max, Number(m.mes)), 0);
+
   // Metas com executado cruzado
   const metasComExec = metas.slice(0, 5).map(m => {
     const ex = exec.find(e => e.subgrupo_id === m.fk_subgrupo);
@@ -341,7 +346,7 @@ export default function DashboardGeralPage() {
               ))}
             </div>
             {/* Divisor */}
-            <div className="w-px h-5 bg-white/20 mx-4" />
+            <div className="w-px h-5 bg-white/20 mx-6" />
             {/* Mês */}
             <span className="text-[10px] font-bold text-blue-300 uppercase tracking-widest whitespace-nowrap mr-2">Mês</span>
             <div className="flex gap-1 flex-wrap">
@@ -358,16 +363,26 @@ export default function DashboardGeralPage() {
               {MESES.map((m, i) => {
                 const mesNum = i + 1;
                 const ativo = mesSelecionado === mesNum;
+                const fechado = ultimoMesFechado > 0 && mesNum <= ultimoMesFechado;
+                const futuro  = ultimoMesFechado > 0 && mesNum > ultimoMesFechado;
                 return (
                   <button key={m}
-                    onClick={() => handleMes(mesNum)}
-                    className={`px-3 py-1 rounded-md text-[11px] font-semibold transition-all ${
+                    onClick={() => !futuro && handleMes(mesNum)}
+                    title={fechado ? 'Mês fechado' : futuro ? 'Sem dados' : undefined}
+                    className={`relative px-3 py-1 rounded-md text-[11px] font-semibold transition-all ${
                       ativo
                         ? 'bg-white text-[#0F2A4E] shadow-sm font-bold'
-                        : 'text-white/60 hover:text-white hover:bg-white/10'
+                        : fechado
+                          ? 'text-white/90 hover:text-white hover:bg-white/10 cursor-pointer'
+                          : futuro
+                            ? 'text-white/20 cursor-not-allowed'
+                            : 'text-white/60 hover:text-white hover:bg-white/10'
                     }`}
                   >
                     {m}
+                    {fechado && !ativo && (
+                      <span className="absolute -top-1 -right-1 w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                    )}
                   </button>
                 );
               })}
