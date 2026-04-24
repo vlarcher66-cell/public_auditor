@@ -78,20 +78,6 @@ function hashReceita(row: RawReceita): string {
   return createHash('sha256').update(str).digest('hex');
 }
 
-function parsePeriodo(periodoRef: string): { ano: number; mes: number } {
-  const meses: Record<string, number> = {
-    janeiro: 1, fevereiro: 2, março: 3, marco: 3, abril: 4,
-    maio: 5, junho: 6, julho: 7, agosto: 8, setembro: 9,
-    outubro: 10, novembro: 11, dezembro: 12,
-  };
-  const m = periodoRef.match(/^(\w+)\/(\d{4})$/i);
-  if (!m) return { ano: new Date().getFullYear(), mes: new Date().getMonth() + 1 };
-  return {
-    mes: meses[m[1].toLowerCase()] ?? 1,
-    ano: parseInt(m[2]),
-  };
-}
-
 export async function loadReceitaToMySQL(
   db: Knex,
   rows: RawReceita[],
@@ -107,8 +93,6 @@ export async function loadReceitaToMySQL(
   const entidade = await db('dim_entidade').where('id', entidadeId).first();
   if (!entidade) throw new Error(`Entidade id=${entidadeId} não encontrada`);
   const fkMunicipio = entidade.fk_municipio ?? null;
-
-  const { ano, mes } = parsePeriodo(periodoReferencia);
 
   // Hashes existentes para dedup
   const existingHashes = new Set<string>(
@@ -134,6 +118,9 @@ export async function loadReceitaToMySQL(
         continue;
       }
 
+      // mes e ano derivados da data real do lançamento, não do período informado pelo usuário
+      const [anoLinha, mesLinha] = dataReceita.split('-').map(Number);
+
       // Usa fonte já extraída pelo Excel extractor, ou detecta pelo código/descrição
       const fonte = row.fonte_recurso_raw || extrairFonte(row.descricao, row.codigo_rubrica);
       const tipo = determinarTipo(row.codigo_rubrica, row.descricao);
@@ -150,8 +137,8 @@ export async function loadReceitaToMySQL(
           tipo_receita: tipo,
           fonte_recurso: fonte || null,
           periodo_referencia: periodoReferencia,
-          ano,
-          mes,
+          ano: anoLinha,
+          mes: mesLinha,
           fornecedor_nome: row.fornecedor_nome || null,
           fornecedor_doc: row.fornecedor_doc || null,
           fk_entidade: entidadeId,
