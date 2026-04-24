@@ -74,25 +74,28 @@ const fmtM = (v: number) =>
 // ─── Matriz Contas a Pagar ─────────────────────────────────────────────────────
 const MESES_NOMES = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
 
-function MatrizContasAPagar({ matriz }: { matriz: any }) {
+function MatrizContasAPagar({ matriz, onAnoChange }: { matriz: any; onAnoChange?: (ano: string) => void }) {
   const [showAll, setShowAll] = React.useState(false);
 
-  // Detecta anos disponíveis nos períodos
-  const periodosData: string[] = matriz?.periodos ?? [];
-  const anos = [...new Set(periodosData.map((p: string) => p.slice(0, 4)))].sort();
-  const [anoSel, setAnoSel] = React.useState<string>(() => anos[anos.length - 1] ?? '');
+  // Anos vindos da API
+  const anos: string[] = matriz?.anos ?? [];
+  const anoAtual = String(new Date().getFullYear());
+  const [anoSel, setAnoSel] = React.useState<string>(() => matriz?.ano_selecionado ?? anoAtual);
 
-  // Atualiza anoSel quando os dados chegam
   React.useEffect(() => {
-    const anosNovos = [...new Set(periodosData.map((p: string) => p.slice(0, 4)))].sort();
-    if (anosNovos.length > 0 && !anosNovos.includes(anoSel)) {
-      setAnoSel(anosNovos[anosNovos.length - 1]);
+    if (matriz?.ano_selecionado && matriz.ano_selecionado !== anoSel) {
+      setAnoSel(matriz.ano_selecionado);
     }
-  }, [periodosData.join(',')]); // eslint-disable-line
+  }, [matriz?.ano_selecionado]); // eslint-disable-line
 
-  if (!matriz?.grupos?.length || !periodosData.length) return null;
+  function handleAnoClick(a: string) {
+    setAnoSel(a);
+    onAnoChange?.(a);
+  }
 
-  const grupos: any[] = matriz.grupos;
+  if (!matriz?.grupos) return null;
+
+  const grupos: any[] = matriz.grupos ?? [];
 
   // 12 meses fixos do ano selecionado
   const meses12 = MESES_NOMES.map((_, i) => {
@@ -108,13 +111,13 @@ function MatrizContasAPagar({ matriz }: { matriz: any }) {
 
   const visiveis = showAll ? gruposOrdenados : gruposOrdenados.slice(0, 12);
 
-  // Total liquidado por mês (linhas dos grupos — agora inclui pago + a pagar)
+  // Total a pagar por mês (soma das linhas dos grupos — só empenhos não pagos)
   const totalPorMes: Record<string, number> = {};
   for (const p of meses12) {
     totalPorMes[p] = grupos.reduce((s, g) => s + (g.totais[p] ?? 0), 0);
   }
   const totalGeral = Object.values(totalPorMes).reduce((s, v) => s + v, 0);
-  const mesesComDados = meses12.filter(p => totalPorMes[p] > 0).length;
+  const mesesComDados = meses12.filter(p => (totalLiquidadoPorPeriodo[p] ?? 0) > 0).length;
 
   // Total pago e liquidado vindos da API
   const totalPagoPorPeriodo: Record<string, number> = matriz?.total_pago_por_periodo ?? {};
@@ -154,14 +157,14 @@ function MatrizContasAPagar({ matriz }: { matriz: any }) {
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           <CreditCard size={15} color="rgba(255,255,255,0.7)" />
           <span style={{ fontSize: '13px', fontWeight: 700, color: '#fff' }}>Matriz do Contas a Pagar</span>
-          <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.45)', marginLeft: '4px' }}>Saldo por grupo × mês</span>
+          <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.45)', marginLeft: '4px' }}>Saldo a pagar por grupo × mês de liquidação</span>
         </div>
         {/* Seletor de ano */}
         <div style={{ display: 'flex', gap: '6px' }}>
           {anos.map(a => (
             <button
               key={a}
-              onClick={() => setAnoSel(a)}
+              onClick={() => handleAnoClick(a)}
               style={{
                 padding: '4px 12px', borderRadius: '20px', fontSize: '12px', fontWeight: 700, cursor: 'pointer', border: 'none', transition: 'all 0.15s',
                 background: anoSel === a ? '#C9A84C' : 'rgba(255,255,255,0.12)',
@@ -199,16 +202,19 @@ function MatrizContasAPagar({ matriz }: { matriz: any }) {
               <td style={{ padding: '10px 14px', color: '#1e3a5f', fontWeight: 700, fontSize: '11px', letterSpacing: '0.03em', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                 TOTAL LIQUIDADO
               </td>
-              {meses12.map(p => (
-                <td key={p} style={{ padding: '10px 6px', textAlign: 'right', color: (totalPorMes[p] ?? 0) > 0 ? '#1e3a5f' : '#bfdbfe', fontWeight: 700, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
-                  {(totalPorMes[p] ?? 0) > 0 ? fmtM(totalPorMes[p]) : '—'}
-                </td>
-              ))}
+              {meses12.map(p => {
+                const v = totalLiquidadoPorPeriodo[p] ?? 0;
+                return (
+                  <td key={p} style={{ padding: '10px 6px', textAlign: 'right', color: v > 0 ? '#1e3a5f' : '#bfdbfe', fontWeight: 700, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
+                    {v > 0 ? fmtM(v) : '—'}
+                  </td>
+                );
+              })}
               <td style={{ padding: '10px 8px', textAlign: 'right', color: '#92400e', fontWeight: 700, fontVariantNumeric: 'tabular-nums', borderLeft: '1px solid #93c5fd', whiteSpace: 'nowrap' }}>
-                {fmtM(totalGeral)}
+                {fmtM(totalLiquidadoGeral)}
               </td>
               <td style={{ padding: '10px 8px', textAlign: 'right', color: '#92400e', fontWeight: 700, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
-                {mesesComDados > 0 ? fmtM(totalGeral / mesesComDados) : '—'}
+                {mesesComDados > 0 ? fmtM(totalLiquidadoGeral / mesesComDados) : '—'}
               </td>
             </tr>
 
@@ -485,6 +491,7 @@ export default function ContasAPagarPage() {
 
   const [periodoFiltro, setPeriodoFiltro] = useState('');
   const [entidadeFiltro, setEntidadeFiltro] = useState<number | null>(null);
+  const [anoMatriz, setAnoMatriz] = useState<string>(String(new Date().getFullYear()));
 
   // ── Queries ────────────────────────────────────────────────────────────────
   const { data: periodos = [] } = useQuery<string[]>({
@@ -522,9 +529,10 @@ export default function ContasAPagarPage() {
   });
 
   const { data: matriz } = useQuery<any>({
-    queryKey: ['empenhos-matriz', token],
-    queryFn: () => apiRequest('/empenhos-liquidados/matriz', { token }),
+    queryKey: ['empenhos-matriz', token, anoMatriz],
+    queryFn: () => apiRequest(`/empenhos-liquidados/matriz?ano=${anoMatriz}`, { token }),
     enabled: !!token,
+    staleTime: 1000 * 60 * 5,
   });
 
   // ── Dados derivados ────────────────────────────────────────────────────────
@@ -693,8 +701,8 @@ export default function ContasAPagarPage() {
           </div>
         </div>
 
-        {/* ── Matriz Contas a Pagar: Grupos × Períodos ──────────────────────── */}
-        <MatrizContasAPagar matriz={matriz} />
+        {/* ── Matriz Contas a Pagar: Grupos × mês de liquidação ────────────── */}
+        <MatrizContasAPagar matriz={matriz} onAnoChange={setAnoMatriz} />
 
         {/* ── Linha 2: Aging + Termômetro ───────────────────────────────────── */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>

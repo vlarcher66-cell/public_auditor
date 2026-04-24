@@ -7,65 +7,89 @@ function applyRBAC(q: any, user: any) {
   return q;
 }
 
-// ── Matriz de evolução: saldo a pagar por grupo/subgrupo × período ────────────
+// ── Matriz de contas a pagar: grupos × mês de liquidação (acumulado do ano) ───
+// Lógica: empenhos liquidados de 01/jan até hoje, agrupados pelo mês de dt_liquidacao.
+// Só aparecem nas linhas de grupo os que ainda não foram pagos (dt_pagamento IS NULL).
+// As linhas de rodapé (liquidado/pago/saldo) usam todos os empenhos do período.
 export async function getMatrizEmpenhos(req: Request, res: Response): Promise<void> {
   const user = (req as any).user;
 
-  // Todos os períodos disponíveis para este município
-  const q = db('fact_empenho_liquidado as f')
-    .select('f.periodo_ref')
-    .groupBy('f.periodo_ref')
-    .orderBy('f.periodo_ref', 'asc');
-  applyRBAC(q, user);
-  const periodos: string[] = (await q).map((r: any) => r.periodo_ref);
+  // Ano vigente e intervalo 01/jan → hoje
+  const hoje = new Date();
+  const ano = hoje.getFullYear();
+  const dataInicio = `${ano}-01-01`;
+  const dataFim = hoje.toISOString().slice(0, 10);
 
-  if (periodos.length === 0) {
-    res.json({ periodos: [], grupos: [], ultimo_periodo: null, total_a_pagar: 0 });
-    return;
-  }
+  // Anos com dados (para o seletor de ano no frontend)
+  const anosQ = db('fact_empenho_liquidado as f')
+    .modify((q: any) => applyRBAC(q, user))
+    .whereNotNull('f.dt_liquidacao')
+    .select(db.raw("TO_CHAR(f.dt_liquidacao, 'YYYY') as ano"))
+    .groupByRaw("TO_CHAR(f.dt_liquidacao, 'YYYY')")
+    .orderByRaw("TO_CHAR(f.dt_liquidacao, 'YYYY') asc");
+  const anosRows = await anosQ;
+  const anos: string[] = anosRows.map((r: any) => r.ano);
 
-  // Para cada período: total liquidado por grupo/subgrupo do credor (todos, pago + a pagar)
-  // Usa dim_credor OU dim_credor_a_pagar (COALESCE)
+  // Ano selecionado via query param (padrão = ano atual)
+  const anoSel: string = (req.query.ano as string) || String(ano);
+  const inicioSel = `${anoSel}-01-01`;
+  const fimSel = anoSel === String(ano) ? dataFim : `${anoSel}-12-31`;
+
+  // 12 períodos fixos do ano selecionado
+  const periodos = Array.from({ length: 12 }, (_, i) =>
+    `${anoSel}-${String(i + 1).padStart(2, '0')}`
+  );
+
+  // Linhas dos grupos: só empenhos A PAGAR (dt_pagamento IS NULL), agrupados por mês de dt_liquidacao
   const rows = await db('fact_empenho_liquidado as f')
     .leftJoin('dim_credor as c',          'f.fk_credor',         'c.id')
     .leftJoin('dim_credor_a_pagar as cap', 'f.fk_credor_a_pagar', 'cap.id')
     .joinRaw('LEFT JOIN dim_grupo_despesa as g ON g.id = COALESCE(c.fk_grupo, cap.fk_grupo)')
     .joinRaw('LEFT JOIN dim_subgrupo_despesa as s ON s.id = COALESCE(c.fk_subgrupo, cap.fk_subgrupo)')
     .modify((q: any) => applyRBAC(q, user))
+    .whereNull('f.dt_pagamento')
+    .whereNotNull('f.dt_liquidacao')
+    .whereRaw('f.dt_liquidacao::date >= ?', [inicioSel])
+    .whereRaw('f.dt_liquidacao::date <= ?', [fimSel])
     .select(
-      'f.periodo_ref',
+      db.raw("TO_CHAR(f.dt_liquidacao, 'YYYY-MM') as mes_liq"),
       db.raw('COALESCE(g.id, 0) as grupo_id'),
       db.raw("COALESCE(g.nome, 'Sem Grupo') as grupo_nome"),
       db.raw('COALESCE(s.id, 0) as subgrupo_id'),
       db.raw("COALESCE(s.nome, 'Sem Subgrupo') as subgrupo_nome"),
     )
     .sum('f.valor as total')
-    // sem filtro de dt_pagamento: a matriz mostra o total liquidado (pago + a pagar)
-    .groupBy('f.periodo_ref', 'g.id', 'g.nome', 's.id', 's.nome')
-    .orderBy('f.periodo_ref');
+    .groupByRaw("TO_CHAR(f.dt_liquidacao, 'YYYY-MM'), g.id, g.nome, s.id, s.nome")
+    .orderByRaw("TO_CHAR(f.dt_liquidacao, 'YYYY-MM')");
 
-  // Total pago por período (dt_pagamento IS NOT NULL)
+  // Total pago por mês de liquidação (dt_pagamento IS NOT NULL)
   const rowsPago = await db('fact_empenho_liquidado as f')
     .modify((q: any) => applyRBAC(q, user))
     .whereNotNull('f.dt_pagamento')
-    .select('f.periodo_ref')
+    .whereNotNull('f.dt_liquidacao')
+    .whereRaw('f.dt_liquidacao::date >= ?', [inicioSel])
+    .whereRaw('f.dt_liquidacao::date <= ?', [fimSel])
+    .select(db.raw("TO_CHAR(f.dt_liquidacao, 'YYYY-MM') as mes_liq"))
     .sum('f.valor as total')
-    .groupBy('f.periodo_ref');
+    .groupByRaw("TO_CHAR(f.dt_liquidacao, 'YYYY-MM')");
 
-  // Total liquidado por período (pago + a pagar)
+  // Total liquidado por mês (todos — pago + a pagar)
   const rowsLiquidado = await db('fact_empenho_liquidado as f')
     .modify((q: any) => applyRBAC(q, user))
-    .select('f.periodo_ref')
+    .whereNotNull('f.dt_liquidacao')
+    .whereRaw('f.dt_liquidacao::date >= ?', [inicioSel])
+    .whereRaw('f.dt_liquidacao::date <= ?', [fimSel])
+    .select(db.raw("TO_CHAR(f.dt_liquidacao, 'YYYY-MM') as mes_liq"))
     .sum('f.valor as total')
-    .groupBy('f.periodo_ref');
+    .groupByRaw("TO_CHAR(f.dt_liquidacao, 'YYYY-MM')");
 
   const totalPagoPorPeriodo: Record<string, number> = {};
-  for (const r of rowsPago) totalPagoPorPeriodo[r.periodo_ref] = Number(r.total);
+  for (const r of rowsPago) totalPagoPorPeriodo[r.mes_liq] = Number(r.total);
 
   const totalLiquidadoPorPeriodo: Record<string, number> = {};
-  for (const r of rowsLiquidado) totalLiquidadoPorPeriodo[r.periodo_ref] = Number(r.total);
+  for (const r of rowsLiquidado) totalLiquidadoPorPeriodo[r.mes_liq] = Number(r.total);
 
-  // Monta estrutura: grupo → subgrupo → período → valor
+  // Monta estrutura: grupo → subgrupo → mes_liq → valor (só a pagar)
   const grupoMap: Record<string, {
     grupo_id: number; grupo_nome: string;
     subgrupos: Record<string, {
@@ -81,30 +105,35 @@ export async function getMatrizEmpenhos(req: Request, res: Response): Promise<vo
     if (!grupoMap[gk].subgrupos[sk]) {
       grupoMap[gk].subgrupos[sk] = { subgrupo_id: r.subgrupo_id, subgrupo_nome: r.subgrupo_nome, valores: {} };
     }
-    grupoMap[gk].subgrupos[sk].valores[r.periodo_ref] = Number(r.total);
+    grupoMap[gk].subgrupos[sk].valores[r.mes_liq] = Number(r.total);
   }
 
-  const ultimoPeriodo = periodos[periodos.length - 1];
-
-  // Total a pagar no último período
+  // Total a pagar geral (soma de todos os grupos em todos os meses)
   const totalAPagar = Object.values(grupoMap).reduce((sum, g) =>
     sum + Object.values(g.subgrupos).reduce((s2, sub) =>
-      s2 + (sub.valores[ultimoPeriodo] ?? 0), 0), 0);
+      s2 + Object.values(sub.valores).reduce((s3, v) => s3 + v, 0), 0), 0);
+
+  const ultimoMesComDados = periodos.filter(p => totalLiquidadoPorPeriodo[p] > 0).slice(-1)[0] ?? periodos[new Date().getMonth()];
 
   const grupos = Object.values(grupoMap).map(g => ({
     ...g,
     subgrupos: Object.values(g.subgrupos),
-    // total por período para a linha de grupo
     totais: periodos.reduce((acc, p) => {
       acc[p] = Object.values(g.subgrupos).reduce((s, sub) => s + (sub.valores[p] ?? 0), 0);
       return acc;
     }, {} as Record<string, number>),
-  })).sort((a, b) => (b.totais[ultimoPeriodo] ?? 0) - (a.totais[ultimoPeriodo] ?? 0));
+  })).sort((a, b) => {
+    const totA = periodos.reduce((s, p) => s + (a.totais[p] ?? 0), 0);
+    const totB = periodos.reduce((s, p) => s + (b.totais[p] ?? 0), 0);
+    return totB - totA;
+  });
 
   res.json({
     periodos,
+    anos,
+    ano_selecionado: anoSel,
     grupos,
-    ultimo_periodo: ultimoPeriodo,
+    ultimo_periodo: ultimoMesComDados,
     total_a_pagar: totalAPagar,
     total_pago_por_periodo: totalPagoPorPeriodo,
     total_liquidado_por_periodo: totalLiquidadoPorPeriodo,
