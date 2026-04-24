@@ -4,18 +4,6 @@ import type { RawTransfBancaria } from '../extractors/transferenciaBancaria.extr
 
 const CHUNK_SIZE = 200;
 
-/** "Janeiro/2026" → { ano: 2026, mes: 1 } */
-function parsePeriodo(periodo: string): { ano: number; mes: number } {
-  const MESES: Record<string, number> = {
-    janeiro: 1, fevereiro: 2, março: 3, marco: 3, abril: 4,
-    maio: 5, junho: 6, julho: 7, agosto: 8,
-    setembro: 9, outubro: 10, novembro: 11, dezembro: 12,
-  };
-  const [mesStr, anoStr] = periodo.split('/');
-  const mes = MESES[(mesStr ?? '').toLowerCase().normalize('NFD').replace(/\p{Diacritic}/gu, '')] ?? 1;
-  const ano = parseInt(anoStr ?? '0') || new Date().getFullYear();
-  return { ano, mes };
-}
 
 /** "06/01/2026" → "2026-01-06" */
 function parseBrDate(raw: string): string {
@@ -60,8 +48,6 @@ export async function loadTransfBancariaToMySQL(
   if (!entidade) throw new Error(`Entidade ${entidadeId} não encontrada`);
   const fkMunicipio: number | null = entidade.fk_municipio ?? null;
 
-  const { ano, mes } = parsePeriodo(periodoReferencia);
-
   let rows_loaded  = 0;
   let rows_skipped = 0;
   let valor_total  = 0;
@@ -79,8 +65,12 @@ export async function loadTransfBancariaToMySQL(
       const hash = buildHash(r, entidadeId);
       if (existingSet.has(hash)) return null;
 
+      const dataTransf = parseBrDate(r.data_transf);
+      // mes e ano derivados da data real do lançamento
+      const [anoLinha, mesLinha] = dataTransf.split('-').map(Number);
+
       return {
-        data_transf:          parseBrDate(r.data_transf),
+        data_transf:          dataTransf,
         orgao_origem:         r.orgao_origem,
         conta_origem_codigo:  r.conta_origem_codigo || null,
         conta_origem_nome:    r.conta_origem_nome   || null,
@@ -95,8 +85,8 @@ export async function loadTransfBancariaToMySQL(
         historico:            r.historico             || null,
         tipo_lancamento:      r.tipo_lancamento       || null,
         periodo_referencia:   periodoReferencia,
-        ano,
-        mes,
+        ano:                  anoLinha,
+        mes:                  mesLinha,
         fk_entidade:          entidadeId,
         fk_municipio:         fkMunicipio,
         fk_import_job:        importJobId,

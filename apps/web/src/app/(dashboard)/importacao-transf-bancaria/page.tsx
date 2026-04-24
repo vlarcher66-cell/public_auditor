@@ -30,14 +30,29 @@ const statusIcon: Record<string, React.ReactNode> = {
   ERROR:       <XCircle size={14} className="text-red-500" />,
 };
 
-const PERIODOS = [
-  'Janeiro/2026','Fevereiro/2026','Março/2026','Abril/2026',
-  'Maio/2026','Junho/2026','Julho/2026','Agosto/2026',
-  'Setembro/2026','Outubro/2026','Novembro/2026','Dezembro/2026',
-  'Janeiro/2025','Fevereiro/2025','Março/2025','Abril/2025',
-  'Maio/2025','Junho/2025','Julho/2025','Agosto/2025',
-  'Setembro/2025','Outubro/2025','Novembro/2025','Dezembro/2025',
-];
+const MESES_PT = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+
+function periodoFromFilename(filename: string): string {
+  const lower = filename.toLowerCase();
+  for (let i = 0; i < MESES_PT.length; i++) {
+    if (lower.includes(MESES_PT[i].toLowerCase())) {
+      const yearMatch = filename.match(/20\d{2}/);
+      const year = yearMatch ? yearMatch[0] : String(new Date().getFullYear());
+      return `${MESES_PT[i]}/${year}`;
+    }
+  }
+  const numMatch = filename.match(/^(\d{2})\s*[-_]/);
+  if (numMatch) {
+    const m = parseInt(numMatch[1], 10);
+    if (m >= 1 && m <= 12) {
+      const yearMatch = filename.match(/20\d{2}/);
+      const year = yearMatch ? yearMatch[0] : String(new Date().getFullYear());
+      return `${MESES_PT[m - 1]}/${year}`;
+    }
+  }
+  const now = new Date();
+  return `${MESES_PT[now.getMonth()]}/${now.getFullYear()}`;
+}
 
 // ─── Modal de configuração ────────────────────────────────────────────────────
 
@@ -51,7 +66,7 @@ function ConfigModal({
 }) {
   const [municipioId, setMunicipioId] = useState('');
   const [entidadeId, setEntidadeId]   = useState('');
-  const [periodo, setPeriodo]         = useState('Janeiro/2026');
+  const periodo = periodoFromFilename(filename);
 
   const { data: municipios = [], isLoading: loadingMun } = useQuery<{ id: number; nome: string }[]>({
     queryKey: ['municipios-list'],
@@ -67,7 +82,7 @@ function ConfigModal({
 
   const entidadeSelecionada = entidades.find(e => String(e.id) === entidadeId);
 
-  const canConfirm = !!municipioId && !!entidadeId && !!periodo;
+  const canConfirm = !!municipioId && !!entidadeId;
 
   return (
     <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
@@ -143,19 +158,11 @@ function ConfigModal({
             <p className="text-xs text-gray-400 mt-1">Ex: Fundo Municipal de Saúde.</p>
           </div>
 
-          {/* Período */}
-          <div>
-            <label className="block text-xs font-medium text-gray-500 mb-1">
-              Período de Referência <span className="text-red-400">*</span>
-            </label>
-            <select
-              value={periodo}
-              onChange={e => setPeriodo(e.target.value)}
-              className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              {PERIODOS.map(p => <option key={p}>{p}</option>)}
-            </select>
-            <p className="text-xs text-gray-400 mt-1">Mês/ano de competência da listagem.</p>
+          {/* Período detectado automaticamente */}
+          <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-emerald-50 border border-emerald-100">
+            <span className="text-xs text-emerald-600 font-medium">Período detectado:</span>
+            <span className="text-xs font-bold text-emerald-700">{periodo}</span>
+            <span className="text-xs text-emerald-500 ml-1">— extraído das datas do arquivo</span>
           </div>
 
           {/* Sistema herdado da entidade */}
