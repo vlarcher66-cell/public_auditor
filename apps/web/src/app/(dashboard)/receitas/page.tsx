@@ -70,11 +70,18 @@ const TABS: { id: TabId; label: string; icon: React.ReactNode }[] = [
 // ─── Mapeamento de subgrupos ──────────────────────────────────────────────────
 
 const SUBGRUPO_MAP: Array<{ prefixo: string; desc: string }> = [
+  { prefixo: '1.1',             desc: 'Receita Tributária' },
   { prefixo: '1.3',             desc: 'Receita Patrimonial' },
   { prefixo: '1.6',             desc: 'Receita de Serviços' },
-  { prefixo: '1.1',             desc: 'Receita Tributária' },
-  { prefixo: '1.7.1.3.50',      desc: 'Transf. SUS — Manutenção (Bloco)' },
-  { prefixo: '1.7.1.3.51',      desc: 'Transf. SUS — Estruturação (Bloco)' },
+  // Blocos SUS — Manutenção: cada subfonte vira subgrupo próprio
+  { prefixo: '1.7.1.3.50.1',    desc: 'SUS — Atenção Primária (AB/APS)' },
+  { prefixo: '1.7.1.3.50.2',    desc: 'SUS — Atenção Especializada (MAC)' },
+  { prefixo: '1.7.1.3.50.3',    desc: 'SUS — Vigilância em Saúde' },
+  { prefixo: '1.7.1.3.50.4',    desc: 'SUS — Assistência Farmacêutica' },
+  { prefixo: '1.7.1.3.50.5',    desc: 'SUS — Gestão do SUS' },
+  { prefixo: '1.7.1.3.50.9',    desc: 'SUS — Bloco Unificado' },
+  { prefixo: '1.7.1.3.50',      desc: 'SUS — Manutenção (Bloco)' },
+  { prefixo: '1.7.1.3.51',      desc: 'SUS — Estruturação (Bloco)' },
   { prefixo: '1.7.1',           desc: 'Transferências da União' },
   { prefixo: '1.7.2',           desc: 'Transferências dos Estados — SUS' },
   { prefixo: '1.7',             desc: 'Transferências Correntes' },
@@ -105,6 +112,15 @@ function getSubgrupoDesc(k: string): string {
 }
 function getGrupoKey(cod: string): '1' | '2' {
   return cod.startsWith('1.') ? '1' : '2';
+}
+
+// Abrevia descrições longas de rubricas para a aba Analítica
+function abreviarDesc(desc: string): string {
+  return desc
+    .replace(/^Transferência[s]? de Recursos do SUS\s*[-–]\s*/i, 'Transf. Rec. SUS — ')
+    .replace(/^Transferência[s]? de Recursos do Bloco\s*[-–]\s*/i, 'Transf. Rec. Bloco — ')
+    .replace(/^Remuneração de Depósitos Bancários\s*[-–]\s*/i, 'Rem. Dep. Bancários — ')
+    .replace(/^Gestão Dupla Estadual/i, 'Gestão Dupla Estadual');
 }
 
 function agrupar(rows: DRERow[]): Grupo[] {
@@ -354,7 +370,7 @@ function TabelaDRE({
                               onMouseEnter={e => (e.currentTarget.style.background = '#f8faff')}
                               onMouseLeave={e => (e.currentTarget.style.background = '#fff')}
                             >
-                              <td style={{ padding: '8px 6px 8px 28px', color: '#475569', fontSize: '11px', overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis', maxWidth: 0 }} title={conta.desc}>{conta.desc}</td>
+                              <td style={{ padding: '8px 6px 8px 28px', color: '#475569', fontSize: '11px', overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis', maxWidth: 0 }} title={conta.desc}>{showFonte ? abreviarDesc(conta.desc) : conta.desc}</td>
                               {showFonte && (
                                 <td style={{ padding: '8px 6px', textAlign: 'center' }}>
                                   <span style={{ fontSize: '10px', fontWeight: 600, color: '#0F2A4E', background: '#e8effa', borderRadius: '6px', padding: '2px 6px' }}>{conta.fonte || '—'}</span>
