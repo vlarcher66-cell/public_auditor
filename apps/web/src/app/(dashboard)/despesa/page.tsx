@@ -1639,7 +1639,7 @@ function TabSintetica({
       {/* 2. KPI CARDS */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-3">
         {/* Card 1 — Total Bruto */}
-        <div style={{ background: '#fff', borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 1px 3px rgba(0,0,0,0.05)', padding: '14px 16px' }}>
+        <div style={{ background: '#fff', borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 1px 3px rgba(0,0,0,0.05)', padding: '10px 16px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
             <div style={{ background: 'rgba(15,42,78,0.08)', borderRadius: '8px', padding: '5px', display: 'inline-flex' }}>
               <DollarSign size={14} color="#0F2A4E" />
@@ -1662,7 +1662,7 @@ function TabSintetica({
         </div>
 
         {/* Card 2 — Total Retido */}
-        <div style={{ background: '#fff', borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 1px 3px rgba(0,0,0,0.05)', padding: '14px 16px' }}>
+        <div style={{ background: '#fff', borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 1px 3px rgba(0,0,0,0.05)', padding: '10px 16px' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <div style={{ background: 'rgba(220,38,38,0.08)', borderRadius: '8px', padding: '5px', display: 'inline-flex' }}>
@@ -1683,7 +1683,7 @@ function TabSintetica({
         </div>
 
         {/* Card 3 — Total Líquido */}
-        <div style={{ background: '#fff', borderRadius: '12px', border: '1px solid #e2e8f0', borderLeft: '3px solid #059669', boxShadow: '0 1px 3px rgba(0,0,0,0.05)', padding: '14px 16px' }}>
+        <div style={{ background: '#fff', borderRadius: '12px', border: '1px solid #e2e8f0', borderLeft: '3px solid #059669', boxShadow: '0 1px 3px rgba(0,0,0,0.05)', padding: '10px 16px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
             <div style={{ background: 'rgba(5,150,105,0.08)', borderRadius: '8px', padding: '5px', display: 'inline-flex' }}>
               <Banknote size={14} color="#059669" />
@@ -1697,7 +1697,7 @@ function TabSintetica({
         </div>
 
         {/* Card 4 — Ordens de Pagamento */}
-        <div style={{ background: '#fff', borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 1px 3px rgba(0,0,0,0.05)', padding: '14px 16px' }}>
+        <div style={{ background: '#fff', borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 1px 3px rgba(0,0,0,0.05)', padding: '10px 16px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
             <div style={{ background: 'rgba(201,168,76,0.12)', borderRadius: '8px', padding: '5px', display: 'inline-flex' }}>
               <FileCheck size={14} color="#a8832a" />
