@@ -152,7 +152,7 @@ export async function getResumoAPagar(req: Request, res: Response): Promise<void
     .whereNull('f.dt_pagamento')
     .whereNotNull('f.dt_liquidacao')
     .whereRaw('f.dt_liquidacao::date >= ?', [dataInicio])
-    .max(db.raw("TO_CHAR(f.dt_liquidacao, 'YYYY-MM') as mes_liq"))
+    .select(db.raw("MAX(TO_CHAR(f.dt_liquidacao, 'YYYY-MM')) as mes_liq"))
     .first();
 
   const ultimoMes: string = (ultimoMesRow as any)?.mes_liq ?? new Date().toISOString().slice(0, 7);
