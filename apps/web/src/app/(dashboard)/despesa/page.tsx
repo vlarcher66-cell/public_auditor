@@ -1952,17 +1952,6 @@ function TabSintetica({
         </div>
       </div>
 
-      {/* 6. CTA */}
-      <div style={{ background: 'linear-gradient(135deg, #0c2240 0%, #0F2A4E 100%)', borderRadius: '16px', padding: '24px 32px', marginTop: '16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '24px', flexWrap: 'wrap' }}>
-        <div>
-          <div style={{ fontSize: '16px', fontWeight: 700, color: '#fff', marginBottom: '4px' }}>Importar novo relatório de despesa</div>
-          <div style={{ fontSize: '13px', color: 'rgba(255,255,255,0.65)' }}>Carregue um PDF ou Excel do SIAFIC para processar automaticamente</div>
-        </div>
-        <Link href="/importacao" style={{ background: '#C9A84C', color: '#0F2A4E', fontWeight: 700, padding: '12px 28px', borderRadius: '12px', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '8px', fontSize: '14px', boxShadow: '0 4px 12px rgba(0,0,0,0.2)', whiteSpace: 'nowrap' }}>
-          <ArrowRight size={16} />
-          Importar Agora
-        </Link>
-      </div>
 
     </div>
   );
