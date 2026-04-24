@@ -717,11 +717,11 @@ export default function ContasAPagarPage() {
           {/* Sub-header colunas */}
           <div style={{ display: 'grid', gridTemplateColumns: '24px 1fr 120px 60px 70px', gap: '8px', padding: '8px 16px', borderBottom: '1px solid #f1f5f9', background: '#f8fafc', flexShrink: 0 }}>
             {['#', 'Credor / Grupo', 'Valor', 'Emp.', '%'].map((h, i) => (
-              <span key={i} style={{ fontSize: '10px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em', textAlign: i === 0 ? 'left' : i === 1 ? 'left' : 'right' }}>{h}</span>
+              <span key={i} style={{ fontSize: '10px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em', textAlign: i < 2 ? 'left' : 'right' }}>{h}</span>
             ))}
           </div>
-          {/* Grid de credores — 2 colunas para aproveitar largura total */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', overflowY: 'auto', maxHeight: '400px' }}>
+          {/* Lista de credores — coluna única, altura total */}
+          <div style={{ overflowY: 'auto', maxHeight: '600px' }}>
             {topData.length > 0 ? topData.map((r: any, i: number) => (
               <div
                 key={i}
@@ -743,7 +743,7 @@ export default function ContasAPagarPage() {
                 </div>
               </div>
             )) : (
-              <div style={{ gridColumn: '1/-1', height: '160px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8', fontSize: '13px' }}>Sem dados</div>
+              <div style={{ height: '160px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8', fontSize: '13px' }}>Sem dados</div>
             )}
           </div>
           {/* Rodapé total */}
