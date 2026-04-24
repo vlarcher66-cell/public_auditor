@@ -632,10 +632,10 @@ export default function ContasAPagarPage() {
         <MatrizContasAPagar matriz={matriz} onAnoChange={setAnoMatriz} />
 
         {/* ── Linha 2: [Esquerda: Aging + Saldo por Grupo] [Direita: Credores altura total] */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', alignItems: 'stretch', height: '700px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', alignItems: 'start' }}>
 
           {/* Coluna esquerda: Aging em cima + Saldo por Grupo embaixo */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', height: '100%', overflow: 'hidden' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
 
             {/* Aging */}
             <div style={{ background: '#fff', borderRadius: '20px', border: '1px solid #e2e8f0', overflow: 'hidden', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
@@ -684,32 +684,32 @@ export default function ContasAPagarPage() {
                 </div>
                 <span style={{ fontSize: '11px', background: 'rgba(255,255,255,0.15)', color: 'rgba(255,255,255,0.8)', padding: '3px 9px', borderRadius: '20px', fontWeight: 600 }}>{ultimoPeriodo}</span>
               </div>
-              <div style={{ padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <div style={{ padding: '10px 16px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
                 {gruposMatriz.length > 0 ? gruposMatriz.map((g: any, i: number) => {
                   const pct = totalGrupos > 0 ? (g.total / totalGrupos) * 100 : 0;
                   return (
                     <div key={i}>
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '5px' }}>
-                        <span style={{ fontSize: '12px', color: '#334155', fontWeight: 500, maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={g.nome}>{g.nome}</span>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                          <span style={{ fontSize: '11px', color: '#94a3b8' }}>{pct.toFixed(1)}%</span>
-                          <span style={{ fontSize: '12px', fontWeight: 700, color: '#0F2A4E', fontVariantNumeric: 'tabular-nums' }}>R$ {fmt(g.total)}</span>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '3px' }}>
+                        <span style={{ fontSize: '11px', color: '#334155', fontWeight: 500, maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={g.nome}>{g.nome}</span>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <span style={{ fontSize: '10px', color: '#94a3b8' }}>{pct.toFixed(1)}%</span>
+                          <span style={{ fontSize: '11px', fontWeight: 700, color: '#0F2A4E', fontVariantNumeric: 'tabular-nums' }}>R$ {fmt(g.total)}</span>
                         </div>
                       </div>
-                      <div style={{ height: '6px', background: '#f1f5f9', borderRadius: '99px', overflow: 'hidden' }}>
+                      <div style={{ height: '4px', background: '#f1f5f9', borderRadius: '99px', overflow: 'hidden' }}>
                         <div style={{ height: '100%', width: `${pct}%`, background: GRUPO_COLORS[i % GRUPO_COLORS.length], borderRadius: '99px', transition: 'width 0.7s ease' }} />
                       </div>
                     </div>
                   );
                 }) : (
-                  <div style={{ height: '180px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8', fontSize: '13px' }}>Sem dados por grupo</div>
+                  <div style={{ height: '100px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8', fontSize: '13px' }}>Sem dados por grupo</div>
                 )}
               </div>
             </div>
           </div>
 
-          {/* Coluna direita: Credores com Saldo a Pagar — altura total */}
-          <div style={{ background: '#fff', borderRadius: '20px', border: '1px solid #e2e8f0', overflow: 'hidden', boxShadow: '0 2px 8px rgba(0,0,0,0.04)', display: 'flex', flexDirection: 'column', height: '100%' }}>
+          {/* Coluna direita: Credores com Saldo a Pagar */}
+          <div style={{ background: '#fff', borderRadius: '20px', border: '1px solid #e2e8f0', overflow: 'hidden', boxShadow: '0 2px 8px rgba(0,0,0,0.04)', display: 'flex', flexDirection: 'column' }}>
             <div style={{ padding: '14px 20px', background: 'linear-gradient(135deg, #0F2A4E, #1e4d95)', display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
               <Users size={14} color="rgba(255,255,255,0.7)" />
               <span style={{ fontSize: '13px', fontWeight: 700, color: '#fff' }}>Credores com Saldo a Pagar</span>
@@ -720,7 +720,7 @@ export default function ContasAPagarPage() {
                 <span key={i} style={{ fontSize: '10px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em', textAlign: i < 2 ? 'left' : 'right' }}>{h}</span>
               ))}
             </div>
-            <div style={{ overflowY: 'auto', flex: 1 }}>
+            <div style={{ overflowY: 'auto', maxHeight: '572px' }}>
               {topData.length > 0 ? topData.map((r: any, i: number) => (
                 <div
                   key={i}
