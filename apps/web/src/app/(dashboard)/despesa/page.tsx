@@ -1640,16 +1640,16 @@ function TabSintetica({
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-3">
         {/* Card 1 — Total Bruto */}
         <div style={{ background: '#fff', borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 1px 3px rgba(0,0,0,0.05)', padding: '10px 16px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
             <div style={{ background: 'rgba(15,42,78,0.08)', borderRadius: '8px', padding: '5px', display: 'inline-flex' }}>
               <DollarSign size={14} color="#0F2A4E" />
             </div>
             <span style={{ fontSize: '11px', color: '#94a3b8', fontWeight: 500 }}>Total Bruto</span>
           </div>
           {isLoading ? <div style={{ height: '22px', background: '#e2e8f0', borderRadius: '6px' }} /> : (
-            <div style={{ fontSize: '22px', fontWeight: 700, color: '#0F2A4E', lineHeight: 1.2 }}>{formatCurrency(summary?.totalBruto ?? 0)}</div>
+            <div style={{ fontSize: '24px', fontWeight: 700, color: '#0F2A4E', lineHeight: 1.2 }}>{formatCurrency(summary?.totalBruto ?? 0)}</div>
           )}
-          <div style={{ fontSize: '10px', color: '#94a3b8', marginTop: '3px' }}>Valor total empenhado</div>
+          <div style={{ fontSize: '10px', color: '#94a3b8', marginTop: '1px' }}>Valor total empenhado</div>
           {!loadingSintetica && ultimos6.length > 0 && (
             <div style={{ marginTop: '8px', height: '24px' }}>
               <ResponsiveContainer width="100%" height={24}>
@@ -1677,9 +1677,9 @@ function TabSintetica({
             )}
           </div>
           {isLoading ? <div style={{ height: '22px', background: '#e2e8f0', borderRadius: '6px' }} /> : (
-            <div style={{ fontSize: '22px', fontWeight: 700, color: '#dc2626', lineHeight: 1.2 }}>{formatCurrency(summary?.totalRetido ?? 0)}</div>
+            <div style={{ fontSize: '24px', fontWeight: 700, color: '#dc2626', lineHeight: 1.2 }}>{formatCurrency(summary?.totalRetido ?? 0)}</div>
           )}
-          <div style={{ fontSize: '10px', color: '#94a3b8', marginTop: '3px' }}>Impostos e retenções</div>
+          <div style={{ fontSize: '10px', color: '#94a3b8', marginTop: '1px' }}>Impostos e retenções</div>
         </div>
 
         {/* Card 3 — Total Líquido */}
@@ -1691,9 +1691,9 @@ function TabSintetica({
             <span style={{ fontSize: '11px', color: '#94a3b8', fontWeight: 500 }}>Total Líquido</span>
           </div>
           {isLoading ? <div style={{ height: '22px', background: '#e2e8f0', borderRadius: '6px' }} /> : (
-            <div style={{ fontSize: '22px', fontWeight: 700, color: '#059669', lineHeight: 1.2 }}>{formatCurrency(summary?.totalLiquido ?? 0)}</div>
+            <div style={{ fontSize: '24px', fontWeight: 700, color: '#059669', lineHeight: 1.2 }}>{formatCurrency(summary?.totalLiquido ?? 0)}</div>
           )}
-          <div style={{ fontSize: '10px', color: '#94a3b8', marginTop: '3px' }}>Valor efetivamente pago</div>
+          <div style={{ fontSize: '10px', color: '#94a3b8', marginTop: '1px' }}>Valor efetivamente pago</div>
         </div>
 
         {/* Card 4 — Ordens de Pagamento */}
@@ -1705,9 +1705,9 @@ function TabSintetica({
             <span style={{ fontSize: '11px', color: '#94a3b8', fontWeight: 500 }}>Ordens de Pagamento</span>
           </div>
           {isLoading ? <div style={{ height: '22px', background: '#e2e8f0', borderRadius: '6px' }} /> : (
-            <div style={{ fontSize: '22px', fontWeight: 700, color: '#0F2A4E', lineHeight: 1.2 }}>{(summary?.countRegistros ?? 0).toLocaleString('pt-BR')}</div>
+            <div style={{ fontSize: '24px', fontWeight: 700, color: '#0F2A4E', lineHeight: 1.2 }}>{(summary?.countRegistros ?? 0).toLocaleString('pt-BR')}</div>
           )}
-          <div style={{ fontSize: '10px', color: '#94a3b8', marginTop: '3px' }}>
+          <div style={{ fontSize: '10px', color: '#94a3b8', marginTop: '1px' }}>
             {!isLoading && diasNoAno > 0 && summary?.countRegistros
               ? `≈ ${(summary.countRegistros / diasNoAno).toFixed(1)} por dia`
               : 'Registros processados'}
