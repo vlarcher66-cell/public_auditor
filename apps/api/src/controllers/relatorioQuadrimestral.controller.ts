@@ -19,6 +19,7 @@ const QUADRIMESTRES: Record<number, { label: string; meses: number[] }> = {
 const MESES_LABEL = ['', 'Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
 
 export async function getRelatorioQuadrimestral(req: Request, res: Response): Promise<void> {
+  try {
   const ano  = parseInt(req.query.ano  as string) || new Date().getFullYear();
   const quad = parseInt(req.query.quad as string) || 1;
   const user = (req as any).user;
@@ -188,4 +189,7 @@ export async function getRelatorioQuadrimestral(req: Request, res: Response): Pr
       qtd:         Number(r.qtd),
     })),
   });
+  } catch (err: any) {
+    res.status(500).json({ error: 'Erro ao gerar relatório', detail: err?.message });
+  }
 }
