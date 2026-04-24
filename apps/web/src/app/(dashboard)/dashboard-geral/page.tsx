@@ -460,9 +460,27 @@ export default function DashboardGeralPage() {
                     <XAxis dataKey="mes" tick={{ fontSize: 10, fill: '#94a3b8' }} axisLine={false} tickLine={false}/>
                     <YAxis hide />
                     <Tooltip content={<ChartTooltip />} cursor={{ fill: 'rgba(15,42,78,0.04)' }}/>
-                    <Bar dataKey="receita"      name="Receita"      fill="#10b981" radius={[12,12,0,0]}/>
-                    <Bar dataKey="despesaPaga"  name="Despesa Paga" fill="#ef4444" stackId="despesa" radius={[0,0,0,0]}/>
-                    <Bar dataKey="contasAPagar" name="A Pagar"      fill="#f59e0b" stackId="despesa" radius={[12,12,0,0]}/>
+                    <Bar dataKey="receita"      name="Receita"      fill="#10b981" radius={[12,12,0,0]}>
+                      {chartMensal.map((entry, index) => {
+                        const mesNum = MESES.indexOf(entry.mes) + 1;
+                        const selecionado = mesSelecionado === null || mesSelecionado === mesNum;
+                        return <Cell key={index} fill="#10b981" opacity={selecionado ? 1 : 0.25} />;
+                      })}
+                    </Bar>
+                    <Bar dataKey="despesaPaga"  name="Despesa Paga" fill="#ef4444" stackId="despesa" radius={[0,0,0,0]}>
+                      {chartMensal.map((entry, index) => {
+                        const mesNum = MESES.indexOf(entry.mes) + 1;
+                        const selecionado = mesSelecionado === null || mesSelecionado === mesNum;
+                        return <Cell key={index} fill="#ef4444" opacity={selecionado ? 1 : 0.25} />;
+                      })}
+                    </Bar>
+                    <Bar dataKey="contasAPagar" name="A Pagar"      fill="#f59e0b" stackId="despesa" radius={[12,12,0,0]}>
+                      {chartMensal.map((entry, index) => {
+                        const mesNum = MESES.indexOf(entry.mes) + 1;
+                        const selecionado = mesSelecionado === null || mesSelecionado === mesNum;
+                        return <Cell key={index} fill="#f59e0b" opacity={selecionado ? 1 : 0.25} />;
+                      })}
+                    </Bar>
                   </BarChart>
                 </ResponsiveContainer>
               ) : (
