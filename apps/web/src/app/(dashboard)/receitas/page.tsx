@@ -71,8 +71,13 @@ const TABS: { id: TabId; label: string; icon: React.ReactNode }[] = [
 
 const SUBGRUPO_MAP: Array<{ prefixo: string; desc: string }> = [
   { prefixo: '1.1',             desc: 'Receita Tributária' },
+  { prefixo: '1.2',             desc: 'Contribuições' },
   { prefixo: '1.3',             desc: 'Receita Patrimonial' },
+  { prefixo: '1.4',             desc: 'Receita Agropecuária' },
+  { prefixo: '1.5',             desc: 'Receita Industrial' },
   { prefixo: '1.6',             desc: 'Receita de Serviços' },
+  { prefixo: '1.8',             desc: 'Receitas Correntes Diversas' },
+  { prefixo: '1.9',             desc: 'Outras Receitas Correntes' },
   // Blocos SUS — Manutenção: cada subfonte vira subgrupo próprio
   { prefixo: '1.7.1.3.50.1',    desc: 'SUS — Atenção Primária (AB/APS)' },
   { prefixo: '1.7.1.3.50.2',    desc: 'SUS — Atenção Especializada (MAC)' },
