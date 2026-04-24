@@ -1745,39 +1745,110 @@ function TabSintetica({
         )}
       </div>
 
-      {/* 4. TOP CREDORES + GRUPOS */}
+      {/* 4. CURVA ABC + GRUPOS */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-        {/* Top Credores */}
-        <div style={{ background: '#fff', borderRadius: '16px', border: '1px solid #e2e8f0', boxShadow: '0 1px 4px rgba(0,0,0,0.06)', overflow: 'hidden' }}>
-          <div style={{ background: 'linear-gradient(135deg, #0F2A4E, #1e4d95)', padding: '14px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <span style={{ fontSize: '13px', fontWeight: 700, color: '#fff', letterSpacing: '0.04em' }}>Top 10 Credores</span>
-          </div>
-          <div style={{ padding: '16px 20px 20px' }}>
-            {isLoading ? (
-              <div style={{ height: '260px', background: '#f1f5f9', borderRadius: '10px' }} />
-            ) : (
-              <ResponsiveContainer width="100%" height={260}>
-                <BarChart data={summary?.topCredores ?? []} layout="vertical" margin={{ left: 0, right: 60, top: 0, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#f1f5f9" />
-                  <XAxis type="number" tickFormatter={fmtK} tick={{ fontSize: 10, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
-                  <YAxis type="category" dataKey="nome" tick={{ fontSize: 9, fill: '#475569' }} width={110} axisLine={false} tickLine={false} />
-                  <Tooltip formatter={(v: number) => [formatCurrency(v), 'Total']} contentStyle={{ fontSize: '12px', borderRadius: '8px', border: '1px solid #e2e8f0' }} />
-                  <Bar dataKey="total" radius={[0,4,4,0]} maxBarSize={20}>
-                    {(summary?.topCredores ?? []).map((_, i) => (
-                      <Cell key={i} fill={i === 0 ? '#C9A84C' : '#0F2A4E'} opacity={1 - i * 0.07} />
-                    ))}
-                    <LabelList dataKey="total" position="right" formatter={fmtK} style={{ fontSize: '10px', fill: '#475569', fontWeight: 600 }} />
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
-            )}
-            <div style={{ marginTop: '12px', textAlign: 'right' }}>
-              <Link href="/pagamentos" style={{ fontSize: '12px', color: '#1e4d95', fontWeight: 600, textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-                Ver análise completa <ArrowRight size={12} />
-              </Link>
+        {/* Curva ABC */}
+        {(() => {
+          const credoresABC = [...(summary?.topCredores ?? [])].sort((a, b) => b.total - a.total);
+          const totalABC = credoresABC.reduce((s, c) => s + Number(c.total), 0);
+          let acumABC = 0;
+          const curvaABC = credoresABC.map((c, i) => {
+            const valor = Number(c.total);
+            acumABC += valor;
+            const pctIndividual = totalABC > 0 ? (valor / totalABC) * 100 : 0;
+            const pctAcum = totalABC > 0 ? (acumABC / totalABC) * 100 : 0;
+            const classe = pctAcum <= 80 ? 'A' : pctAcum <= 95 ? 'B' : 'C';
+            return { rank: i + 1, nome: c.nome, valor, pctIndividual, pctAcum, classe };
+          });
+          return (
+            <div style={{ background: '#fff', borderRadius: '16px', border: '1px solid #e2e8f0', boxShadow: '0 1px 4px rgba(0,0,0,0.06)', overflow: 'hidden' }}>
+              <div style={{ background: 'linear-gradient(135deg, #0F2A4E, #1e4d95)', padding: '14px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div>
+                  <div style={{ fontSize: '13px', fontWeight: 700, color: '#fff' }}>Curva ABC — Credores por Despesa</div>
+                  <div style={{ fontSize: '11px', color: 'rgba(147,197,253,0.9)', marginTop: '2px' }}>Concentração de pagamentos por credor</div>
+                </div>
+                <div style={{ display: 'flex', gap: '6px' }}>
+                  {(['A','B','C'] as const).map(cl => (
+                    <span key={cl} style={{
+                      fontSize: '10px', fontWeight: 700, padding: '2px 8px', borderRadius: '999px',
+                      background: cl === 'A' ? '#3b82f620' : cl === 'B' ? '#f59e0b20' : '#ef444420',
+                      color: cl === 'A' ? '#93c5fd' : cl === 'B' ? '#fcd34d' : '#fca5a5',
+                      border: `1px solid ${cl === 'A' ? '#3b82f640' : cl === 'B' ? '#f59e0b40' : '#ef444440'}`,
+                    }}>
+                      {cl === 'A' ? 'A ≤80%' : cl === 'B' ? 'B ≤95%' : 'C >95%'}
+                    </span>
+                  ))}
+                </div>
+              </div>
+              {isLoading ? (
+                <div style={{ height: '260px', background: '#f1f5f9', margin: '16px 20px', borderRadius: '10px' }} />
+              ) : curvaABC.length > 0 ? (
+                <>
+                  <div style={{ overflowY: 'auto', maxHeight: '300px' }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '11px' }}>
+                      <thead>
+                        <tr style={{ position: 'sticky', top: 0, background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
+                          <th style={{ padding: '8px 12px', textAlign: 'left', fontSize: '10px', fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase', width: '32px' }}>#</th>
+                          <th style={{ padding: '8px 8px', textAlign: 'left', fontSize: '10px', fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase' }}>Credor</th>
+                          <th style={{ padding: '8px 8px', textAlign: 'right', fontSize: '10px', fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase' }}>Valor</th>
+                          <th style={{ padding: '8px 8px', textAlign: 'right', fontSize: '10px', fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase', width: '48px' }}>%</th>
+                          <th style={{ padding: '8px 8px', fontSize: '10px', fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase', width: '120px' }}>% Acum.</th>
+                          <th style={{ padding: '8px 8px', textAlign: 'center', fontSize: '10px', fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase', width: '36px' }}>Cl.</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {curvaABC.map((c, i) => {
+                          const clColor = c.classe === 'A' ? { bg: '#eff6ff', text: '#2563eb', bar: '#3b82f6' }
+                                        : c.classe === 'B' ? { bg: '#fffbeb', text: '#d97706', bar: '#f59e0b' }
+                                        : { bg: '#fef2f2', text: '#dc2626', bar: '#ef4444' };
+                          return (
+                            <tr key={i} style={{ borderBottom: '1px solid #f8fafc' }}
+                              onMouseEnter={e => (e.currentTarget.style.background = '#f8fafc')}
+                              onMouseLeave={e => (e.currentTarget.style.background = '')}>
+                              <td style={{ padding: '8px 12px', fontSize: '10px', fontWeight: 700, color: '#cbd5e1' }}>{c.rank}</td>
+                              <td style={{ padding: '8px 8px', fontWeight: 500, color: '#334155', maxWidth: '180px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={c.nome}>{c.nome}</td>
+                              <td style={{ padding: '8px 8px', textAlign: 'right', fontFamily: 'monospace', fontSize: '11px', fontWeight: 600, color: '#1e293b', whiteSpace: 'nowrap' }}>R$ {fmt(c.valor)}</td>
+                              <td style={{ padding: '8px 8px', textAlign: 'right', fontSize: '10px', color: '#64748b' }}>{c.pctIndividual.toFixed(1)}%</td>
+                              <td style={{ padding: '8px 8px' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                  <div style={{ flex: 1, height: '6px', background: '#e2e8f0', borderRadius: '999px', overflow: 'hidden' }}>
+                                    <div style={{ height: '100%', borderRadius: '999px', width: `${Math.min(c.pctAcum, 100)}%`, background: clColor.bar, transition: 'width 0.4s ease' }} />
+                                  </div>
+                                  <span style={{ fontSize: '9px', fontFamily: 'monospace', color: '#94a3b8', width: '28px', textAlign: 'right' }}>{c.pctAcum.toFixed(0)}%</span>
+                                </div>
+                              </td>
+                              <td style={{ padding: '8px 8px', textAlign: 'center' }}>
+                                <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: '20px', height: '20px', borderRadius: '999px', fontSize: '10px', fontWeight: 700, background: clColor.bg, color: clColor.text }}>{c.classe}</span>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                  <div style={{ padding: '10px 16px', borderTop: '1px solid #f1f5f9', background: '#f8fafc', display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
+                    {(['A','B','C'] as const).map(cl => {
+                      const items = curvaABC.filter(c => c.classe === cl);
+                      const tot = items.reduce((s, c) => s + c.valor, 0);
+                      const clColor = cl === 'A' ? '#2563eb' : cl === 'B' ? '#d97706' : '#dc2626';
+                      return (
+                        <div key={cl} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <span style={{ fontSize: '10px', fontWeight: 700, color: clColor }}>Classe {cl}:</span>
+                          <span style={{ fontSize: '10px', color: '#64748b' }}>{items.length} credor{items.length !== 1 ? 'es' : ''}</span>
+                          <span style={{ fontSize: '10px', fontWeight: 600, color: '#334155' }}>· R$ {fmtK(tot)}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </>
+              ) : (
+                <div style={{ height: '260px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8', fontSize: '13px' }}>
+                  Nenhuma despesa encontrada
+                </div>
+              )}
             </div>
-          </div>
-        </div>
+          );
+        })()}
 
         {/* Distribuição por Grupo */}
         <div style={{ background: '#fff', borderRadius: '16px', border: '1px solid #e2e8f0', boxShadow: '0 1px 4px rgba(0,0,0,0.06)', overflow: 'hidden' }}>
