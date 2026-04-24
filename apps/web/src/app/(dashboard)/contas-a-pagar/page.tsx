@@ -632,10 +632,10 @@ export default function ContasAPagarPage() {
         <MatrizContasAPagar matriz={matriz} onAnoChange={setAnoMatriz} />
 
         {/* ── Linha 2: [Esquerda: Aging + Saldo por Grupo] [Direita: Credores altura total] */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', alignItems: 'start' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', alignItems: 'stretch' }}>
 
           {/* Coluna esquerda: Aging em cima + Saldo por Grupo embaixo */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', height: '100%' }}>
 
             {/* Aging */}
             <div style={{ background: '#fff', borderRadius: '20px', border: '1px solid #e2e8f0', overflow: 'hidden', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
@@ -676,7 +676,7 @@ export default function ContasAPagarPage() {
             </div>
 
             {/* Saldo por Grupo */}
-            <div style={{ background: '#fff', borderRadius: '20px', border: '1px solid #e2e8f0', overflow: 'hidden', boxShadow: '0 2px 8px rgba(0,0,0,0.04)', flex: 1 }}>
+            <div style={{ background: '#fff', borderRadius: '20px', border: '1px solid #e2e8f0', overflow: 'hidden', boxShadow: '0 2px 8px rgba(0,0,0,0.04)', flex: 1, display: 'flex', flexDirection: 'column' }}>
               <div style={{ padding: '14px 20px', background: 'linear-gradient(135deg, #0F2A4E, #1e4d95)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '7px' }}>
                   <Activity size={14} color="rgba(255,255,255,0.7)" />
@@ -709,7 +709,7 @@ export default function ContasAPagarPage() {
           </div>
 
           {/* Coluna direita: Credores com Saldo a Pagar */}
-          <div style={{ background: '#fff', borderRadius: '20px', border: '1px solid #e2e8f0', overflow: 'hidden', boxShadow: '0 2px 8px rgba(0,0,0,0.04)', display: 'flex', flexDirection: 'column' }}>
+          <div style={{ background: '#fff', borderRadius: '20px', border: '1px solid #e2e8f0', overflow: 'hidden', boxShadow: '0 2px 8px rgba(0,0,0,0.04)', display: 'flex', flexDirection: 'column', height: '100%' }}>
             <div style={{ padding: '14px 20px', background: 'linear-gradient(135deg, #0F2A4E, #1e4d95)', display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
               <Users size={14} color="rgba(255,255,255,0.7)" />
               <span style={{ fontSize: '13px', fontWeight: 700, color: '#fff' }}>Credores com Saldo a Pagar</span>
@@ -720,7 +720,7 @@ export default function ContasAPagarPage() {
                 <span key={i} style={{ fontSize: '10px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em', textAlign: i < 2 ? 'left' : 'right' }}>{h}</span>
               ))}
             </div>
-            <div style={{ overflowY: 'auto', maxHeight: '572px' }}>
+            <div style={{ overflowY: 'auto', flex: 1 }}>
               {topData.length > 0 ? topData.map((r: any, i: number) => (
                 <div
                   key={i}
