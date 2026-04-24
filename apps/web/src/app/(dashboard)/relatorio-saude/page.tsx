@@ -216,7 +216,7 @@ export default function RelatorioSaudePage() {
   // Dados do gráfico combinado receita × despesa
   const evolucaoData = (data?.meses ?? []).map((m: any) => ({
     label: m.label,
-    Receita: data?.receitaPorMes?.find((r: any) => r.mes === m.mes)?.total ?? 0,
+    Repasse: data?.receitaPorMes?.find((r: any) => r.mes === m.mes)?.total ?? 0,
     Despesa: data?.despesaPorMes?.find((r: any) => r.mes === m.mes)?.total ?? 0,
   }));
 
@@ -292,7 +292,7 @@ export default function RelatorioSaudePage() {
                 icon={<TrendingUp size={18} />}
                 label="Total Receitas"
                 value={`R$ ${fmt(data.totalReceitas)}`}
-                sub="Fundo Municipal de Saúde"
+                sub="Repasse ao Fundo de Saúde"
                 accent="#1e4d95"
               />
               <KpiCard
@@ -327,8 +327,8 @@ export default function RelatorioSaudePage() {
             {/* ── Índice 15% ────────────────────────────────────────────── */}
             <Indice15Card indice15={indice15} meses={data.indice15Meses ?? []} />
 
-            {/* ── Evolução Receita × Despesa ────────────────────────────── */}
-            <Section title="Evolução Mensal — Receitas × Despesas" icon={<BarChart3 size={15} />}>
+            {/* ── Evolução Repasse × Despesa ────────────────────────────── */}
+            <Section title="Evolução Mensal — Repasse × Despesas" icon={<BarChart3 size={15} />}>
               <ResponsiveContainer width="100%" height={240}>
                 <BarChart data={evolucaoData} margin={{ top: 4, right: 4, left: 0, bottom: 0 }} barCategoryGap="30%">
                   <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
@@ -336,7 +336,7 @@ export default function RelatorioSaudePage() {
                   <YAxis tickFormatter={fmtK} tick={{ fontSize: 10, fill: '#94a3b8' }} width={70} axisLine={false} tickLine={false} />
                   <RTooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(15,42,78,0.04)' }} />
                   <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: '11px', paddingTop: '12px' }} />
-                  <Bar dataKey="Receita" fill="#1e4d95" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="Repasse" fill="#1e4d95" radius={[4, 4, 0, 0]} />
                   <Bar dataKey="Despesa" fill="#C9A84C" radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>

@@ -47,16 +47,16 @@ export async function getRelatorioQuadrimestral(req: Request, res: Response): Pr
       .groupBy('r.codigo_rubrica', 'r.descricao', 'r.mes')
   );
 
-  // ── 2. Receitas do Fundo de Saúde ────────────────────────────────────────────
+  // ── 2. Repasse ao Fundo de Saúde via transferências bancárias (Opção A — consistente com saude-15) ──
   const saudeReceitaRows: any[] = await applyRBAC(
-    db('fact_receita as r')
+    db('fact_transf_bancaria as r')
       .join('dim_entidade as e', 'r.fk_entidade', 'e.id')
       .where('r.ano', ano)
       .whereIn('r.mes', meses)
       .where('e.tipo', 'FUNDO')
-      .select('r.mes', 'r.codigo_rubrica', 'r.descricao')
+      .select('r.mes')
       .sum('r.valor as total')
-      .groupBy('r.mes', 'r.codigo_rubrica', 'r.descricao')
+      .groupBy('r.mes')
   );
 
   // ── 3. Despesas pagas do Fundo de Saúde ─────────────────────────────────────
@@ -111,9 +111,7 @@ export async function getRelatorioQuadrimestral(req: Request, res: Response): Pr
     const dedRows = prefRows.filter(r =>
       r.mes === mes && DEDUCAO_PREFIXES.some(p => r.codigo_rubrica?.startsWith(p))
     );
-    const saude = saudeReceitaRows
-      .filter(r => r.mes === mes)
-      .reduce((s, r) => s + Number(r.total), 0);
+    const saude = Number(saudeReceitaRows.find(r => Number(r.mes) === mes)?.total ?? 0);
 
     const baseBruta = baseRows.reduce((s, r) => s + Number(r.total), 0);
     const deducoes  = dedRows.reduce((s, r) => s + Number(r.total), 0);
@@ -154,13 +152,11 @@ export async function getRelatorioQuadrimestral(req: Request, res: Response): Pr
       .reduce((s, r) => s + Number(r.total), 0),
   }));
 
-  // ── 8. Receitas do Fundo por mês ─────────────────────────────────────────────
+  // ── 8. Repasse ao Fundo por mês ──────────────────────────────────────────────
   const receitaPorMes = meses.map(mes => ({
     mes,
     label: MESES_LABEL[mes],
-    total: saudeReceitaRows
-      .filter(r => r.mes === mes)
-      .reduce((s, r) => s + Number(r.total), 0),
+    total: Number(saudeReceitaRows.find(r => Number(r.mes) === mes)?.total ?? 0),
   }));
 
   const totalReceitas = receitaPorMes.reduce((s, m) => s + m.total, 0);
