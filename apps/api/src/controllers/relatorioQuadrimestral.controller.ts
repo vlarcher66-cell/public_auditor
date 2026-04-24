@@ -96,7 +96,7 @@ export async function getRelatorioQuadrimestral(req: Request, res: Response): Pr
       )
       .sum('r.valor_liquido as total')
       .count('r.id as qtd')
-      .groupBy(db.raw("COALESCE(c.nome, r.credor_nome, 'Desconhecido')"), 'g.nome')
+      .groupByRaw("COALESCE(c.nome, r.credor_nome, 'Desconhecido'), g.nome")
       .orderBy('total', 'desc')
       .limit(15),
     'r'
