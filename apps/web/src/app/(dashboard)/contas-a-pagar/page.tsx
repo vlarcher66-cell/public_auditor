@@ -694,12 +694,12 @@ export default function ContasAPagarPage() {
                 }));
                 return (
                   <div style={{ padding: '12px 4px 8px 4px' }}>
-                    <ResponsiveContainer width="100%" height={chartData.length * 42 + 16}>
+                    <ResponsiveContainer width="100%" height={chartData.length * 28 + 8}>
                       <BarChart
                         data={chartData}
                         layout="vertical"
-                        margin={{ top: 0, right: 56, left: 8, bottom: 0 }}
-                        barCategoryGap="28%"
+                        margin={{ top: 0, right: 52, left: 8, bottom: 0 }}
+                        barCategoryGap="35%"
                       >
                         <XAxis type="number" hide />
                         <YAxis
