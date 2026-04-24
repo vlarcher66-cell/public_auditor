@@ -146,19 +146,10 @@ export async function getResumoAPagar(req: Request, res: Response): Promise<void
   const ano = new Date().getFullYear();
   const dataInicio = `${ano}-01-01`;
 
-  // Descobre o último mês fechado com dados (maior mes_liq com dt_pagamento IS NULL)
-  const ultimoMesRow = await db('fact_empenho_liquidado as f')
-    .modify((q: any) => applyRBAC(q, user))
-    .whereNull('f.dt_pagamento')
-    .whereNotNull('f.dt_liquidacao')
-    .whereRaw('f.dt_liquidacao::date >= ?', [dataInicio])
-    .select(db.raw("MAX(TO_CHAR(f.dt_liquidacao, 'YYYY-MM')) as mes_liq"))
-    .first();
-
-  const ultimoMes: string = (ultimoMesRow as any)?.mes_liq ?? new Date().toISOString().slice(0, 7);
-  // Último dia do mês fechado
-  const [anoMes, numMes] = ultimoMes.split('-').map(Number);
-  const dataFim = new Date(anoMes, numMes, 0).toISOString().slice(0, 10);
+  // Teto = último dia do mês anterior ao atual (mês corrente nunca está fechado)
+  const hoje = new Date();
+  const dataFim = new Date(hoje.getFullYear(), hoje.getMonth(), 0).toISOString().slice(0, 10);
+  const ultimoMes = dataFim.slice(0, 7);
 
   const baseQuery = () => db('fact_empenho_liquidado as f')
     .modify((q: any) => applyRBAC(q, user))
