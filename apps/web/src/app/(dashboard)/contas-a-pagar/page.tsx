@@ -6,13 +6,13 @@ import { useSession } from 'next-auth/react';
 import {
   AlertTriangle, Clock, TrendingDown, CalendarClock, ChevronDown, ChevronRight,
   Search, X, Building2, Users, RefreshCw, CreditCard, Activity,
-  CheckCircle2, BarChart3, Banknote,
+  CheckCircle2, BarChart3,
 } from 'lucide-react';
 import TopBar from '@/components/dashboard/TopBar';
 import { apiRequest } from '@/lib/api';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RTooltip,
-  ResponsiveContainer, Cell, AreaChart, Area,
+  ResponsiveContainer, Cell,
 } from 'recharts';
 
 // ─── Formatadores ──────────────────────────────────────────────────────────────
@@ -45,21 +45,6 @@ function AgingTooltip({ active, payload, label }: any) {
   );
 }
 
-function EvolTooltip({ active, payload, label }: any) {
-  if (!active || !payload?.length) return null;
-  return (
-    <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '12px 16px', boxShadow: '0 8px 24px rgba(0,0,0,0.1)', fontSize: '12px' }}>
-      <div style={{ fontWeight: 800, color: '#0F2A4E', marginBottom: '6px' }}>{label}</div>
-      {payload.map((p: any) => (
-        <div key={p.name} style={{ color: '#334155', marginTop: '2px' }}>
-          {p.name === 'total' ? 'Saldo a pagar' : 'Qtd'}: <strong style={{ color: p.color }}>
-            {p.name === 'total' ? `R$ ${fmt(Number(p.value))}` : p.value}
-          </strong>
-        </div>
-      ))}
-    </div>
-  );
-}
 
 // ─── Cores grupos ──────────────────────────────────────────────────────────────
 const MATRIX_COLORS = [
@@ -504,12 +489,6 @@ export default function ContasAPagarPage() {
     enabled: !!token,
   });
 
-  const { data: evolucao = [] } = useQuery<any[]>({
-    queryKey: ['empenhos-evolucao', token],
-    queryFn: () => apiRequest('/empenhos-liquidados/evolucao', { token }),
-    enabled: !!token,
-  });
-
   const { data: topCredoresData } = useQuery<any>({
     queryKey: ['empenhos-top-credores', token],
     queryFn: () => apiRequest('/empenhos-liquidados/top-credores', { token }),
@@ -528,7 +507,6 @@ export default function ContasAPagarPage() {
   const entidades: any[] = resumo?.por_entidade ?? [];
 
   const agingData = (aging?.faixas ?? []).map((f: any) => ({ ...f, total: Number(f.total) }));
-  const evolucaoData = evolucao.map((r: any) => ({ periodo: r.periodo, total: Number(r.total), qtd: Number(r.qtd) }));
   const topData = (topCredoresData?.rows ?? []).map((r: any, i: number) => ({ ...r, color: GRUPO_COLORS[i % GRUPO_COLORS.length] }));
   const totalGeralCredores = topCredoresData?.total_geral ?? 0;
 
@@ -636,7 +614,7 @@ export default function ContasAPagarPage() {
                 {maisAntigo > 0 ? `${maisAntigo} dias` : '—'}
               </div>
             </div>
-            <div style={{ fontSize: '11px', color: '#94a3b8' }}>{semaforo.label} · desde dt. empenho</div>
+            <div style={{ fontSize: '11px', color: '#94a3b8' }}>{semaforo.label} · desde a liquidação</div>
           </div>
 
           {/* Entidades */}
@@ -653,7 +631,7 @@ export default function ContasAPagarPage() {
         {/* ── Matriz Contas a Pagar: Grupos × mês de liquidação ────────────── */}
         <MatrizContasAPagar matriz={matriz} onAnoChange={setAnoMatriz} />
 
-        {/* ── Linha 2: Aging + Termômetro ───────────────────────────────────── */}
+        {/* ── Linha 2: Aging + Saldo por Grupo ─────────────────────────────────── */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
 
           {/* Aging */}
@@ -663,7 +641,7 @@ export default function ContasAPagarPage() {
                 <CalendarClock size={14} color="rgba(255,255,255,0.7)" />
                 <span style={{ fontSize: '13px', fontWeight: 700, color: '#fff' }}>Distribuição por Idade</span>
               </div>
-              <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.5)' }}>Dias desde o empenho</span>
+              <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.5)' }}>Dias desde a liquidação</span>
             </div>
             <div style={{ padding: '16px 20px 8px' }}>
               {agingData.length > 0 ? (
@@ -695,7 +673,7 @@ export default function ContasAPagarPage() {
             </div>
           </div>
 
-          {/* Termômetro por grupo */}
+          {/* Saldo por Grupo */}
           <div style={{ background: '#fff', borderRadius: '20px', border: '1px solid #e2e8f0', overflow: 'hidden', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
             <div style={{ padding: '14px 20px', background: 'linear-gradient(135deg, #0F2A4E, #1e4d95)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '7px' }}>
@@ -728,92 +706,56 @@ export default function ContasAPagarPage() {
           </div>
         </div>
 
-        {/* ── Linha 3: Evolução + Top Credores ──────────────────────────────── */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', alignItems: 'start' }}>
-
-          {/* Evolução mensal */}
-          <div style={{ background: '#fff', borderRadius: '20px', border: '1px solid #e2e8f0', overflow: 'hidden', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
-            <div style={{ padding: '14px 20px', background: 'linear-gradient(135deg, #0F2A4E, #1e4d95)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '7px' }}>
-                <Banknote size={14} color="rgba(255,255,255,0.7)" />
-                <span style={{ fontSize: '13px', fontWeight: 700, color: '#fff' }}>Evolução do Saldo a Pagar</span>
-              </div>
-              <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.5)' }}>por período importado</span>
-            </div>
-            <div style={{ padding: '16px 20px' }}>
-              {evolucaoData.length > 0 ? (
-                <ResponsiveContainer width="100%" height={220}>
-                  <AreaChart data={evolucaoData} margin={{ top: 4, right: 4, left: 0, bottom: 0 }}>
-                    <defs>
-                      <linearGradient id="gradPagar" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#1e4d95" stopOpacity={0.18} />
-                        <stop offset="95%" stopColor="#1e4d95" stopOpacity={0} />
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
-                    <XAxis dataKey="periodo" tick={{ fontSize: 11, fill: '#64748b' }} axisLine={false} tickLine={false} />
-                    <YAxis tickFormatter={fmtK} tick={{ fontSize: 10, fill: '#94a3b8' }} width={72} axisLine={false} tickLine={false} />
-                    <RTooltip content={<EvolTooltip />} cursor={{ stroke: '#e2e8f0' }} />
-                    <Area type="monotone" dataKey="total" stroke="#1e4d95" strokeWidth={2.5} fill="url(#gradPagar)" dot={{ r: 4, fill: '#1e4d95', strokeWidth: 2, stroke: '#fff' }} activeDot={{ r: 6 }} name="total" />
-                  </AreaChart>
-                </ResponsiveContainer>
-              ) : (
-                <div style={{ height: '220px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8', fontSize: '13px' }}>Sem dados de evolução</div>
-              )}
-            </div>
+        {/* ── Linha 3: Top Credores (largura total) ─────────────────────────── */}
+        <div style={{ background: '#fff', borderRadius: '20px', border: '1px solid #e2e8f0', overflow: 'hidden', boxShadow: '0 2px 8px rgba(0,0,0,0.04)', display: 'flex', flexDirection: 'column' }}>
+          {/* Header */}
+          <div style={{ padding: '14px 20px', background: 'linear-gradient(135deg, #0F2A4E, #1e4d95)', display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
+            <Users size={14} color="rgba(255,255,255,0.7)" />
+            <span style={{ fontSize: '13px', fontWeight: 700, color: '#fff' }}>Credores com Saldo a Pagar</span>
+            <span style={{ marginLeft: 'auto', fontSize: '10px', color: 'rgba(255,255,255,0.45)' }}>{topData.length} credores · {ultimoPeriodo}</span>
           </div>
-
-          {/* Top Credores */}
-          <div style={{ background: '#fff', borderRadius: '20px', border: '1px solid #e2e8f0', overflow: 'hidden', boxShadow: '0 2px 8px rgba(0,0,0,0.04)', display: 'flex', flexDirection: 'column' }}>
-            {/* Header */}
-            <div style={{ padding: '14px 20px', background: 'linear-gradient(135deg, #0F2A4E, #1e4d95)', display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
-              <Users size={14} color="rgba(255,255,255,0.7)" />
-              <span style={{ fontSize: '13px', fontWeight: 700, color: '#fff' }}>Credores com Saldo a Pagar</span>
-              <span style={{ marginLeft: 'auto', fontSize: '10px', color: 'rgba(255,255,255,0.45)' }}>{topData.length} credores · {ultimoPeriodo}</span>
-            </div>
-            {/* Sub-header colunas */}
-            <div style={{ display: 'grid', gridTemplateColumns: '24px 1fr 90px 60px 70px', gap: '8px', padding: '8px 16px', borderBottom: '1px solid #f1f5f9', background: '#f8fafc', flexShrink: 0 }}>
-              {['#', 'Credor / Grupo', 'Valor', 'Emp.', '%'].map((h, i) => (
-                <span key={i} style={{ fontSize: '10px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em', textAlign: 'center' }}>{h}</span>
-              ))}
-            </div>
-            {/* Lista com scroll */}
-            <div style={{ overflowY: 'auto', maxHeight: '340px', flexShrink: 0 }}>
-              {topData.length > 0 ? topData.map((r: any, i: number) => (
-                <div
-                  key={i}
-                  style={{ display: 'grid', gridTemplateColumns: '24px 1fr 90px 60px 70px', gap: '8px', padding: '9px 16px', borderBottom: '1px solid #f8fafc', alignItems: 'center', transition: 'background 0.1s' }}
-                  onMouseEnter={e => (e.currentTarget.style.background = '#f8faff')}
-                  onMouseLeave={e => (e.currentTarget.style.background = '')}
-                >
-                  <span style={{ fontSize: '10px', color: '#cbd5e1', fontFamily: 'monospace', fontWeight: 600 }}>{String(i + 1).padStart(2, '0')}</span>
-                  <div style={{ minWidth: 0 }}>
-                    <div style={{ fontSize: '11px', fontWeight: 600, color: '#1e293b', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={r.credor_nome}>{r.credor_nome}</div>
-                    <div style={{ fontSize: '10px', color: '#ef4444', marginTop: '1px' }}>{r.grupo_nome}</div>
-                  </div>
-                  <span style={{ fontSize: '11px', fontWeight: 700, color: '#0F2A4E', textAlign: 'right', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>R$ {fmt(r.total)}</span>
-                  <span style={{ fontSize: '11px', color: '#64748b', textAlign: 'center', fontVariantNumeric: 'tabular-nums' }}>{r.qtd}</span>
-                  <div style={{ textAlign: 'center' }}>
-                    <span style={{ fontSize: '10px', fontWeight: 700, color: r.pct >= 20 ? '#dc2626' : r.pct >= 10 ? '#d97706' : '#059669', background: r.pct >= 20 ? '#fef2f2' : r.pct >= 10 ? '#fffbeb' : '#f0fdf4', padding: '2px 6px', borderRadius: '6px' }}>
-                      {r.pct.toFixed(1)}%
-                    </span>
-                  </div>
+          {/* Sub-header colunas */}
+          <div style={{ display: 'grid', gridTemplateColumns: '24px 1fr 120px 60px 70px', gap: '8px', padding: '8px 16px', borderBottom: '1px solid #f1f5f9', background: '#f8fafc', flexShrink: 0 }}>
+            {['#', 'Credor / Grupo', 'Valor', 'Emp.', '%'].map((h, i) => (
+              <span key={i} style={{ fontSize: '10px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em', textAlign: i === 0 ? 'left' : i === 1 ? 'left' : 'right' }}>{h}</span>
+            ))}
+          </div>
+          {/* Grid de credores — 2 colunas para aproveitar largura total */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', overflowY: 'auto', maxHeight: '400px' }}>
+            {topData.length > 0 ? topData.map((r: any, i: number) => (
+              <div
+                key={i}
+                style={{ display: 'grid', gridTemplateColumns: '24px 1fr 120px 60px 70px', gap: '8px', padding: '9px 16px', borderBottom: '1px solid #f8fafc', alignItems: 'center', transition: 'background 0.1s' }}
+                onMouseEnter={e => (e.currentTarget.style.background = '#f8faff')}
+                onMouseLeave={e => (e.currentTarget.style.background = '')}
+              >
+                <span style={{ fontSize: '10px', color: '#cbd5e1', fontFamily: 'monospace', fontWeight: 600 }}>{String(i + 1).padStart(2, '0')}</span>
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ fontSize: '11px', fontWeight: 600, color: '#1e293b', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={r.credor_nome}>{r.credor_nome}</div>
+                  <div style={{ fontSize: '10px', color: '#ef4444', marginTop: '1px' }}>{r.grupo_nome}</div>
                 </div>
-              )) : (
-                <div style={{ height: '160px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8', fontSize: '13px' }}>Sem dados</div>
-              )}
-            </div>
-            {/* Rodapé total */}
-            {topData.length > 0 && (
-              <div style={{ padding: '10px 16px', borderTop: '1px solid #e2e8f0', display: 'grid', gridTemplateColumns: '24px 1fr 90px 60px 70px', gap: '8px', background: '#f8fafc', flexShrink: 0 }}>
-                <span />
-                <span style={{ fontSize: '11px', fontWeight: 700, color: '#64748b' }}>Total geral</span>
-                <span style={{ fontSize: '11px', fontWeight: 700, color: '#0F2A4E', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>R$ {fmt(totalGeralCredores)}</span>
-                <span style={{ fontSize: '11px', color: '#64748b', textAlign: 'right' }}>{topData.reduce((s: number, r: any) => s + r.qtd, 0)}</span>
-                <span style={{ fontSize: '10px', fontWeight: 700, color: '#0F2A4E', textAlign: 'right' }}>100%</span>
+                <span style={{ fontSize: '11px', fontWeight: 700, color: '#0F2A4E', textAlign: 'right', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>R$ {fmt(r.total)}</span>
+                <span style={{ fontSize: '11px', color: '#64748b', textAlign: 'center', fontVariantNumeric: 'tabular-nums' }}>{r.qtd}</span>
+                <div style={{ textAlign: 'center' }}>
+                  <span style={{ fontSize: '10px', fontWeight: 700, color: r.pct >= 20 ? '#dc2626' : r.pct >= 10 ? '#d97706' : '#059669', background: r.pct >= 20 ? '#fef2f2' : r.pct >= 10 ? '#fffbeb' : '#f0fdf4', padding: '2px 6px', borderRadius: '6px' }}>
+                    {r.pct.toFixed(1)}%
+                  </span>
+                </div>
               </div>
+            )) : (
+              <div style={{ gridColumn: '1/-1', height: '160px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8', fontSize: '13px' }}>Sem dados</div>
             )}
           </div>
+          {/* Rodapé total */}
+          {topData.length > 0 && (
+            <div style={{ padding: '10px 16px', borderTop: '1px solid #e2e8f0', display: 'grid', gridTemplateColumns: '24px 1fr 120px 60px 70px', gap: '8px', background: '#f8fafc', flexShrink: 0 }}>
+              <span />
+              <span style={{ fontSize: '11px', fontWeight: 700, color: '#64748b' }}>Total geral</span>
+              <span style={{ fontSize: '11px', fontWeight: 700, color: '#0F2A4E', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>R$ {fmt(totalGeralCredores)}</span>
+              <span style={{ fontSize: '11px', color: '#64748b', textAlign: 'right' }}>{topData.reduce((s: number, r: any) => s + r.qtd, 0)}</span>
+              <span style={{ fontSize: '10px', fontWeight: 700, color: '#0F2A4E', textAlign: 'right' }}>100%</span>
+            </div>
+          )}
         </div>
 
         {/* ── Tabela detalhada ──────────────────────────────────────────────── */}
