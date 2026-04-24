@@ -1647,7 +1647,7 @@ function TabSintetica({
             <span style={{ fontSize: '11px', color: '#94a3b8', fontWeight: 500 }}>Total Bruto</span>
           </div>
           {isLoading ? <div style={{ height: '22px', background: '#e2e8f0', borderRadius: '6px' }} /> : (
-            <div style={{ fontSize: '17px', fontWeight: 700, color: '#0F2A4E', lineHeight: 1.2 }}>{formatCurrency(summary?.totalBruto ?? 0)}</div>
+            <div style={{ fontSize: '22px', fontWeight: 700, color: '#0F2A4E', lineHeight: 1.2 }}>{formatCurrency(summary?.totalBruto ?? 0)}</div>
           )}
           <div style={{ fontSize: '10px', color: '#94a3b8', marginTop: '3px' }}>Valor total empenhado</div>
           {!loadingSintetica && ultimos6.length > 0 && (
@@ -1677,7 +1677,7 @@ function TabSintetica({
             )}
           </div>
           {isLoading ? <div style={{ height: '22px', background: '#e2e8f0', borderRadius: '6px' }} /> : (
-            <div style={{ fontSize: '17px', fontWeight: 700, color: '#dc2626', lineHeight: 1.2 }}>{formatCurrency(summary?.totalRetido ?? 0)}</div>
+            <div style={{ fontSize: '22px', fontWeight: 700, color: '#dc2626', lineHeight: 1.2 }}>{formatCurrency(summary?.totalRetido ?? 0)}</div>
           )}
           <div style={{ fontSize: '10px', color: '#94a3b8', marginTop: '3px' }}>Impostos e retenções</div>
         </div>
@@ -1691,7 +1691,7 @@ function TabSintetica({
             <span style={{ fontSize: '11px', color: '#94a3b8', fontWeight: 500 }}>Total Líquido</span>
           </div>
           {isLoading ? <div style={{ height: '22px', background: '#e2e8f0', borderRadius: '6px' }} /> : (
-            <div style={{ fontSize: '17px', fontWeight: 700, color: '#059669', lineHeight: 1.2 }}>{formatCurrency(summary?.totalLiquido ?? 0)}</div>
+            <div style={{ fontSize: '22px', fontWeight: 700, color: '#059669', lineHeight: 1.2 }}>{formatCurrency(summary?.totalLiquido ?? 0)}</div>
           )}
           <div style={{ fontSize: '10px', color: '#94a3b8', marginTop: '3px' }}>Valor efetivamente pago</div>
         </div>
@@ -1705,7 +1705,7 @@ function TabSintetica({
             <span style={{ fontSize: '11px', color: '#94a3b8', fontWeight: 500 }}>Ordens de Pagamento</span>
           </div>
           {isLoading ? <div style={{ height: '22px', background: '#e2e8f0', borderRadius: '6px' }} /> : (
-            <div style={{ fontSize: '17px', fontWeight: 700, color: '#0F2A4E', lineHeight: 1.2 }}>{(summary?.countRegistros ?? 0).toLocaleString('pt-BR')}</div>
+            <div style={{ fontSize: '22px', fontWeight: 700, color: '#0F2A4E', lineHeight: 1.2 }}>{(summary?.countRegistros ?? 0).toLocaleString('pt-BR')}</div>
           )}
           <div style={{ fontSize: '10px', color: '#94a3b8', marginTop: '3px' }}>
             {!isLoading && diasNoAno > 0 && summary?.countRegistros
