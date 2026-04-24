@@ -104,6 +104,12 @@ const SUBGRUPO_MAP: Array<{ prefixo: string; desc: string }> = [
   { prefixo: '2.1.8.8.1.03',    desc: 'Depósitos Judiciais' },
   { prefixo: '2.1.8',           desc: 'Receitas Extra-Orçamentárias (Retenções)' },
   { prefixo: '2.1',             desc: 'Operações de Crédito' },
+  // Deduções da Receita (classe 9)
+  { prefixo: '9.1',             desc: 'Deduções da Receita Tributária' },
+  { prefixo: '9.2',             desc: 'Deduções da Receita de Contribuições' },
+  { prefixo: '9.3',             desc: 'Deduções da Receita Patrimonial' },
+  { prefixo: '9.7',             desc: 'Deduções de Transferências Correntes' },
+  { prefixo: '9.9',             desc: 'Deduções de Outras Receitas Correntes' },
 ];
 
 function getSubgrupoKey(cod: string): string {
@@ -176,7 +182,17 @@ function agrupar(rows: DRERow[]): Grupo[] {
     cMap.get(cKey)!.meses[mi] += val;
   }
 
-  return Array.from(gMap.values()).sort((a, b) => a.cod.localeCompare(b.cod));
+  // Remove entradas sem valor
+  for (const g of gMap.values()) {
+    g.subgrupos = g.subgrupos.filter(sg => {
+      sg.contas = sg.contas.filter(c => soma(c.meses) > 0);
+      return soma(sg.meses) > 0;
+    });
+  }
+
+  return Array.from(gMap.values())
+    .filter(g => soma(g.meses) > 0)
+    .sort((a, b) => a.cod.localeCompare(b.cod));
 }
 
 function soma(meses: number[]): number { return meses.reduce((a, v) => a + v, 0); }
