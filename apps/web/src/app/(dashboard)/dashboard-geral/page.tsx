@@ -35,7 +35,7 @@ interface Indice15 {
   acumulado: { baseCalc: number; saude: number; minimo: number; superavit: number; percentual: number };
   matrix: { mes: number; percentual: number; saude: number; minimo: number; temDados: boolean }[];
 }
-interface ContasResumo { ultimo_periodo: string | null; total_a_pagar: number; por_entidade: { entidade_nome: string; total: number }[] }
+interface ContasResumo { ultimo_periodo: string | null; total_a_pagar: number; por_entidade: { entidade_nome: string; total: number }[]; por_mes?: Record<string, number> }
 interface MetaItem { subgrupo_nome: string; grupo_nome: string; meta_valor: number; fk_subgrupo: number }
 interface ExecItem { subgrupo_id: number; subgrupo_nome: string; total: number }
 interface FarolGrupo {
@@ -261,7 +261,7 @@ export default function DashboardGeralPage() {
       mes,
       receita: Number(recMes?.total ?? 0) + Number(transfMes?.total ?? 0),
       despesaPaga: Number(despMes?.total ?? 0),
-      contasAPagar: mesNum === (farol?.mes ?? new Date().getMonth() + 1) ? totalContas : 0,
+      contasAPagar: contas?.por_mes?.[`${ano}-${String(mesNum).padStart(2, '0')}`] ?? 0,
     };
   }).filter(d => d.receita > 0 || d.despesaPaga > 0);
 

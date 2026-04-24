@@ -147,24 +147,36 @@ export async function getResumoAPagar(req: Request, res: Response): Promise<void
   const dataInicio = `${ano}-01-01`;
   const dataFim = new Date().toISOString().slice(0, 10);
 
-  const rows = await db('fact_empenho_liquidado as f')
-    .join('dim_entidade as e', 'f.fk_entidade', 'e.id')
+  const baseQuery = () => db('fact_empenho_liquidado as f')
     .modify((q: any) => applyRBAC(q, user))
     .whereNull('f.dt_pagamento')
     .whereNotNull('f.dt_liquidacao')
     .whereRaw('f.dt_liquidacao::date >= ?', [dataInicio])
-    .whereRaw('f.dt_liquidacao::date <= ?', [dataFim])
-    .select('e.id as entidade_id', 'e.nome as entidade_nome')
-    .sum('f.valor as total')
-    .groupBy('e.id', 'e.nome')
-    .orderBy('total', 'desc');
+    .whereRaw('f.dt_liquidacao::date <= ?', [dataFim]);
+
+  const [rows, rowsMes] = await Promise.all([
+    baseQuery()
+      .join('dim_entidade as e', 'f.fk_entidade', 'e.id')
+      .select('e.id as entidade_id', 'e.nome as entidade_nome')
+      .sum('f.valor as total')
+      .groupBy('e.id', 'e.nome')
+      .orderBy('total', 'desc'),
+    baseQuery()
+      .select(db.raw("TO_CHAR(f.dt_liquidacao, 'YYYY-MM') as mes_liq"))
+      .sum('f.valor as total')
+      .groupByRaw("TO_CHAR(f.dt_liquidacao, 'YYYY-MM')"),
+  ]);
 
   const total = rows.reduce((a: number, r: any) => a + Number(r.total), 0);
+
+  const por_mes: Record<string, number> = {};
+  for (const r of rowsMes) por_mes[r.mes_liq] = Number(r.total);
 
   res.json({
     ultimo_periodo: `${ano}-01 a ${dataFim.slice(0, 7)}`,
     total_a_pagar: total,
     por_entidade: rows.map((r: any) => ({ ...r, total: Number(r.total) })),
+    por_mes,
   });
 }
 
