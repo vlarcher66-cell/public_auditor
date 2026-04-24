@@ -108,7 +108,7 @@ export async function deleteSubgrupo(req: Request, res: Response): Promise<void>
 // ── Credores ──────────────────────────────────────────────────────────────────
 
 export async function listCredores(req: Request, res: Response): Promise<void> {
-  const { search, grupoId, semGrupo, semSubgrupo, origem, page = '1', limit = '50' } = req.query as Record<string, string>;
+  const { search, grupoId, semGrupo, semSubgrupo, comGrupo, detalharNoPagamento, origem, page = '1', limit = '50' } = req.query as Record<string, string>;
   const pg = Math.max(1, parseInt(page));
   const lim = Math.min(200, parseInt(limit));
   const offset = (pg - 1) * lim;
@@ -122,8 +122,10 @@ export async function listCredores(req: Request, res: Response): Promise<void> {
         if (tf.fk_municipio) q.where('c.fk_municipio', tf.fk_municipio);
         if (search) q.where((w) => w.where('c.nome', 'ilike', `%${search}%`).orWhere('c.cnpj_cpf', 'ilike', `%${search}%`));
         if (grupoId) q.where('c.fk_grupo', grupoId);
-        if (semGrupo === '1') q.whereNull('c.fk_grupo');
-        if (semSubgrupo === '1') q.whereNotNull('c.fk_grupo').whereNull('c.fk_subgrupo');
+        if (semGrupo === '1')           q.whereNull('c.fk_grupo').where('c.detalhar_no_pagamento', false);
+        if (semSubgrupo === '1')        q.whereNotNull('c.fk_grupo').whereNull('c.fk_subgrupo');
+        if (comGrupo === '1')           q.whereNotNull('c.fk_grupo').where('c.detalhar_no_pagamento', false);
+        if (detalharNoPagamento === '1') q.where('c.detalhar_no_pagamento', true);
         if (origem === 'PAGO')     q.where('c.origem', 'PAGO');
         if (origem === 'A_PAGAR')  q.where('c.origem', 'A_PAGAR');
         if (origem === 'SEM')      q.whereNull('c.origem');
@@ -277,17 +279,19 @@ export async function getCredorClassificacao(req: Request, res: Response): Promi
 }
 
 export async function getCredorStats(_req: Request, res: Response): Promise<void> {
-  const [total, semGrupo, semSubgrupo, aPagar] = await Promise.all([
+  const [total, semGrupo, semSubgrupo, aPagar, porPagamento] = await Promise.all([
     db('dim_credor').count('id as n').first(),
-    db('dim_credor').whereNull('fk_grupo').count('id as n').first(),
+    db('dim_credor').whereNull('fk_grupo').where('detalhar_no_pagamento', false).count('id as n').first(),
     db('dim_credor').whereNotNull('fk_grupo').whereNull('fk_subgrupo').count('id as n').first(),
     db('dim_credor').where('origem', 'A_PAGAR').count('id as n').first(),
+    db('dim_credor').where('detalhar_no_pagamento', true).count('id as n').first(),
   ]);
   res.json({
-    total:      Number((total      as any)?.n || 0),
-    semGrupo:   Number((semGrupo   as any)?.n || 0),
-    semSubgrupo:Number((semSubgrupo as any)?.n || 0),
-    aPagar:     Number((aPagar     as any)?.n || 0),
+    total:        Number((total        as any)?.n || 0),
+    semGrupo:     Number((semGrupo     as any)?.n || 0),
+    semSubgrupo:  Number((semSubgrupo  as any)?.n || 0),
+    aPagar:       Number((aPagar       as any)?.n || 0),
+    porPagamento: Number((porPagamento as any)?.n || 0),
   });
 }
 

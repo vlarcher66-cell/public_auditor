@@ -3,9 +3,11 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useSession } from 'next-auth/react';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { Users, Search, ExternalLink, Check, Loader2, FileText, X, AlertTriangle, Trash2, Layers, CheckCircle, ChevronLeft, ChevronRight, AlertCircle } from 'lucide-react';
+import { Users, Search, ExternalLink, Check, Loader2, FileText, X, AlertTriangle, Trash2, Layers, CheckCircle, ChevronLeft, ChevronRight, AlertCircle, Lock, Unlock } from 'lucide-react';
 import Link from 'next/link';
 import { SearchSelect } from '@/components/SearchSelect';
+
+type Aba = 'classificados' | 'pendentes' | 'por_pagamento';
 
 const API = `${process.env.NEXT_PUBLIC_API_URL}/api`;
 
@@ -358,6 +360,77 @@ function LimparCredoresModal({
   );
 }
 
+// ─── Modal Converter para Classificação Padrão ────────────────────────────────
+
+function ConverterParaPadraoModal({
+  credor,
+  token,
+  onClose,
+  onConverted,
+}: {
+  credor: Credor;
+  token: string;
+  onClose: () => void;
+  onConverted: () => void;
+}) {
+  const [converting, setConverting] = useState(false);
+
+  async function handleConverter() {
+    setConverting(true);
+    try {
+      await fetch(`${API}/credores/${credor.id}`, {
+        method: 'PUT',
+        headers: authHeader(token),
+        body: JSON.stringify({ detalhar_no_pagamento: false }),
+      });
+      onConverted();
+      onClose();
+    } catch { /* API offline */ }
+    setConverting(false);
+  }
+
+  return (
+    <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
+        <div className="flex items-center justify-between px-6 py-4 border-b">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 bg-indigo-100 rounded-xl flex items-center justify-center">
+              <Unlock size={18} className="text-indigo-600" />
+            </div>
+            <h2 className="font-semibold text-gray-800">Converter para classificação padrão</h2>
+          </div>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600"><X size={20} /></button>
+        </div>
+        <div className="p-6 space-y-4">
+          <p className="text-sm text-gray-700">
+            O credor <span className="font-semibold">{credor.nome}</span> está configurado para classificação individual por pagamento.
+          </p>
+          <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 text-sm text-amber-700 space-y-1">
+            <p className="font-semibold">Ao converter para classificação padrão:</p>
+            <ul className="list-disc list-inside space-y-0.5 text-xs mt-1">
+              <li>O credor passará a ter um único Grupo e Subgrupo fixos</li>
+              <li>A classificação individual por pagamento será desativada</li>
+              <li>Você precisará definir o Grupo e Subgrupo manualmente</li>
+            </ul>
+          </div>
+        </div>
+        <div className="flex justify-end gap-2 px-6 py-4 border-t">
+          <button onClick={onClose} className="px-4 py-2 text-sm rounded-lg border hover:bg-gray-50">Cancelar</button>
+          <button
+            onClick={handleConverter}
+            disabled={converting}
+            className="flex items-center gap-2 px-4 py-2 text-sm rounded-lg text-white font-semibold transition-colors disabled:opacity-60"
+            style={{ background: converting ? '#94a3b8' : '#4f46e5' }}
+          >
+            {converting ? <Loader2 size={14} className="animate-spin" /> : <Unlock size={14} />}
+            {converting ? 'Convertendo...' : 'Converter para padrão'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── Linha com dropdowns inline ───────────────────────────────────────────────
 
 function CredorRow({
@@ -365,15 +438,19 @@ function CredorRow({
   grupos,
   subgrupos,
   token,
+  aba,
   onSaved,
   onOpenHistorico,
+  onRequestConvert,
 }: {
   credor: Credor;
   grupos: Grupo[];
   subgrupos: Subgrupo[];
   token: string;
+  aba: Aba;
   onSaved: () => void;
   onOpenHistorico: (c: Credor) => void;
+  onRequestConvert?: (c: Credor) => void;
 }) {
   const [fkGrupo, setFkGrupo] = useState<number | ''>(credor.fk_grupo ?? '');
   const [fkSubgrupo, setFkSubgrupo] = useState<number | ''>(credor.fk_subgrupo ?? '');
@@ -381,6 +458,7 @@ function CredorRow({
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
 
+  const bloqueado = aba === 'por_pagamento';
   const subgruposFiltrados = subgrupos.filter((s) => s.fk_grupo === Number(fkGrupo));
 
   async function save(grupoVal: number | '', subgrupoVal: number | '', detalharVal?: boolean) {
@@ -421,7 +499,7 @@ function CredorRow({
   }
 
   return (
-    <tr className={`border-b transition-colors ${!!credor.precisa_reclassificacao ? 'bg-orange-50 hover:bg-orange-100' : 'hover:bg-gray-50'}`}>
+    <tr className={`border-b transition-colors ${!!credor.precisa_reclassificacao ? 'bg-orange-50 hover:bg-orange-100' : bloqueado ? 'bg-indigo-50/40 hover:bg-indigo-50' : 'hover:bg-gray-50'}`}>
       <td className="px-3 py-2 font-medium text-gray-900 max-w-[220px]">
         <div className="truncate" title={credor.nome}>{credor.nome}</div>
         {!!credor.precisa_reclassificacao && (
@@ -431,21 +509,35 @@ function CredorRow({
         )}
       </td>
       <td className="px-3 py-2">
-        <SearchSelect
-          value={fkGrupo}
-          onChange={(val) => handleGrupoChange(val === '' ? '' : Number(val))}
-          options={grupos}
-          placeholder="sem grupo"
-        />
+        {bloqueado ? (
+          <div className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-gray-100 border border-dashed border-gray-300 text-xs text-gray-400 select-none">
+            <Lock size={11} className="text-indigo-400 shrink-0" />
+            <span className="truncate">{credor.grupo_nome ?? 'bloqueado'}</span>
+          </div>
+        ) : (
+          <SearchSelect
+            value={fkGrupo}
+            onChange={(val) => handleGrupoChange(val === '' ? '' : Number(val))}
+            options={grupos}
+            placeholder="sem grupo"
+          />
+        )}
       </td>
       <td className="px-3 py-2">
-        <SearchSelect
-          value={fkSubgrupo}
-          onChange={(val) => handleSubgrupoChange(val === '' ? '' : Number(val))}
-          options={subgruposFiltrados}
-          placeholder="sem subgrupo"
-          disabled={!fkGrupo || subgruposFiltrados.length === 0}
-        />
+        {bloqueado ? (
+          <div className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-gray-100 border border-dashed border-gray-300 text-xs text-gray-400 select-none">
+            <Lock size={11} className="text-indigo-400 shrink-0" />
+            <span className="truncate">{credor.subgrupo_nome ?? 'bloqueado'}</span>
+          </div>
+        ) : (
+          <SearchSelect
+            value={fkSubgrupo}
+            onChange={(val) => handleSubgrupoChange(val === '' ? '' : Number(val))}
+            options={subgruposFiltrados}
+            placeholder="sem subgrupo"
+            disabled={!fkGrupo || subgruposFiltrados.length === 0}
+          />
+        )}
       </td>
       {/* Histórico preview */}
       <td className="px-3 py-2 max-w-[220px]">
@@ -475,20 +567,31 @@ function CredorRow({
           <span className="text-gray-300 text-xs">—</span>
         )}
       </td>
-      {/* Toggle detalhar por pagamento */}
+      {/* Toggle / botão converter */}
       <td className="px-3 py-2 text-center">
-        <button
-          onClick={handleDetalharToggle}
-          title={detalhar ? 'Classificando por pagamento — clique para desativar' : 'Ativar classificação por pagamento'}
-          className={`inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium transition-colors ${
-            detalhar
-              ? 'bg-indigo-100 text-indigo-700 hover:bg-indigo-200'
-              : 'bg-gray-100 text-gray-400 hover:bg-gray-200'
-          }`}
-        >
-          <Layers size={12} />
-          {detalhar ? 'Por pag.' : 'Padrão'}
-        </button>
+        {bloqueado ? (
+          <button
+            onClick={() => onRequestConvert?.(credor)}
+            title="Converter para classificação padrão"
+            className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium bg-indigo-100 text-indigo-700 hover:bg-indigo-200 transition-colors"
+          >
+            <Unlock size={12} />
+            Converter
+          </button>
+        ) : (
+          <button
+            onClick={handleDetalharToggle}
+            title={detalhar ? 'Classificando por pagamento — clique para desativar' : 'Ativar classificação por pagamento'}
+            className={`inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium transition-colors ${
+              detalhar
+                ? 'bg-indigo-100 text-indigo-700 hover:bg-indigo-200'
+                : 'bg-gray-100 text-gray-400 hover:bg-gray-200'
+            }`}
+          >
+            <Layers size={12} />
+            {detalhar ? 'Por pag.' : 'Padrão'}
+          </button>
+        )}
       </td>
       <td className="px-3 py-2 text-center w-8">
         {saving && <Loader2 size={14} className="animate-spin text-blue-400 mx-auto" />}
@@ -740,10 +843,12 @@ export default function CredorPage() {
   const [filterGrupo, setFilterGrupo] = useState('');
   const [filterOrigem, setFilterOrigem] = useState('');
   const [loading, setLoading] = useState(false);
-  const [stats, setStats] = useState({ total: 0, semGrupo: 0, semSubgrupo: 0, aPagar: 0 });
+  const [stats, setStats] = useState({ total: 0, semGrupo: 0, semSubgrupo: 0, aPagar: 0, porPagamento: 0 });
   const [cardFilter, setCardFilter] = useState<'semGrupo' | 'semSubgrupo' | 'aPagar' | null>(null);
   const [historicoModal, setHistoricoModal] = useState<Credor | null>(null);
   const [showLimparModal, setShowLimparModal] = useState(false);
+  const [convertModal, setConvertModal] = useState<Credor | null>(null);
+  const [abaAtiva, setAbaAtiva] = useState<Aba>('classificados');
   const searchParams = useSearchParams();
   const router = useRouter();
   const [showConfDiarias, setShowConfDiarias] = useState(false);
@@ -785,10 +890,19 @@ export default function CredorPage() {
       const params = new URLSearchParams({ page: String(page), limit: String(LIMIT) });
       if (search) params.set('search', search);
       if (filterGrupo) params.set('grupoId', filterGrupo);
-      if (cardFilter === 'semGrupo')   params.set('semGrupo', '1');
-      if (cardFilter === 'semSubgrupo') params.set('semSubgrupo', '1');
-      if (cardFilter === 'aPagar')     params.set('origem', 'A_PAGAR');
-      else if (filterOrigem)           params.set('origem', filterOrigem);
+
+      if (abaAtiva === 'por_pagamento') {
+        params.set('detalharNoPagamento', '1');
+      } else if (abaAtiva === 'pendentes') {
+        params.set('semGrupo', '1');
+      } else {
+        // classificados: tem grupo, não é por pagamento
+        params.set('comGrupo', '1');
+        if (cardFilter === 'semSubgrupo') params.set('semSubgrupo', '1');
+        if (cardFilter === 'aPagar')      params.set('origem', 'A_PAGAR');
+        else if (filterOrigem)            params.set('origem', filterOrigem);
+      }
+
       const res = await fetch(`${API}/credores?${params}`, { headers: authHeader(token) });
       if (res.ok) {
         const data = await res.json();
@@ -797,7 +911,7 @@ export default function CredorPage() {
       }
     } catch { /* API offline */ }
     setLoading(false);
-  }, [token, page, search, filterGrupo, filterOrigem, cardFilter]);
+  }, [token, page, search, filterGrupo, filterOrigem, cardFilter, abaAtiva]);
 
   const loadStats = useCallback(async () => {
     if (!token) return;
@@ -809,8 +923,33 @@ export default function CredorPage() {
 
   useEffect(() => { loadGrupos(); loadSubgrupos(); loadStats(); }, [loadGrupos, loadSubgrupos, loadStats]);
   useEffect(() => { loadCredores(); }, [loadCredores]);
+  useEffect(() => { setPage(1); setCardFilter(null); }, [abaAtiva]);
 
   const totalPages = Math.ceil(total / LIMIT);
+
+  const abas: { id: Aba; label: string; count: number; cor: string; descricao: string }[] = [
+    {
+      id: 'classificados',
+      label: 'Classificados',
+      count: stats.total - stats.semGrupo - stats.porPagamento,
+      cor: '#059669',
+      descricao: 'Com grupo e subgrupo definidos',
+    },
+    {
+      id: 'pendentes',
+      label: 'Pendentes',
+      count: stats.semGrupo,
+      cor: '#ea580c',
+      descricao: 'Aguardando classificação',
+    },
+    {
+      id: 'por_pagamento',
+      label: 'Por Pagamento',
+      count: stats.porPagamento,
+      cor: '#4f46e5',
+      descricao: 'Classificação individual por pagamento',
+    },
+  ];
 
 
   function handleHistoricoSaved(credorId: number, novoHistorico: string, grupoId: number | null, subgrupoId: number | null, grupoNome: string | null, subgrupoNome: string | null) {
@@ -862,68 +1001,28 @@ export default function CredorPage() {
         </div>
       </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-4 gap-4">
-        {/* Total — clica e limpa filtro de card */}
-        <button
-          onClick={() => { setCardFilter(null); setPage(1); }}
-          className={`text-left rounded-xl border p-4 transition-all ${cardFilter === null ? 'bg-[#0F2A4E] border-[#0F2A4E] shadow-md' : 'bg-white hover:border-[#0F2A4E] hover:shadow-sm'}`}
-        >
-          <p className={`text-xs font-medium ${cardFilter === null ? 'text-blue-200' : 'text-gray-500'}`}>Total de Credores</p>
-          <p className={`text-2xl font-bold mt-1 ${cardFilter === null ? 'text-white' : 'text-gray-900'}`}>{stats.total}</p>
-          <p className={`text-xs mt-1 ${cardFilter === null ? 'text-blue-300' : 'text-gray-400'}`}>Cadastrados via importação</p>
-        </button>
-
-        {/* Sem Grupo */}
-        <button
-          onClick={() => { setCardFilter(cardFilter === 'semGrupo' ? null : 'semGrupo'); setPage(1); }}
-          className={`text-left rounded-xl border p-4 transition-all ${cardFilter === 'semGrupo' ? 'bg-orange-500 border-orange-500 shadow-md' : 'bg-white hover:border-orange-400 hover:shadow-sm'}`}
-        >
-          <p className={`text-xs font-medium ${cardFilter === 'semGrupo' ? 'text-orange-100' : 'text-gray-500'}`}>Sem Grupo</p>
-          <p className={`text-2xl font-bold mt-1 ${cardFilter === 'semGrupo' ? 'text-white' : 'text-orange-500'}`}>{stats.semGrupo}</p>
-          <p className={`text-xs mt-1 ${cardFilter === 'semGrupo' ? 'text-orange-100' : 'text-gray-400'}`}>Aguardando classificação</p>
-        </button>
-
-        {/* Sem Subgrupo */}
-        <button
-          onClick={() => { setCardFilter(cardFilter === 'semSubgrupo' ? null : 'semSubgrupo'); setPage(1); }}
-          className={`text-left rounded-xl border p-4 transition-all ${
-            cardFilter === 'semSubgrupo'
-              ? 'bg-purple-700 border-purple-700 shadow-md'
-              : stats.semSubgrupo > 0
-              ? 'bg-purple-50 border-purple-200 hover:border-purple-400 hover:shadow-sm'
-              : 'bg-white hover:border-gray-300 hover:shadow-sm'
-          }`}
-        >
-          <p className={`text-xs font-medium flex items-center gap-1 ${cardFilter === 'semSubgrupo' ? 'text-purple-100' : 'text-gray-500'}`}>
-            {stats.semSubgrupo > 0 && <Layers size={11} className={cardFilter === 'semSubgrupo' ? 'text-purple-200' : 'text-purple-500'} />}
-            Sem Subgrupo
-          </p>
-          <p className={`text-2xl font-bold mt-1 ${cardFilter === 'semSubgrupo' ? 'text-white' : stats.semSubgrupo > 0 ? 'text-purple-600' : 'text-gray-400'}`}>
-            {stats.semSubgrupo}
-          </p>
-          <p className={`text-xs mt-1 ${cardFilter === 'semSubgrupo' ? 'text-purple-100' : 'text-gray-400'}`}>Com grupo, sem subgrupo definido</p>
-        </button>
-
-        {/* A Pagar — credores criados via empenhos liquidados */}
-        <button
-          onClick={() => { setCardFilter(cardFilter === 'aPagar' ? null : 'aPagar'); setPage(1); setFilterOrigem(''); }}
-          className={`text-left rounded-xl border p-4 transition-all ${
-            cardFilter === 'aPagar'
-              ? 'bg-amber-500 border-amber-500 shadow-md'
-              : stats.aPagar > 0
-              ? 'bg-amber-50 border-amber-200 hover:border-amber-400 hover:shadow-sm'
-              : 'bg-white hover:border-gray-300 hover:shadow-sm'
-          }`}
-        >
-          <p className={`text-xs font-medium ${cardFilter === 'aPagar' ? 'text-amber-100' : 'text-gray-500'}`}>Origem: A Pagar</p>
-          <p className={`text-2xl font-bold mt-1 ${cardFilter === 'aPagar' ? 'text-white' : stats.aPagar > 0 ? 'text-amber-600' : 'text-gray-400'}`}>
-            {stats.aPagar}
-          </p>
-          <p className={`text-xs mt-1 ${cardFilter === 'aPagar' ? 'text-amber-100' : 'text-gray-400'}`}>Criados via empenhos liquidados</p>
-        </button>
-
-        {/* Grupos Cadastrados — apenas visual, sem filtro */}
+      {/* Stats resumo */}
+      <div className="grid grid-cols-5 gap-3">
+        <div className="bg-white rounded-xl border p-4">
+          <p className="text-xs text-gray-500">Total de Credores</p>
+          <p className="text-2xl font-bold text-gray-900 mt-1">{stats.total}</p>
+          <p className="text-xs text-gray-400 mt-1">Cadastrados via importação</p>
+        </div>
+        <div className="bg-emerald-50 rounded-xl border border-emerald-200 p-4">
+          <p className="text-xs text-emerald-700 font-medium">Classificados</p>
+          <p className="text-2xl font-bold text-emerald-600 mt-1">{Math.max(0, stats.total - stats.semGrupo - stats.porPagamento)}</p>
+          <p className="text-xs text-emerald-500 mt-1">Com grupo definido</p>
+        </div>
+        <div className={`rounded-xl border p-4 ${stats.semGrupo > 0 ? 'bg-orange-50 border-orange-200' : 'bg-white'}`}>
+          <p className="text-xs text-gray-500 font-medium">Pendentes</p>
+          <p className={`text-2xl font-bold mt-1 ${stats.semGrupo > 0 ? 'text-orange-500' : 'text-gray-400'}`}>{stats.semGrupo}</p>
+          <p className="text-xs text-gray-400 mt-1">Aguardando classificação</p>
+        </div>
+        <div className={`rounded-xl border p-4 ${stats.porPagamento > 0 ? 'bg-indigo-50 border-indigo-200' : 'bg-white'}`}>
+          <p className="text-xs text-indigo-600 font-medium flex items-center gap-1"><Layers size={11} /> Por Pagamento</p>
+          <p className={`text-2xl font-bold mt-1 ${stats.porPagamento > 0 ? 'text-indigo-600' : 'text-gray-400'}`}>{stats.porPagamento}</p>
+          <p className="text-xs text-gray-400 mt-1">Classificação individual</p>
+        </div>
         <div className="bg-white rounded-xl border p-4">
           <p className="text-xs text-gray-500">Grupos Cadastrados</p>
           <p className="text-2xl font-bold text-blue-600 mt-1">{grupos.length}</p>
@@ -931,9 +1030,51 @@ export default function CredorPage() {
         </div>
       </div>
 
-      {/* Tabela */}
-      <div className="bg-white rounded-2xl border">
-        {/* Busca + filtro */}
+      {/* Abas */}
+      <div className="bg-white rounded-2xl border overflow-hidden">
+        {/* Navegação de abas */}
+        <div className="flex border-b">
+          {abas.map((aba) => (
+            <button
+              key={aba.id}
+              onClick={() => setAbaAtiva(aba.id)}
+              className={`flex items-center gap-2 px-5 py-3.5 text-sm font-medium transition-all relative ${
+                abaAtiva === aba.id
+                  ? 'text-gray-900 bg-white'
+                  : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+              }`}
+            >
+              {aba.label}
+              {aba.count > 0 && (
+                <span
+                  className="px-2 py-0.5 rounded-full text-xs font-bold text-white"
+                  style={{ background: abaAtiva === aba.id ? aba.cor : '#94a3b8' }}
+                >
+                  {aba.count}
+                </span>
+              )}
+              {abaAtiva === aba.id && (
+                <span className="absolute bottom-0 left-0 right-0 h-0.5 rounded-t" style={{ background: aba.cor }} />
+              )}
+            </button>
+          ))}
+
+          {/* Descrição da aba ativa */}
+          <div className="flex-1 flex items-center justify-end px-4">
+            {abaAtiva === 'por_pagamento' && (
+              <span className="text-xs text-indigo-500 flex items-center gap-1">
+                <Lock size={11} /> Grupo e Subgrupo bloqueados — use "Converter" para liberar
+              </span>
+            )}
+            {abaAtiva === 'pendentes' && stats.semGrupo > 0 && (
+              <span className="text-xs text-orange-500 flex items-center gap-1">
+                <AlertCircle size={11} /> {stats.semGrupo} credor{stats.semGrupo !== 1 ? 'es' : ''} aguardando classificação
+              </span>
+            )}
+          </div>
+        </div>
+
+        {/* Busca + filtros */}
         <div className="p-4 border-b flex gap-3">
           <div className="relative flex-1">
             <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
@@ -952,19 +1093,33 @@ export default function CredorPage() {
               placeholder="Todos os grupos"
             />
           </div>
-          <select
-            className="shrink-0 border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-600"
-            value={cardFilter === 'aPagar' ? 'A_PAGAR' : filterOrigem}
-            onChange={(e) => { setFilterOrigem(e.target.value); setCardFilter(null); setPage(1); }}
-          >
-            <option value="">Todas as origens</option>
-            <option value="PAGO">Pago</option>
-            <option value="A_PAGAR">A Pagar</option>
-            <option value="SEM">Sem origem</option>
-          </select>
+          {abaAtiva === 'classificados' && (
+            <>
+              <button
+                onClick={() => { setCardFilter(cardFilter === 'semSubgrupo' ? null : 'semSubgrupo'); setPage(1); }}
+                className={`shrink-0 flex items-center gap-1.5 px-3 py-2 text-xs rounded-lg border transition-colors ${
+                  cardFilter === 'semSubgrupo'
+                    ? 'bg-purple-600 text-white border-purple-600'
+                    : 'border-gray-200 text-gray-600 hover:border-purple-400 hover:text-purple-600'
+                }`}
+              >
+                <Layers size={12} /> Sem subgrupo {stats.semSubgrupo > 0 && `(${stats.semSubgrupo})`}
+              </button>
+              <select
+                className="shrink-0 border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-600"
+                value={cardFilter === 'aPagar' ? 'A_PAGAR' : filterOrigem}
+                onChange={(e) => { setFilterOrigem(e.target.value); setCardFilter(null); setPage(1); }}
+              >
+                <option value="">Todas as origens</option>
+                <option value="PAGO">Pago</option>
+                <option value="A_PAGAR">A Pagar</option>
+                <option value="SEM">Sem origem</option>
+              </select>
+            </>
+          )}
         </div>
 
-        <div className="overflow-x-auto overflow-y-visible rounded-b-2xl">
+        <div className="overflow-x-auto overflow-y-visible">
           <table className="w-full text-sm table-fixed">
             <thead className="bg-gray-50 text-xs text-gray-500 uppercase tracking-wider">
               <tr>
@@ -973,8 +1128,11 @@ export default function CredorPage() {
                 <th className="px-3 py-2 text-left w-52">Subgrupo</th>
                 <th className="px-3 py-2 text-left">Histórico</th>
                 <th className="px-3 py-2 text-left w-24">Origem</th>
-                <th className="px-3 py-2 text-center text-indigo-600 w-20" title="Classificar cada pagamento individualmente">
-                  <Layers size={13} className="mx-auto" />
+                <th className="px-3 py-2 text-center w-28">
+                  {abaAtiva === 'por_pagamento'
+                    ? <span className="text-indigo-500 flex items-center justify-center gap-1"><Lock size={11} /> Ação</span>
+                    : <span title="Classificação por pagamento"><Layers size={13} className="mx-auto text-indigo-400" /></span>
+                  }
                 </th>
                 <th className="px-3 py-2 w-8" />
               </tr>
@@ -986,8 +1144,11 @@ export default function CredorPage() {
                 <tr>
                   <td colSpan={7} className="px-4 py-14 text-center">
                     <Users size={32} className="mx-auto mb-3 text-gray-200" />
-                    <p className="text-gray-400 text-sm">Nenhum credor encontrado</p>
-                    <p className="text-gray-400 text-xs mt-1">Os credores são cadastrados automaticamente ao importar um relatório</p>
+                    <p className="text-gray-400 text-sm">
+                      {abaAtiva === 'classificados' && 'Nenhum credor classificado ainda'}
+                      {abaAtiva === 'pendentes' && 'Nenhum credor pendente — tudo classificado!'}
+                      {abaAtiva === 'por_pagamento' && 'Nenhum credor com classificação por pagamento'}
+                    </p>
                   </td>
                 </tr>
               ) : credores.map((c) => (
@@ -997,8 +1158,10 @@ export default function CredorPage() {
                   grupos={grupos}
                   subgrupos={subgrupos}
                   token={token}
-                  onSaved={loadStats}
+                  aba={abaAtiva}
+                  onSaved={() => { loadStats(); loadCredores(); }}
                   onOpenHistorico={setHistoricoModal}
+                  onRequestConvert={setConvertModal}
                 />
               ))}
             </tbody>
@@ -1058,6 +1221,16 @@ export default function CredorPage() {
           tipo="pessoal"
           onClose={() => setShowConfPessoal(false)}
           onSaved={() => { loadCredores(); loadStats(); }}
+        />
+      )}
+
+      {/* Modal converter para classificação padrão */}
+      {convertModal && (
+        <ConverterParaPadraoModal
+          credor={convertModal}
+          token={token}
+          onClose={() => setConvertModal(null)}
+          onConverted={() => { setConvertModal(null); loadCredores(); loadStats(); }}
         />
       )}
     </div>
