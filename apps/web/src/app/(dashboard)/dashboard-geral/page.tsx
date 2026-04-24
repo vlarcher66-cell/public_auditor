@@ -321,58 +321,56 @@ export default function DashboardGeralPage() {
             </div>
           </div>
           {/* ── Seletor de ano + mês global ── */}
-          <div className="rounded-xl px-4 py-3 flex flex-col gap-2"
+          <div className="rounded-xl px-5 py-2.5 flex items-center gap-0"
             style={{ background: 'linear-gradient(90deg, #0F2A4E, #1e4d95)' }}>
-            {/* Linha 1: Ano */}
-            <div className="flex items-center gap-3 flex-wrap">
-              <span className="text-[11px] font-bold text-blue-200 uppercase tracking-wider whitespace-nowrap">Ano:</span>
-              <div className="flex gap-1.5 flex-wrap">
-                {anosDisponiveis.map(a => (
-                  <button
-                    key={a}
-                    onClick={() => handleAno(a)}
-                    className={`px-4 py-1.5 rounded-lg text-[11px] font-bold transition-colors ${
-                      ano === a
-                        ? 'bg-[#C9A84C] text-[#0F2A4E]'
-                        : 'bg-white/10 text-white/70 hover:bg-white/20'
-                    }`}
-                  >
-                    {a}
-                  </button>
-                ))}
-              </div>
-            </div>
-            {/* Linha 2: Mês */}
-            <div className="flex items-center gap-3 flex-wrap">
-              <span className="text-[11px] font-bold text-blue-200 uppercase tracking-wider whitespace-nowrap">Mês:</span>
-              <div className="flex gap-1 flex-wrap">
+            {/* Ano */}
+            <span className="text-[10px] font-bold text-blue-300 uppercase tracking-widest whitespace-nowrap mr-2">Ano</span>
+            <div className="flex gap-1">
+              {anosDisponiveis.map(a => (
                 <button
-                  onClick={() => handleMes(null)}
-                  className={`px-3 py-1.5 rounded-lg text-[11px] font-semibold transition-colors ${
-                    mesSelecionado === null
-                      ? 'bg-white text-[#0F2A4E]'
-                      : 'bg-white/10 text-white/70 hover:bg-white/20'
+                  key={a}
+                  onClick={() => handleAno(a)}
+                  className={`px-3 py-1 rounded-md text-[11px] font-semibold transition-all ${
+                    ano === a
+                      ? 'bg-[#C9A84C] text-[#0F2A4E] shadow-sm'
+                      : 'text-white/60 hover:text-white hover:bg-white/10'
                   }`}
                 >
-                  Todos
+                  {a}
                 </button>
-                {MESES.map((m, i) => {
-                  const mesNum = i + 1;
-                  const ativo = mesSelecionado === mesNum;
-                  return (
-                    <button key={m}
-                      onClick={() => handleMes(mesNum)}
-                      className={`px-2.5 py-1.5 rounded-lg text-[11px] font-medium transition-colors ${
-                        ativo
-                          ? 'bg-white text-[#0F2A4E] font-bold'
-                          : 'bg-white/10 text-white/80 hover:bg-white/20'
-                      }`}
-                    >
-                      {m}
-                    </button>
-                  );
-                })}
-              </div>
+              ))}
+            </div>
+            {/* Divisor */}
+            <div className="w-px h-5 bg-white/20 mx-4" />
+            {/* Mês */}
+            <span className="text-[10px] font-bold text-blue-300 uppercase tracking-widest whitespace-nowrap mr-2">Mês</span>
+            <div className="flex gap-1 flex-wrap">
+              <button
+                onClick={() => handleMes(null)}
+                className={`px-3 py-1 rounded-md text-[11px] font-semibold transition-all ${
+                  mesSelecionado === null
+                    ? 'bg-white text-[#0F2A4E] shadow-sm'
+                    : 'text-white/60 hover:text-white hover:bg-white/10'
+                }`}
+              >
+                Todos
+              </button>
+              {MESES.map((m, i) => {
+                const mesNum = i + 1;
+                const ativo = mesSelecionado === mesNum;
+                return (
+                  <button key={m}
+                    onClick={() => handleMes(mesNum)}
+                    className={`px-3 py-1 rounded-md text-[11px] font-semibold transition-all ${
+                      ativo
+                        ? 'bg-white text-[#0F2A4E] shadow-sm font-bold'
+                        : 'text-white/60 hover:text-white hover:bg-white/10'
+                    }`}
+                  >
+                    {m}
+                  </button>
+                );
+              })}
             </div>
           </div>
         </motion.div>
