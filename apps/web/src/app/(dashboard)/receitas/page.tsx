@@ -142,6 +142,10 @@ function agrupar(rows: DRERow[]): Grupo[] {
       const c: Conta = { cod, desc, fonte, meses: Array(12).fill(0) };
       cMap.set(cKey, c);
       sg.contas.push(c);
+    } else {
+      // Mantém a descrição mais longa entre arquivos do mesmo período
+      const existing = cMap.get(cKey)!;
+      if (desc.length > existing.desc.length) existing.desc = desc;
     }
     cMap.get(cKey)!.meses[mi] += val;
   }

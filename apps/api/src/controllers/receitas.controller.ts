@@ -124,13 +124,13 @@ export async function getReceitaDRE(req: Request, res: Response): Promise<void> 
     })
     .select(
       'r.codigo_rubrica',
-      'r.descricao',
+      db.raw('MAX(r.descricao) as descricao'),
       'r.tipo_receita',
       'r.fonte_recurso',
       'r.mes',
     )
     .sum('r.valor as total')
-    .groupBy('r.codigo_rubrica', 'r.descricao', 'r.tipo_receita', 'r.fonte_recurso', 'r.mes')
+    .groupBy('r.codigo_rubrica', 'r.tipo_receita', 'r.fonte_recurso', 'r.mes')
     .orderBy('r.codigo_rubrica');
 
   res.json({ rows, ano });
