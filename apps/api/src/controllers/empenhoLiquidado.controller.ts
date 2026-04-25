@@ -143,12 +143,17 @@ export async function getMatrizEmpenhos(req: Request, res: Response): Promise<vo
 // ── Resumo: total a pagar acumulado do ano ────────────────────────────────────
 export async function getResumoAPagar(req: Request, res: Response): Promise<void> {
   const user = (req as any).user;
-  const ano = new Date().getFullYear();
+  const hoje = new Date();
+  const ano = parseInt(req.query.ano as string) || hoje.getFullYear();
+  const mesParam = req.query.mes ? parseInt(req.query.mes as string) : null;
   const dataInicio = `${ano}-01-01`;
 
-  // Teto = último dia do mês anterior ao atual (mês corrente nunca está fechado)
-  const hoje = new Date();
-  const dataFim = new Date(hoje.getFullYear(), hoje.getMonth(), 0).toISOString().slice(0, 10);
+  // Se filtro de mês: último dia desse mês. Senão: último dia do mês anterior ao atual
+  const dataFim = mesParam
+    ? new Date(ano, mesParam, 0).toISOString().slice(0, 10)
+    : ano < hoje.getFullYear()
+      ? `${ano}-12-31`
+      : new Date(hoje.getFullYear(), hoje.getMonth(), 0).toISOString().slice(0, 10);
   const ultimoMes = dataFim.slice(0, 7);
 
   const baseQuery = () => db('fact_empenho_liquidado as f')

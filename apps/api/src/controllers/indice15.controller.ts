@@ -111,8 +111,10 @@ export async function getIndice15(req: Request, res: Response): Promise<void> {
     return { mes, baseCalc, baseBruta, deducoes, saude, minimo, superavit, percentual, detalhe, temDados: baseCalc > 0 || saude > 0 };
   });
 
-  // Acumulado
-  const acumulado = matrix.reduce((acc, m) => ({
+  // Acumulado — se mês filtrado, usa só até aquele mês
+  const mesParam = req.query.mes ? parseInt(req.query.mes as string) : null;
+  const matrixFiltrada = mesParam ? matrix.filter(m => m.mes <= mesParam) : matrix;
+  const acumulado = matrixFiltrada.reduce((acc, m) => ({
     baseCalc:   acc.baseCalc   + m.baseCalc,
     saude:      acc.saude      + m.saude,
     minimo:     acc.minimo     + m.minimo,
