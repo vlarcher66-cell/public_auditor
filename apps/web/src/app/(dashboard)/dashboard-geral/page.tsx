@@ -231,7 +231,7 @@ export default function DashboardGeralPage() {
     }
   }, [token, ctxParams, mesSelecionado, fonteSelecionada, ano]); // eslint-disable-line
 
-  useEffect(() => { if (token && entidadeSelecionada) load(); }, [token, entidadeSelecionada, municipioSelecionado]); // eslint-disable-line
+  useEffect(() => { if (token && entidadeSelecionada) load(); }, [token, entidadeSelecionada?.id, municipioSelecionado?.id]); // eslint-disable-line
 
   const handleMes = (mes: number | null) => {
     setMesSelecionado(mes);
