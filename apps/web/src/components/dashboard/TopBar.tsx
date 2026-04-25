@@ -230,13 +230,13 @@ export default function TopBar({ title, subtitle }: TopBarProps) {
           {/* Badge mês fechado */}
           {mesFechado > 0 && (
             <div style={{
-              display: 'flex', alignItems: 'center', gap: '5px',
-              padding: '5px 10px', borderRadius: '8px',
-              background: '#f0fdf4', border: '1.5px solid #bbf7d0',
-              fontSize: '11px', fontWeight: 600, color: '#15803d',
+              display: 'flex', alignItems: 'center', gap: '6px',
+              padding: '6px 12px', borderRadius: '10px',
+              background: '#f8fafc', border: '1.5px solid #e2e8f0',
+              fontSize: '13px', fontWeight: 600, color: '#0F2A4E',
               whiteSpace: 'nowrap',
             }}>
-              <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#22c55e', display: 'inline-block' }} />
+              <CalendarCheck size={14} style={{ color: '#C9A84C' }} />
               Fechado até {MESES_ABREV[mesFechado - 1]}/{new Date().getFullYear()}
             </div>
           )}
