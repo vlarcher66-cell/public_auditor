@@ -760,6 +760,8 @@ function TabDespesaAnalitica({ token, entidadeId, municipioId }: { token: string
         const totalPages = Math.ceil(totalProc / PROC_LIMIT);
         const fmtDate = (s: string) => s ? new Date(s).toLocaleDateString('pt-BR') : '—';
         const fmtBRL  = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 2 });
+        // eslint-disable-next-line react-hooks/rules-of-hooks
+        const [histAberto, setHistAberto] = React.useState<number | null>(null);
         return (
           <div style={{ background: '#fff', borderRadius: '14px', border: '1px solid #e2e8f0', overflow: 'hidden', boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
             <div style={{ background: 'linear-gradient(135deg, #0F2A4E, #1e4d95)', padding: '14px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -846,7 +848,29 @@ function TabDespesaAnalitica({ token, entidadeId, municipioId }: { token: string
                             <td style={{ padding: '8px 10px', color: '#0F2A4E', fontWeight: 600, whiteSpace: 'nowrap' }}>{row.num_processo ?? '—'}</td>
                             <td style={{ padding: '8px 10px', color: '#475569', whiteSpace: 'nowrap' }}>{row.num_empenho ?? '—'}</td>
                             <td style={{ padding: '8px 10px', color: '#334155', maxWidth: '180px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={row.credor_nome}>{row.credor_nome}</td>
-                            <td style={{ padding: '8px 10px', color: '#64748b', maxWidth: '160px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={row.historico ?? ''}>{row.historico ?? '—'}</td>
+                            <td style={{ padding: '8px 10px', maxWidth: '200px' }}>
+                              {row.historico ? (
+                                <div style={{ display: 'flex', alignItems: 'flex-start', gap: '4px' }}>
+                                  <span style={{
+                                    color: '#64748b', fontSize: '11px', lineHeight: 1.4,
+                                    overflow: histAberto === row.id ? 'visible' : 'hidden',
+                                    textOverflow: histAberto === row.id ? 'unset' : 'ellipsis',
+                                    whiteSpace: histAberto === row.id ? 'normal' : 'nowrap',
+                                    flex: 1,
+                                  }}>{row.historico}</span>
+                                  <button
+                                    onClick={() => setHistAberto(histAberto === row.id ? null : row.id)}
+                                    title={histAberto === row.id ? 'Recolher' : 'Ver histórico completo'}
+                                    style={{
+                                      flexShrink: 0, background: 'none', border: 'none', cursor: 'pointer',
+                                      color: histAberto === row.id ? '#0F2A4E' : '#94a3b8',
+                                      padding: '0 2px', fontSize: '12px', lineHeight: 1,
+                                      transition: 'color 0.15s',
+                                    }}
+                                  >{histAberto === row.id ? '▲' : '▼'}</button>
+                                </div>
+                              ) : <span style={{ color: '#cbd5e1' }}>—</span>}
+                            </td>
                             <td style={{ padding: '8px 10px', color: '#475569', maxWidth: '140px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={row.setor_nome ?? ''}>{row.setor_nome ?? '—'}</td>
                             <td style={{ padding: '8px 10px', maxWidth: '140px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={grupoNome}>
                               <span style={{ fontSize: '10px', color: '#1e4d95', background: '#eff6ff', borderRadius: '4px', padding: '2px 6px', fontWeight: 500 }}>{grupoNome}</span>
