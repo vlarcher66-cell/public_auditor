@@ -66,6 +66,8 @@ function TabDespesaAnalitica({ token, entidadeId, municipioId }: { token: string
   const [fFonte, setFFonte]         = useState('');
   const [fGrupo, setFGrupo]         = useState('');
   const [fSubgrupo, setFSubgrupo]   = useState('');
+  const [procPage, setProcPage]     = useState(1);
+  const PROC_LIMIT = 20;
 
   const { data: filtrosDisp } = useQuery<{
     entidades:   { id: number; nome: string }[];
@@ -91,6 +93,33 @@ function TabDespesaAnalitica({ token, entidadeId, municipioId }: { token: string
   const { data, isLoading } = useQuery<AnaliticaData>({
     queryKey: ['analitica-mensal', ano, fEntidade, fSecretaria, fSetor, fBloco, fFonte, fGrupo, fSubgrupo],
     queryFn: () => apiRequest(`/pagamentos/analitica-mensal?${params}`, { token }),
+    enabled: !!token,
+  });
+
+  // reset paginação ao mudar filtros
+  useEffect(() => { setProcPage(1); }, [ano, fEntidade, fSecretaria, fSetor, fBloco, fFonte, fGrupo, fSubgrupo]);
+
+  const procParams = new URLSearchParams(params);
+  if (fGrupo)    procParams.set('grupoId', fGrupo);
+  if (fSubgrupo) procParams.set('subgrupoId', fSubgrupo);
+  procParams.set('page', String(procPage));
+  procParams.set('limit', String(PROC_LIMIT));
+  procParams.set('sortBy', 'data_pagamento');
+  procParams.set('sortDir', 'desc');
+
+  const { data: processos, isLoading: loadingProc } = useQuery<{
+    rows: {
+      id: number; tipo_relatorio: string | null; num_processo: string | null;
+      num_empenho: string | null; reduzido: string | null;
+      data_pagamento: string; credor_nome: string; historico: string | null;
+      setor_nome: string | null; grupo_pag_nome: string | null; subgrupo_pag_nome: string | null;
+      grupo_nome: string | null; subgrupo_nome: string | null;
+      fonte_recurso: string | null; valor_bruto: number;
+    }[];
+    total: number; page: number; limit: number;
+  }>({
+    queryKey: ['analitica-processos', ano, fEntidade, fSecretaria, fSetor, fBloco, fFonte, fGrupo, fSubgrupo, procPage],
+    queryFn: () => apiRequest(`/pagamentos?${procParams}`, { token }),
     enabled: !!token,
   });
 
@@ -418,6 +447,118 @@ function TabDespesaAnalitica({ token, entidadeId, municipioId }: { token: string
           </div>
         )}
       </div>
+
+      {/* Listagem de Processos */}
+      {(() => {
+        const totalProc = processos?.total ?? 0;
+        const totalPages = Math.ceil(totalProc / PROC_LIMIT);
+        const fmtDate = (s: string) => s ? new Date(s).toLocaleDateString('pt-BR') : '—';
+        const fmtBRL  = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 2 });
+        return (
+          <div style={{ background: '#fff', borderRadius: '14px', border: '1px solid #e2e8f0', overflow: 'hidden', boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
+            {/* Cabeçalho */}
+            <div style={{ background: 'linear-gradient(135deg, #0F2A4E, #1e4d95)', padding: '14px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <span style={{ fontSize: '13px', fontWeight: 700, color: '#fff' }}>Processos de Pagamento</span>
+              {!loadingProc && totalProc > 0 && (
+                <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.7)', background: 'rgba(255,255,255,0.1)', borderRadius: '6px', padding: '3px 10px' }}>
+                  {totalProc.toLocaleString('pt-BR')} registros
+                </span>
+              )}
+            </div>
+
+            {loadingProc ? (
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '40px', gap: '10px', color: '#94a3b8' }}>
+                <Loader2 size={18} style={{ animation: 'spin 1s linear infinite' }} />
+                <span style={{ fontSize: '13px' }}>Carregando processos...</span>
+              </div>
+            ) : !processos?.rows?.length ? (
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '40px', color: '#94a3b8', fontSize: '13px' }}>
+                Nenhum processo encontrado para os filtros selecionados
+              </div>
+            ) : (
+              <>
+                <div style={{ overflowX: 'auto' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '11px' }}>
+                    <thead>
+                      <tr style={{ background: '#f8fafc', borderBottom: '2px solid #e2e8f0' }}>
+                        {['Tipo','Data Pag.','Nº Processo','Nº Empenho','Credor','Histórico','Setor','Grupo','Subgrupo','Fonte','Vlr. Bruto'].map(h => (
+                          <th key={h} style={{ padding: '9px 10px', textAlign: h === 'Vlr. Bruto' ? 'right' : 'left', color: '#64748b', fontWeight: 600, fontSize: '10px', letterSpacing: '0.04em', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {processos.rows.map((row, i) => {
+                        const tipo = row.tipo_relatorio ?? '—';
+                        const tipoColor = tipo === 'RP' ? '#92400e' : tipo === 'DEA' ? '#5b21b6' : '#1e4d95';
+                        const tipoBg   = tipo === 'RP' ? '#fef3c7' : tipo === 'DEA' ? '#ede9fe' : '#eff6ff';
+                        const grupoNome    = row.grupo_pag_nome    ?? row.grupo_nome    ?? '—';
+                        const subgrupoNome = row.subgrupo_pag_nome ?? row.subgrupo_nome ?? '—';
+                        return (
+                          <tr key={row.id} style={{ borderBottom: '1px solid #f1f5f9', background: i % 2 === 0 ? '#fff' : '#fafafa' }}
+                            onMouseEnter={e => (e.currentTarget.style.background = '#f0f7ff')}
+                            onMouseLeave={e => (e.currentTarget.style.background = i % 2 === 0 ? '#fff' : '#fafafa')}>
+                            {/* Tipo */}
+                            <td style={{ padding: '8px 10px', whiteSpace: 'nowrap' }}>
+                              <span style={{ fontSize: '10px', fontWeight: 700, color: tipoColor, background: tipoBg, borderRadius: '4px', padding: '2px 6px' }}>{tipo}</span>
+                            </td>
+                            {/* Data */}
+                            <td style={{ padding: '8px 10px', color: '#475569', whiteSpace: 'nowrap' }}>{fmtDate(row.data_pagamento)}</td>
+                            {/* Nº Processo */}
+                            <td style={{ padding: '8px 10px', color: '#0F2A4E', fontWeight: 600, whiteSpace: 'nowrap' }}>{row.num_processo ?? '—'}</td>
+                            {/* Nº Empenho */}
+                            <td style={{ padding: '8px 10px', color: '#475569', whiteSpace: 'nowrap' }}>{row.num_empenho ?? '—'}</td>
+                            {/* Credor */}
+                            <td style={{ padding: '8px 10px', color: '#334155', maxWidth: '180px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={row.credor_nome}>{row.credor_nome}</td>
+                            {/* Histórico */}
+                            <td style={{ padding: '8px 10px', color: '#64748b', maxWidth: '160px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={row.historico ?? ''}>{row.historico ?? '—'}</td>
+                            {/* Setor */}
+                            <td style={{ padding: '8px 10px', color: '#475569', maxWidth: '140px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={row.setor_nome ?? ''}>{row.setor_nome ?? '—'}</td>
+                            {/* Grupo */}
+                            <td style={{ padding: '8px 10px', maxWidth: '140px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={grupoNome}>
+                              <span style={{ fontSize: '10px', color: '#1e4d95', background: '#eff6ff', borderRadius: '4px', padding: '2px 6px', fontWeight: 500 }}>{grupoNome}</span>
+                            </td>
+                            {/* Subgrupo */}
+                            <td style={{ padding: '8px 10px', maxWidth: '140px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={subgrupoNome}>
+                              <span style={{ fontSize: '10px', color: '#475569', background: '#f1f5f9', borderRadius: '4px', padding: '2px 6px' }}>{subgrupoNome}</span>
+                            </td>
+                            {/* Fonte */}
+                            <td style={{ padding: '8px 10px', color: '#64748b', whiteSpace: 'nowrap' }}>{row.fonte_recurso ?? '—'}</td>
+                            {/* Valor */}
+                            <td style={{ padding: '8px 10px', textAlign: 'right', color: '#0F2A4E', fontWeight: 700, whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}>{fmtBRL(row.valor_bruto)}</td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Paginação */}
+                {totalPages > 1 && (
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 20px', borderTop: '1px solid #e2e8f0', background: '#f8fafc' }}>
+                    <span style={{ fontSize: '11px', color: '#94a3b8' }}>
+                      Página {procPage} de {totalPages} · {totalProc.toLocaleString('pt-BR')} registros
+                    </span>
+                    <div style={{ display: 'flex', gap: '6px' }}>
+                      <button
+                        onClick={() => setProcPage(p => Math.max(1, p - 1))}
+                        disabled={procPage === 1}
+                        style={{ padding: '5px 12px', fontSize: '11px', borderRadius: '6px', border: '1px solid #e2e8f0', background: procPage === 1 ? '#f8fafc' : '#fff', color: procPage === 1 ? '#cbd5e1' : '#0F2A4E', cursor: procPage === 1 ? 'default' : 'pointer', fontWeight: 600 }}>
+                        ← Anterior
+                      </button>
+                      <button
+                        onClick={() => setProcPage(p => Math.min(totalPages, p + 1))}
+                        disabled={procPage === totalPages}
+                        style={{ padding: '5px 12px', fontSize: '11px', borderRadius: '6px', border: '1px solid #e2e8f0', background: procPage === totalPages ? '#f8fafc' : '#fff', color: procPage === totalPages ? '#cbd5e1' : '#0F2A4E', cursor: procPage === totalPages ? 'default' : 'pointer', fontWeight: 600 }}>
+                        Próxima →
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        );
+      })()}
     </div>
   );
 }
