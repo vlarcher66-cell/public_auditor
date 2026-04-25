@@ -54,6 +54,97 @@ interface AnaliticaData {
   ano: string;
 }
 
+// ─── Tooltips padrão dark ─────────────────────────────────────────────────────
+
+const fmtBRL = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 2 });
+
+function DarkTooltipBar({ active, payload, label }: any) {
+  if (!active || !payload?.length) return null;
+  return (
+    <div style={{ background: '#0F2A4E', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', padding: '10px 16px', fontSize: '11px', boxShadow: '0 8px 32px rgba(0,0,0,0.32)', minWidth: '200px' }}>
+      <div style={{ fontWeight: 700, color: '#93c5fd', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '8px' }}>{label}</div>
+      {payload.map((p: any, i: number) => (
+        <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px', marginBottom: i < payload.length - 1 ? '4px' : 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: p.fill || p.color || p.stroke }} />
+            <span style={{ color: 'rgba(255,255,255,0.6)' }}>{p.name}</span>
+          </div>
+          <span style={{ fontWeight: 700, color: '#fff' }}>{fmtBRL(Number(p.value))}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function DarkTooltipLine({ active, payload, label }: any) {
+  if (!active || !payload?.length) return null;
+  const p = payload[0];
+  const val = Number(p.value);
+  const isPercent = p.dataKey === 'perc';
+  return (
+    <div style={{ background: '#0F2A4E', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', padding: '10px 16px', fontSize: '11px', boxShadow: '0 8px 32px rgba(0,0,0,0.32)', minWidth: '180px' }}>
+      <div style={{ fontWeight: 700, color: '#93c5fd', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '8px' }}>{label}</div>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <div style={{ width: '12px', height: '2px', background: p.stroke || p.color, borderRadius: '1px' }} />
+          <span style={{ color: 'rgba(255,255,255,0.6)' }}>{isPercent ? 'Crescimento' : p.name}</span>
+        </div>
+        <span style={{ fontWeight: 700, color: p.stroke || p.color }}>
+          {isPercent ? `${val > 0 ? '+' : ''}${val.toFixed(2)}%` : fmtBRL(val)}
+        </span>
+      </div>
+    </div>
+  );
+}
+
+function DarkTooltipPie({ active, payload, totalPie }: any) {
+  if (!active || !payload?.length) return null;
+  const d = payload[0];
+  const pct = totalPie > 0 ? ((d.value / totalPie) * 100).toFixed(1) : '0.0';
+  return (
+    <div style={{ background: '#0F2A4E', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', padding: '10px 16px', fontSize: '11px', boxShadow: '0 8px 32px rgba(0,0,0,0.32)', minWidth: '180px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px' }}>
+        <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: d.payload?.color || d.payload?.fill }} />
+        <span style={{ fontWeight: 700, color: '#93c5fd', textTransform: 'uppercase', letterSpacing: '0.06em', fontSize: '10px' }}>{d.name}</span>
+      </div>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px', marginBottom: '4px' }}>
+        <span style={{ color: 'rgba(255,255,255,0.6)' }}>Valor</span>
+        <span style={{ fontWeight: 700, color: '#fff' }}>{fmtBRL(d.value)}</span>
+      </div>
+      <div style={{ borderTop: '1px solid rgba(255,255,255,0.1)', marginTop: '6px', paddingTop: '6px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px' }}>
+        <span style={{ color: 'rgba(255,255,255,0.6)' }}>Participação</span>
+        <span style={{ fontWeight: 700, color: '#C9A84C' }}>{pct}%</span>
+      </div>
+    </div>
+  );
+}
+
+function DarkTooltipSetor({ active, payload }: any) {
+  if (!active || !payload?.length) return null;
+  const d = payload[0];
+  const row = d.payload;
+  return (
+    <div style={{ background: '#0F2A4E', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', padding: '10px 16px', fontSize: '11px', boxShadow: '0 8px 32px rgba(0,0,0,0.32)', minWidth: '200px' }}>
+      <div style={{ fontWeight: 700, color: '#93c5fd', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '8px' }}>{row.nome || d.payload?.fullName || d.payload?.name}</div>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px', marginBottom: '4px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: row.color || d.fill }} />
+          <span style={{ color: 'rgba(255,255,255,0.6)' }}>Total Bruto</span>
+        </div>
+        <span style={{ fontWeight: 700, color: '#fff' }}>{fmtBRL(Number(d.value))}</span>
+      </div>
+      {row.pct !== undefined && (
+        <div style={{ borderTop: '1px solid rgba(255,255,255,0.1)', marginTop: '6px', paddingTop: '6px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px' }}>
+          <span style={{ color: 'rgba(255,255,255,0.6)' }}>Participação</span>
+          <span style={{ fontWeight: 700, color: '#C9A84C' }}>{row.pct.toFixed(1)}%</span>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+
 function TabDespesaAnalitica({ token, entidadeId, municipioId }: { token: string | undefined; entidadeId?: number; municipioId?: number }) {
   const anoAtual = new Date().getFullYear();
   const [ano, setAno] = useState(anoAtual);
@@ -1215,10 +1306,7 @@ function TabOutrosExercicios({ token, entidadeId, municipioId }: { token: string
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
               <XAxis dataKey="mes" tick={{ fontSize: 10, fill: '#64748b' }} axisLine={false} tickLine={false} />
               <YAxis tickFormatter={fmtK} tick={{ fontSize: 10, fill: '#64748b' }} axisLine={false} tickLine={false} width={55} />
-              <Tooltip
-                formatter={(v: number, name: string) => [fmt(v), name === 'rp' ? 'Restos a Pagar' : name === 'dea' ? 'DEA' : 'Total']}
-                contentStyle={{ fontSize: '12px', borderRadius: '8px', border: '1px solid #e2e8f0' }}
-              />
+              <Tooltip content={<DarkTooltipBar />} />
               <Bar dataKey="rp" fill="url(#gradRP)" radius={[3, 3, 0, 0]} barSize={18} />
               <Bar dataKey="dea" fill="url(#gradDEA)" radius={[3, 3, 0, 0]} barSize={18} />
               <Line type="monotone" dataKey="total" stroke="#ef4444" strokeWidth={2} dot={{ fill: '#ef4444', r: 3, strokeWidth: 0 }} />
@@ -1241,7 +1329,7 @@ function TabOutrosExercicios({ token, entidadeId, municipioId }: { token: string
                 <Pie data={pieGrupo} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={55} outerRadius={85} paddingAngle={3}>
                   {pieGrupo.map((entry, i) => <Cell key={i} fill={entry.fill} />)}
                 </Pie>
-                <Tooltip formatter={(v: number) => fmt(v)} contentStyle={{ fontSize: '12px', borderRadius: '8px', border: '1px solid #e2e8f0' }} />
+                <Tooltip content={(props: any) => <DarkTooltipPie {...props} totalPie={pieGrupo.reduce((a: number, d: any) => a + d.value, 0)} />} />
                 <Legend iconType="square" iconSize={8} formatter={(v) => <span style={{ fontSize: '10px', color: '#475569' }}>{v}</span>} />
               </PieChart>
             </ResponsiveContainer>
@@ -1917,8 +2005,8 @@ function TabDespesaSintetica({ token, entidadeId, municipioId }: { token: string
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                 <XAxis dataKey="mes" tick={{ fontSize: 10, fill: '#64748b' }} axisLine={false} tickLine={false} />
                 <YAxis tickFormatter={fmtK} tick={{ fontSize: 10, fill: '#64748b' }} axisLine={false} tickLine={false} width={60} />
-                <Tooltip formatter={(v: number) => [formatCurrency(v), 'Total']} labelStyle={{ fontWeight: 600 }} contentStyle={{ fontSize: '12px', borderRadius: '8px', border: '1px solid #e2e8f0' }} />
-                <Bar dataKey="total" radius={[4, 4, 0, 0]}>
+                <Tooltip content={<DarkTooltipBar />} />
+                <Bar dataKey="total" name="Total" radius={[4, 4, 0, 0]}>
                   {barData.map((_, i) => <Cell key={i} fill={i % 2 === 0 ? '#0F2A4E' : '#1e4d95'} />)}
                   <LabelList dataKey="total" position="top" formatter={fmtK} style={{ fontSize: '9px', fill: '#64748b' }} />
                 </Bar>
@@ -2039,7 +2127,7 @@ function TabDespesaSintetica({ token, entidadeId, municipioId }: { token: string
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
               <XAxis dataKey="mes" tick={{ fontSize: 10, fill: '#64748b' }} axisLine={false} tickLine={false} />
               <YAxis tickFormatter={(v) => `${v}%`} tick={{ fontSize: 10, fill: '#64748b' }} axisLine={false} tickLine={false} width={45} />
-              <Tooltip formatter={(v: number) => [`${v.toFixed(2)}%`, 'Crescimento']} contentStyle={{ fontSize: '12px', borderRadius: '8px', border: '1px solid #e2e8f0' }} />
+              <Tooltip content={<DarkTooltipLine />} />
               <Line type="monotone" dataKey="perc" stroke="#C9A84C" strokeWidth={2.5} dot={{ fill: '#C9A84C', r: 4, strokeWidth: 0 }}>
                 <LabelList dataKey="perc" position="top" formatter={(v: number) => v === 0 ? '' : `${v > 0 ? '+' : ''}${v.toFixed(2)}%`} style={{ fontSize: '9px', fill: '#64748b', fontWeight: 600 }} />
               </Line>
@@ -2720,17 +2808,7 @@ function GraficoPorSetor({ ano, token, fEntidade, fSecretaria, fSetor, fBloco, f
               tickFormatter={fmtK}
               tick={{ fontSize: 10, fill: '#94a3b8' }} axisLine={false} tickLine={false} width={55}
             />
-            <Tooltip
-              formatter={(v: number) => [
-                new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v),
-                'Total Bruto'
-              ]}
-              labelFormatter={(label) => {
-                const row = chartData.find(r => r.nomeAbrev === label);
-                return row ? row.nome : label;
-              }}
-              contentStyle={{ fontSize: '12px', borderRadius: '8px', border: '1px solid #e2e8f0', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
-            />
+            <Tooltip content={<DarkTooltipSetor />} />
             <ReferenceLine y={media} stroke="#C9A84C" strokeDasharray="4 3" strokeWidth={1.5}
               label={{ value: `Média: ${fmtK(media)}`, position: 'insideTopRight', fontSize: 10, fill: '#C9A84C', fontWeight: 600 }}
             />
@@ -3142,11 +3220,7 @@ function TabDespesaDiarias({ token, entidadeId, municipioId }: { token: string |
                     background={{ fill: '#f1f5f9' }}
                     label={false}
                   />
-                  <Tooltip
-                    formatter={(v: number, _name: any, props: any) => [formatCurrency(v), props?.payload?.fullName || props?.payload?.name || 'Total']}
-                    labelFormatter={() => ''}
-                    contentStyle={{ fontSize: '12px', borderRadius: '8px', border: '1px solid #e2e8f0' }}
-                  />
+                  <Tooltip content={<DarkTooltipSetor />} />
                 </RadialBarChart>
               </ResponsiveContainer>
               {/* Legenda manual */}
@@ -3191,7 +3265,7 @@ function TabDespesaDiarias({ token, entidadeId, municipioId }: { token: string |
                     <Pie data={pieData} cx={80} cy={80} innerRadius={50} outerRadius={80} dataKey="value" strokeWidth={2} paddingAngle={2}>
                       {pieData.map((entry, i) => <Cell key={i} fill={entry.color} />)}
                     </Pie>
-                    <Tooltip formatter={(v: number) => [formatCurrency(v), '']} contentStyle={{ fontSize: '11px', borderRadius: '8px' }} />
+                    <Tooltip content={(props: any) => <DarkTooltipPie {...props} totalPie={pieData.reduce((a: number, d: any) => a + d.value, 0)} />} />
                   </PieChart>
                 </div>
                 <div style={{ flex: 1, maxHeight: '180px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '6px' }}>
@@ -3370,8 +3444,8 @@ function TabDespesaDiarias({ token, entidadeId, municipioId }: { token: string |
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#cbd5e1" />
               <XAxis dataKey="mes" tick={{ fontSize: 10, fill: '#64748b' }} axisLine={false} tickLine={false} />
               <YAxis hide />
-              <Tooltip formatter={(v: number) => [formatCurrency(v), 'Total']} labelStyle={{ fontWeight: 600 }} contentStyle={{ fontSize: '12px', borderRadius: '8px', border: '1px solid #e2e8f0' }} />
-              <Bar dataKey="total" radius={[4, 4, 0, 0]}>
+              <Tooltip content={<DarkTooltipBar />} />
+              <Bar dataKey="total" name="Total" radius={[4, 4, 0, 0]}>
                 {barData.map((_, i) => <Cell key={i} fill={i % 2 === 0 ? '#8a7020' : '#a68a2a'} />)}
                 <LabelList dataKey="total" position="top" formatter={(v: number) => formatCurrency(v)} style={{ fontSize: '11px', fill: '#6b5518', fontWeight: 700 }} />
               </Bar>
@@ -3395,7 +3469,7 @@ function TabDespesaDiarias({ token, entidadeId, municipioId }: { token: string |
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#cbd5e1" />
               <XAxis dataKey="mes" tick={{ fontSize: 10, fill: '#64748b' }} axisLine={false} tickLine={false} />
               <YAxis tickFormatter={(v) => `${v}%`} tick={{ fontSize: 10, fill: '#64748b' }} axisLine={false} tickLine={false} width={45} />
-              <Tooltip formatter={(v: number) => [`${v.toFixed(2)}%`, 'Crescimento']} contentStyle={{ fontSize: '12px', borderRadius: '8px', border: '1px solid #e2e8f0' }} />
+              <Tooltip content={<DarkTooltipLine />} />
               <ReferenceLine y={0} stroke="#cbd5e1" strokeDasharray="3 3" />
               <Line type="monotone" dataKey="perc" stroke="#dc2626" strokeWidth={2.5} dot={{ fill: '#dc2626', r: 4, strokeWidth: 0 }}>
                 <LabelList dataKey="perc" position="top" formatter={(v: number) => v === 0 ? '' : `${v > 0 ? '+' : ''}${v.toFixed(0)}%`} style={{ fontSize: '9px', fill: '#dc2626', fontWeight: 600 }} />
