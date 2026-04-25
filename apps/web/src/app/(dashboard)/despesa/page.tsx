@@ -471,9 +471,11 @@ function TabDespesaAnalitica({ token, entidadeId, municipioId }: { token: string
       </div>
 
       {/* ── HEATMAP + WATERFALL ─────────────────────────────────────────── */}
+      <div style={{ marginTop: '24px' }}>
       {!isLoading && gruposComDados.length > 0 && (() => {
         const MESES_LABEL = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
-        const fmtBRL = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 2 });
+        const fmtBRL     = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 2 });
+        const fmtHeat    = (v: number) => Math.round(v).toLocaleString('pt-BR'); // sem R$, sem decimais — cabe na célula
 
         // ── dados heatmap ──
         const heatRows = gruposComDados.map(g => ({
@@ -516,7 +518,7 @@ function TabDespesaAnalitica({ token, entidadeId, municipioId }: { token: string
           const start = runningTotal - val;
           runningTotal = start;
           return {
-            nome: g.nome.length > 20 ? g.nome.slice(0, 20) + '…' : g.nome,
+            nome: g.nome.length > 28 ? g.nome.slice(0, 28) + '…' : g.nome,
             nomeCompleto: g.nome,
             valor: val,
             start,
@@ -664,7 +666,7 @@ function TabDespesaAnalitica({ token, entidadeId, municipioId }: { token: string
                                 cursor: 'default',
                               }}
                             >
-                              {v > 0 ? fmtBRL(v) : ''}
+                              {v > 0 ? fmtHeat(v) : ''}
                             </div>
                           </td>
                         ))}
@@ -710,7 +712,7 @@ function TabDespesaAnalitica({ token, entidadeId, municipioId }: { token: string
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                   {waterfallData.map((item, i) => (
                     <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                      <div title={item.nomeCompleto} style={{ width: '140px', flexShrink: 0, fontSize: '10px', color: '#475569', fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      <div title={item.nomeCompleto} style={{ width: '190px', flexShrink: 0, fontSize: '10px', color: '#475569', fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                         {item.nome}
                       </div>
                       <div style={{ flex: 1, position: 'relative', height: '28px', background: '#f1f5f9', borderRadius: '6px', overflow: 'hidden' }}>
@@ -750,6 +752,7 @@ function TabDespesaAnalitica({ token, entidadeId, municipioId }: { token: string
           </div>
         );
       })()}
+      </div>
 
       {/* Listagem de Processos */}
       {(() => {
