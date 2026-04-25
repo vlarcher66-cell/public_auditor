@@ -379,9 +379,9 @@ export default function DashboardGeralPage() {
                         ativo
                           ? 'bg-white text-[#0F2A4E] shadow-sm font-bold'
                           : fechado
-                            ? 'text-white/80 hover:text-white hover:bg-white/10 cursor-pointer'
+                            ? 'text-white hover:bg-white/20 cursor-pointer border border-white/20'
                             : futuro
-                              ? 'text-white/15 cursor-not-allowed'
+                              ? 'text-white/20 cursor-not-allowed'
                               : 'text-white/50 hover:text-white hover:bg-white/10'
                       }`}
                     >
