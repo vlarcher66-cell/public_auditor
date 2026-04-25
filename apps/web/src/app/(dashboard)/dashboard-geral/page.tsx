@@ -35,7 +35,7 @@ interface Indice15 {
   acumulado: { baseCalc: number; saude: number; minimo: number; superavit: number; percentual: number };
   matrix: { mes: number; percentual: number; saude: number; minimo: number; temDados: boolean }[];
 }
-interface ContasResumo { ultimo_periodo: string | null; total_a_pagar: number; por_entidade: { entidade_nome: string; total: number }[]; por_mes?: Record<string, number> }
+interface ContasResumo { ultimo_periodo: string | null; total_a_pagar: number; por_entidade: { entidade_nome: string; total: number }[]; por_mes?: Record<string, number>; por_grupo?: { grupo_id: number; grupo_nome: string; total: number }[] }
 interface MetaItem { subgrupo_nome: string; grupo_nome: string; meta_valor: number; fk_subgrupo: number }
 interface ExecItem { subgrupo_id: number; subgrupo_nome: string; total: number }
 interface FarolGrupo {
@@ -847,24 +847,30 @@ export default function DashboardGeralPage() {
                   </p>
                 </div>
 
-                {/* Por entidade */}
-                {(contas?.por_entidade ?? []).length > 0 ? (
-                  <div className="space-y-2">
-                    <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Por Entidade</p>
-                    {contas!.por_entidade.slice(0, 4).map((e, i) => {
-                      const pct = totalContas > 0 ? (e.total / totalContas) * 100 : 0;
+                {/* Por grupo */}
+                {(contas?.por_grupo ?? []).length > 0 ? (
+                  <div className="space-y-2.5">
+                    <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Passivo por Grupo</p>
+                    {contas!.por_grupo!.slice(0, 6).map((g, i) => {
+                      const pct = totalContas > 0 ? (g.total / totalContas) * 100 : 0;
+                      const cores = ['#f59e0b','#ef4444','#3b82f6','#8b5cf6','#10b981','#f97316'];
+                      const cor = cores[i % cores.length];
                       return (
-                        <div key={i}>
-                          <div className="flex items-center justify-between mb-0.5">
-                            <span className="text-[11px] text-gray-600 truncate pr-2 max-w-[140px]">{e.entidade_nome}</span>
-                            <span className="text-[11px] font-semibold text-gray-700 flex-shrink-0" title={`R$ ${fmt(e.total)}`}>R$ {fmt(e.total)}</span>
+                        <div key={g.grupo_id}>
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="text-[11px] text-gray-600 truncate pr-2 max-w-[130px]" title={g.grupo_nome}>{g.grupo_nome}</span>
+                            <div className="flex items-center gap-1.5 flex-shrink-0">
+                              <span className="text-[10px] text-gray-400">{pct.toFixed(0)}%</span>
+                              <span className="text-[11px] font-semibold text-gray-700">R$ {fmt(g.total)}</span>
+                            </div>
                           </div>
-                          <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                          <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
                             <motion.div
                               initial={{ width: 0 }}
                               animate={{ width: `${pct}%` }}
-                              transition={{ duration: 1, delay: 0.6 + i * 0.1 }}
-                              className="h-full rounded-full bg-amber-400"
+                              transition={{ duration: 0.8, delay: 0.3 + i * 0.08 }}
+                              style={{ background: cor }}
+                              className="h-full rounded-full"
                             />
                           </div>
                         </div>

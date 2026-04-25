@@ -158,7 +158,7 @@ export async function getResumoAPagar(req: Request, res: Response): Promise<void
     .whereRaw('f.dt_liquidacao::date >= ?', [dataInicio])
     .whereRaw('f.dt_liquidacao::date <= ?', [dataFim]);
 
-  const [rows, rowsMes] = await Promise.all([
+  const [rows, rowsMes, rowsGrupo] = await Promise.all([
     baseQuery()
       .join('dim_entidade as e', 'f.fk_entidade', 'e.id')
       .select('e.id as entidade_id', 'e.nome as entidade_nome')
@@ -169,6 +169,17 @@ export async function getResumoAPagar(req: Request, res: Response): Promise<void
       .select(db.raw("TO_CHAR(f.dt_liquidacao, 'YYYY-MM') as mes_liq"))
       .sum('f.valor as total')
       .groupByRaw("TO_CHAR(f.dt_liquidacao, 'YYYY-MM')"),
+    baseQuery()
+      .leftJoin('dim_credor as c',           'f.fk_credor',         'c.id')
+      .leftJoin('dim_credor_a_pagar as cap',  'f.fk_credor_a_pagar', 'cap.id')
+      .joinRaw('LEFT JOIN dim_grupo_despesa as g ON g.id = COALESCE(c.fk_grupo, cap.fk_grupo)')
+      .select(
+        db.raw('COALESCE(g.id, 0) as grupo_id'),
+        db.raw("COALESCE(g.nome, 'Sem Grupo') as grupo_nome"),
+      )
+      .sum('f.valor as total')
+      .groupByRaw('COALESCE(g.id, 0), COALESCE(g.nome, \'Sem Grupo\')')
+      .orderBy('total', 'desc'),
   ]);
 
   const total = rows.reduce((a: number, r: any) => a + Number(r.total), 0);
@@ -181,6 +192,7 @@ export async function getResumoAPagar(req: Request, res: Response): Promise<void
     total_a_pagar: total,
     por_entidade: rows.map((r: any) => ({ ...r, total: Number(r.total) })),
     por_mes,
+    por_grupo: rowsGrupo.map((r: any) => ({ grupo_id: r.grupo_id, grupo_nome: r.grupo_nome, total: Number(r.total) })),
   });
 }
 
