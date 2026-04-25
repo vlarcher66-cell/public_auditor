@@ -2054,7 +2054,7 @@ function TabDespesaSintetica({ token, entidadeId, municipioId }: { token: string
                             />
                           ))}
                         </Pie>
-                        <Tooltip content={<GrupoTooltip />} />
+                        <Tooltip content={(props: any) => <DarkTooltipPie {...props} totalPie={totalPieGrupo} />} />
                       </PieChart>
                     </div>
 
