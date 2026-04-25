@@ -67,7 +67,15 @@ function TabDespesaAnalitica({ token, entidadeId, municipioId }: { token: string
   const [fGrupo, setFGrupo]         = useState('');
   const [fSubgrupo, setFSubgrupo]   = useState('');
   const [procPage, setProcPage]     = useState(1);
+  const [sortBy,   setSortBy]       = useState('data_pagamento');
+  const [sortDir,  setSortDir]      = useState<'asc'|'desc'>('desc');
   const PROC_LIMIT = 20;
+
+  function toggleSort(col: string) {
+    if (sortBy === col) { setSortDir(d => d === 'asc' ? 'desc' : 'asc'); }
+    else { setSortBy(col); setSortDir('desc'); }
+    setProcPage(1);
+  }
 
   const { data: filtrosDisp } = useQuery<{
     entidades:   { id: number; nome: string }[];
@@ -104,8 +112,8 @@ function TabDespesaAnalitica({ token, entidadeId, municipioId }: { token: string
   if (fSubgrupo) procParams.set('subgrupoId', fSubgrupo);
   procParams.set('page', String(procPage));
   procParams.set('limit', String(PROC_LIMIT));
-  procParams.set('sortBy', 'data_pagamento');
-  procParams.set('sortDir', 'desc');
+  procParams.set('sortBy', sortBy);
+  procParams.set('sortDir', sortDir);
 
   const { data: processos, isLoading: loadingProc } = useQuery<{
     rows: {
@@ -118,7 +126,7 @@ function TabDespesaAnalitica({ token, entidadeId, municipioId }: { token: string
     }[];
     total: number; page: number; limit: number;
   }>({
-    queryKey: ['analitica-processos', ano, fEntidade, fSecretaria, fSetor, fBloco, fFonte, fGrupo, fSubgrupo, procPage],
+    queryKey: ['analitica-processos', ano, fEntidade, fSecretaria, fSetor, fBloco, fFonte, fGrupo, fSubgrupo, procPage, sortBy, sortDir],
     queryFn: () => apiRequest(`/pagamentos?${procParams}`, { token }),
     enabled: !!token,
   });
@@ -481,9 +489,46 @@ function TabDespesaAnalitica({ token, entidadeId, municipioId }: { token: string
                   <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '11px' }}>
                     <thead>
                       <tr style={{ background: '#f8fafc', borderBottom: '2px solid #e2e8f0' }}>
-                        {['Tipo','Data Pag.','Nº Processo','Nº Empenho','Credor','Histórico','Setor','Grupo','Subgrupo','Fonte','Vlr. Bruto'].map(h => (
-                          <th key={h} style={{ padding: '9px 10px', textAlign: h === 'Vlr. Bruto' ? 'right' : 'left', color: '#64748b', fontWeight: 600, fontSize: '10px', letterSpacing: '0.04em', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>{h}</th>
-                        ))}
+                        {([
+                          ['Tipo',        'tipo_relatorio', false],
+                          ['Data Pag.',   'data_pagamento', false],
+                          ['Nº Processo', null,             false],
+                          ['Nº Empenho',  'num_empenho',    false],
+                          ['Credor',      'credor',         false],
+                          ['Histórico',   null,             false],
+                          ['Setor',       'setor',          false],
+                          ['Grupo',       null,             false],
+                          ['Subgrupo',    null,             false],
+                          ['Fonte',       null,             false],
+                          ['Vlr. Bruto',  'valor_bruto',    true],
+                        ] as [string, string|null, boolean][]).map(([label, col, right]) => {
+                          const ativo = col && sortBy === col;
+                          return (
+                            <th
+                              key={label}
+                              onClick={() => col && toggleSort(col)}
+                              style={{
+                                padding: '9px 10px',
+                                textAlign: right ? 'right' : 'left',
+                                color: ativo ? '#0F2A4E' : '#64748b',
+                                fontWeight: ativo ? 700 : 600,
+                                fontSize: '10px', letterSpacing: '0.04em',
+                                textTransform: 'uppercase', whiteSpace: 'nowrap',
+                                cursor: col ? 'pointer' : 'default',
+                                userSelect: 'none',
+                                background: ativo ? '#e8f0fe' : 'transparent',
+                                transition: 'background 0.15s',
+                              }}
+                            >
+                              {label}
+                              {col && (
+                                <span style={{ marginLeft: '4px', opacity: ativo ? 1 : 0.3, fontSize: '9px' }}>
+                                  {ativo ? (sortDir === 'asc' ? '▲' : '▼') : '⇅'}
+                                </span>
+                              )}
+                            </th>
+                          );
+                        })}
                       </tr>
                     </thead>
                     <tbody>
