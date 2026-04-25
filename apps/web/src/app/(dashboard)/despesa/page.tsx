@@ -1967,7 +1967,17 @@ function TabDespesaSintetica({ token, entidadeId, municipioId }: { token: string
       </div>
 
       {/* Gráfico por Setor */}
-      <GraficoPorSetor ano={String(ano)} token={token} />
+      <GraficoPorSetor
+        ano={String(ano)}
+        token={token}
+        fEntidade={fEntidade}
+        fSecretaria={fSecretaria}
+        fSetor={fSetor}
+        fBloco={fBloco}
+        fFonte={fFonte}
+        fGrupo={fGrupo}
+        fSubgrupo={fSubgrupo}
+      />
 
       {/* Crescimento Mensal */}
       <div style={{ background: '#fff', borderRadius: '14px', border: '1px solid #e2e8f0', overflow: 'hidden', boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
@@ -2576,14 +2586,33 @@ const SETOR_COLORS = [
   '#dc2626','#db2777','#65a30d','#9333ea','#0284c7',
 ];
 
-function GraficoPorSetor({ ano, token }: { ano: string; token: string | undefined }) {
+function GraficoPorSetor({ ano, token, fEntidade, fSecretaria, fSetor, fBloco, fFonte, fGrupo, fSubgrupo }: {
+  ano: string;
+  token: string | undefined;
+  fEntidade?: string;
+  fSecretaria?: string;
+  fSetor?: string;
+  fBloco?: string;
+  fFonte?: string;
+  fGrupo?: string;
+  fSubgrupo?: string;
+}) {
   const API_URL = process.env.NEXT_PUBLIC_API_URL || '';
 
+  const params = new URLSearchParams({ ano });
+  if (fEntidade)   params.set('entidadeId',   fEntidade);
+  if (fSecretaria) params.set('secretariaId', fSecretaria);
+  if (fSetor)      params.set('setorId',      fSetor);
+  if (fBloco)      params.set('blocoId',      fBloco);
+  if (fFonte)      params.set('fonteRecurso', fFonte);
+  if (fGrupo)      params.set('grupoId',      fGrupo);
+  if (fSubgrupo)   params.set('subgrupoId',   fSubgrupo);
+
   const { data, isLoading } = useQuery<{ id: number; nome: string; total: number; qtd: number; pct: number }[]>({
-    queryKey: ['por-setor', ano],
+    queryKey: ['por-setor', params.toString()],
     enabled: !!token,
     queryFn: async () => {
-      const res = await fetch(`${API_URL}/api/pagamentos/por-setor?ano=${ano}`, {
+      const res = await fetch(`${API_URL}/api/pagamentos/por-setor?${params}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       return res.json();
