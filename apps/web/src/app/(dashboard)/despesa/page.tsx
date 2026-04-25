@@ -1529,23 +1529,21 @@ function TabSintetica({
   const hoje = new Date();
   const diasNoAno = Math.floor((hoje.getTime() - inicio.getTime()) / (1000 * 60 * 60 * 24)) + 1;
 
-  const contextParams = new URLSearchParams();
-  contextParams.set('ano', String(anoAtual));
-  if (entidadeId) contextParams.set('entidadeId', String(entidadeId));
+  const [sinteticaData, setSinteticaData] = useState<SinteticaMensalData | undefined>(undefined);
+  const [loadingSintetica, setLoadingSintetica] = useState(false);
+  const [setoresData, setSetoresData] = useState<{ id: number; nome: string; total: number; qtd: number; pct: number }[] | undefined>(undefined);
+  const [loadingSetores, setLoadingSetores] = useState(false);
 
-  const { data: sinteticaData, isLoading: loadingSintetica } = useQuery<SinteticaMensalData>({
-    queryKey: ['sintetica-mensal-geral', anoAtual, entidadeId, municipioId],
-    queryFn: () => apiRequest(`/pagamentos/sintetica-mensal?${contextParams}`, { token }),
-    enabled: !!token,
-    staleTime: 5 * 60_000,
-  });
-
-  const { data: setoresData, isLoading: loadingSetores } = useQuery<{ id: number; nome: string; total: number; qtd: number; pct: number }[]>({
-    queryKey: ['por-setor-geral', anoAtual, entidadeId, municipioId],
-    queryFn: () => apiRequest(`/pagamentos/por-setor?${contextParams}`, { token }),
-    enabled: !!token,
-    staleTime: 5 * 60_000,
-  });
+  useEffect(() => {
+    if (!token || !entidadeId) return;
+    const p = new URLSearchParams({ ano: String(anoAtual), entidadeId: String(entidadeId) });
+    setLoadingSintetica(true);
+    setLoadingSetores(true);
+    apiRequest<SinteticaMensalData>(`/pagamentos/sintetica-mensal?${p}`, { token })
+      .then(setSinteticaData).catch(() => {}).finally(() => setLoadingSintetica(false));
+    apiRequest<{ id: number; nome: string; total: number; qtd: number; pct: number }[]>(`/pagamentos/por-setor?${p}`, { token })
+      .then(setSetoresData).catch(() => {}).finally(() => setLoadingSetores(false));
+  }, [token, entidadeId, municipioId]); // eslint-disable-line
 
   // Último mês com dados lançados no sistema (baseado em totaisMes)
   const ultimoMesComDados = sinteticaData?.totaisMes
@@ -2794,16 +2792,19 @@ export default function DashboardPage() {
   const entidadeId = entidadeSelecionada?.id;
   const municipioId = municipioSelecionado?.id;
 
-  const { data: summary, isLoading } = useQuery<OrdemPagamentoSummary>({
-    queryKey: ['summary', entidadeId, municipioId],
-    queryFn: () => {
-      const params = new URLSearchParams();
-      if (entidadeId) params.set('entidadeId', String(entidadeId));
-      return apiRequest(`/pagamentos/summary?${params}`, { token });
-    },
-    enabled: !!token,
-    staleTime: 5 * 60_000,
-  });
+  const [summary, setSummary] = useState<OrdemPagamentoSummary | undefined>(undefined);
+  const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    if (!token || !entidadeId) return;
+    setIsLoading(true);
+    const params = new URLSearchParams();
+    params.set('entidadeId', String(entidadeId));
+    apiRequest<OrdemPagamentoSummary>(`/pagamentos/summary?${params}`, { token })
+      .then(setSummary)
+      .catch(() => {})
+      .finally(() => setIsLoading(false));
+  }, [token, entidadeId, municipioId]); // eslint-disable-line
 
   return (
     <div>
