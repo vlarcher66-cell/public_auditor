@@ -618,6 +618,182 @@ function TabDespesaAnalitica({ token, entidadeId, municipioId }: { token: string
           </div>
         );
       })()}
+
+      {/* ── HEATMAP + WATERFALL ─────────────────────────────────────────── */}
+      {!isLoading && gruposComDados.length > 0 && (() => {
+        const MESES_LABEL = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+        const fmtBRL = (v: number) => v >= 1_000_000
+          ? `R$${(v/1_000_000).toFixed(1)}M`
+          : v >= 1_000 ? `R$${(v/1_000).toFixed(0)}k` : `R$${v.toFixed(0)}`;
+        const fmtFull = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 2 });
+
+        // ── dados heatmap ──
+        const heatRows = gruposComDados.map(g => ({
+          nome: g.nome.length > 22 ? g.nome.slice(0, 22) + '…' : g.nome,
+          nomeCompleto: g.nome,
+          meses: MESES_LABEL.map((_, i) => somaGrupoMes(g.id, i + 1)),
+        }));
+        const allVals = heatRows.flatMap(r => r.meses).filter(v => v > 0);
+        const maxHeat = allVals.length ? Math.max(...allVals) : 1;
+
+        // interpolação navy→dourado por intensidade
+        function heatColor(v: number): string {
+          if (v === 0) return '#f1f5f9';
+          const t = Math.pow(v / maxHeat, 0.5);
+          const r = Math.round(15  + (201 - 15)  * t);
+          const g = Math.round(42  + (168 - 42)  * t);
+          const b = Math.round(78  + (76  - 78)  * t);
+          return `rgb(${r},${g},${b})`;
+        }
+        function textColor(v: number): string {
+          if (v === 0) return '#cbd5e1';
+          return v / maxHeat > 0.45 ? '#fff' : '#0F2A4E';
+        }
+
+        // ── dados waterfall ──
+        const totalGeral = gruposComDados.reduce((s, g) => s + somaGrupoTotal(g.id), 0);
+        const topGrupos = [...gruposComDados].sort((a,b) => somaGrupoTotal(b.id) - somaGrupoTotal(a.id)).slice(0, 8);
+        let runningTotal = totalGeral;
+        const waterfallData = topGrupos.map((g, i) => {
+          const val = somaGrupoTotal(g.id);
+          const start = runningTotal - val;
+          runningTotal = start;
+          return {
+            nome: g.nome.length > 16 ? g.nome.slice(0, 16) + '…' : g.nome,
+            nomeCompleto: g.nome,
+            valor: val,
+            start,
+            pct: totalGeral > 0 ? (val / totalGeral) * 100 : 0,
+            color: i === 0 ? '#C9A84C' : i === 1 ? '#1e4d95' : i === 2 ? '#2563eb' : '#64748b',
+          };
+        });
+
+        return (
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginTop: '0' }}>
+
+            {/* ── HEATMAP ── */}
+            <div style={{ background: '#fff', borderRadius: '16px', border: '1px solid #e2e8f0', overflow: 'hidden', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
+              <div style={{ background: 'linear-gradient(135deg, #0F2A4E 0%, #1e4d95 100%)', padding: '16px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div>
+                  <div style={{ fontSize: '13px', fontWeight: 700, color: '#fff', letterSpacing: '0.04em' }}>Mapa de Calor</div>
+                  <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.5)', marginTop: '2px' }}>Intensidade de gasto — Grupo × Mês</div>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <div style={{ width: '48px', height: '6px', borderRadius: '3px', background: 'linear-gradient(90deg, #f1f5f9, #0F2A4E 40%, #C9A84C)' }} />
+                  <span style={{ fontSize: '9px', color: 'rgba(255,255,255,0.5)' }}>baixo → alto</span>
+                </div>
+              </div>
+              <div style={{ padding: '16px', overflowX: 'auto' }}>
+                <table style={{ width: '100%', borderCollapse: 'separate', borderSpacing: '3px' }}>
+                  <thead>
+                    <tr>
+                      <td style={{ width: '130px' }} />
+                      {MESES_LABEL.map(m => (
+                        <td key={m} style={{ textAlign: 'center', fontSize: '9px', fontWeight: 700, color: '#94a3b8', letterSpacing: '0.05em', paddingBottom: '4px' }}>{m.toUpperCase()}</td>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {heatRows.map((row, ri) => (
+                      <tr key={ri}>
+                        <td style={{ paddingRight: '8px', paddingBottom: '3px' }}>
+                          <div title={row.nomeCompleto} style={{ fontSize: '10px', color: '#334155', fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '130px' }}>
+                            {row.nome}
+                          </div>
+                        </td>
+                        {row.meses.map((v, mi) => (
+                          <td key={mi} style={{ padding: '0' }}>
+                            <div
+                              title={v > 0 ? `${row.nomeCompleto} — ${MESES_LABEL[mi]}: ${fmtFull(v)}` : '—'}
+                              style={{
+                                background: heatColor(v),
+                                borderRadius: '5px',
+                                height: '28px',
+                                minWidth: '32px',
+                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                fontSize: '8px', fontWeight: 700,
+                                color: textColor(v),
+                                transition: 'transform 0.15s, box-shadow 0.15s',
+                                cursor: v > 0 ? 'default' : 'default',
+                              }}
+                            >
+                              {v > 0 ? fmtBRL(v) : ''}
+                            </div>
+                          </td>
+                        ))}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* ── WATERFALL ── */}
+            <div style={{ background: '#fff', borderRadius: '16px', border: '1px solid #e2e8f0', overflow: 'hidden', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
+              <div style={{ background: 'linear-gradient(135deg, #0F2A4E 0%, #1e4d95 100%)', padding: '16px 20px' }}>
+                <div style={{ fontSize: '13px', fontWeight: 700, color: '#fff', letterSpacing: '0.04em' }}>Cascata de Despesa</div>
+                <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.5)', marginTop: '2px' }}>Composição do total — do maior ao menor grupo</div>
+              </div>
+              <div style={{ padding: '20px' }}>
+                {/* Barra total no topo */}
+                <div style={{ marginBottom: '16px', padding: '10px 14px', background: 'linear-gradient(135deg, #0F2A4E, #1e4d95)', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <span style={{ fontSize: '11px', fontWeight: 700, color: '#fff' }}>TOTAL GERAL</span>
+                  <span style={{ fontSize: '13px', fontWeight: 800, color: '#C9A84C' }}>{fmtFull(totalGeral)}</span>
+                </div>
+                {/* Cascata */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  {waterfallData.map((item, i) => (
+                    <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      {/* Nome */}
+                      <div title={item.nomeCompleto} style={{ width: '130px', flexShrink: 0, fontSize: '10px', color: '#475569', fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        {item.nome}
+                      </div>
+                      {/* Barra */}
+                      <div style={{ flex: 1, position: 'relative', height: '28px', background: '#f1f5f9', borderRadius: '6px', overflow: 'hidden' }}>
+                        <div style={{
+                          position: 'absolute', left: 0, top: 0, bottom: 0,
+                          width: `${item.pct}%`,
+                          background: `linear-gradient(90deg, ${item.color}dd, ${item.color})`,
+                          borderRadius: '6px',
+                          display: 'flex', alignItems: 'center', paddingLeft: '8px',
+                          transition: 'width 0.6s cubic-bezier(0.4,0,0.2,1)',
+                        }}>
+                          {item.pct > 15 && (
+                            <span style={{ fontSize: '9px', fontWeight: 700, color: '#fff', whiteSpace: 'nowrap' }}>
+                              {fmtBRL(item.valor)}
+                            </span>
+                          )}
+                        </div>
+                        {item.pct <= 15 && (
+                          <span style={{ position: 'absolute', left: `${item.pct + 1}%`, top: '50%', transform: 'translateY(-50%)', fontSize: '9px', fontWeight: 700, color: '#475569', whiteSpace: 'nowrap' }}>
+                            {fmtBRL(item.valor)}
+                          </span>
+                        )}
+                      </div>
+                      {/* Pct */}
+                      <div style={{ width: '38px', flexShrink: 0, textAlign: 'right', fontSize: '10px', fontWeight: 700, color: item.color }}>
+                        {item.pct.toFixed(1)}%
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                {/* Linha acumulada */}
+                {waterfallData.length > 0 && (() => {
+                  const cobertoTotal = waterfallData.reduce((s, d) => s + d.valor, 0);
+                  const pctCoberto = totalGeral > 0 ? (cobertoTotal / totalGeral) * 100 : 0;
+                  return (
+                    <div style={{ marginTop: '14px', padding: '8px 12px', background: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ fontSize: '10px', color: '#64748b' }}>Top {waterfallData.length} grupos cobrem</span>
+                      <span style={{ fontSize: '12px', fontWeight: 700, color: '#0F2A4E' }}>{pctCoberto.toFixed(1)}% do total</span>
+                    </div>
+                  );
+                })()}
+              </div>
+            </div>
+
+          </div>
+        );
+      })()}
     </div>
   );
 }
