@@ -758,7 +758,7 @@ export default function DashboardGeralPage() {
                     <span className="font-semibold text-red-500">R$ {fmt(indice?.acumulado.minimo ?? 0)}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-gray-400">Aplicado em saúde</span>
+                    <span className="text-gray-400">Repasse em saúde</span>
                     <span className="font-semibold text-emerald-600">R$ {fmt(indice?.acumulado.saude ?? 0)}</span>
                   </div>
                   <div className="flex justify-between border-t pt-1.5">
