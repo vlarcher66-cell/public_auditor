@@ -857,11 +857,14 @@ export default function DashboardGeralPage() {
                       const cor = cores[i % cores.length];
                       return (
                         <div key={g.grupo_id}>
-                          <div className="flex items-center justify-between mb-1">
-                            <span className="text-[11px] text-gray-600 truncate pr-2 max-w-[130px]" title={g.grupo_nome}>{g.grupo_nome}</span>
-                            <div className="flex items-center gap-1.5 flex-shrink-0">
-                              <span className="text-[10px] text-gray-400">{pct.toFixed(0)}%</span>
-                              <span className="text-[11px] font-semibold text-gray-700">R$ {fmt(g.total)}</span>
+                          <div className="flex items-center justify-between mb-1 gap-2">
+                            <span className="text-[11px] text-gray-700 font-medium flex-1 min-w-0" title={g.grupo_nome}
+                              style={{ overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
+                              {g.grupo_nome}
+                            </span>
+                            <div className="flex flex-col items-end flex-shrink-0">
+                              <span className="text-[11px] font-bold text-gray-700">R$ {fmt(g.total)}</span>
+                              <CountUp end={pct} duration={1.2} delay={0.3 + i * 0.08} decimals={1} suffix="%" className="text-[10px] font-semibold" style={{ color: cor }} />
                             </div>
                           </div>
                           <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
