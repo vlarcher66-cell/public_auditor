@@ -2059,7 +2059,7 @@ function TabDespesaSintetica({ token, entidadeId, municipioId }: { token: string
                     </div>
 
                     {/* Legenda com barra de progresso e valor */}
-                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '220px', overflowY: 'auto' }}>
                       {pieData.map((d, i) => {
                         const pct = totalPieGrupo > 0 ? (d.value / totalPieGrupo) * 100 : 0;
                         const isHovered = hoveredIndexPie === i;
