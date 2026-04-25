@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { useSession } from 'next-auth/react';
 import { apiRequest } from '@/lib/api';
 
@@ -57,6 +57,7 @@ export function MunicipioEntidadeProvider({ children }: { children: React.ReactN
   const [municipioSelecionado,  setMunicipioSelecionadoSt] = useState<Municipio | null>(null);
   const [entidadeSelecionada,   setEntidadeSelecionadaSt]  = useState<Entidade | null>(null);
   const [loading,               setLoading]               = useState(true);
+  const initKey = useRef<string | null>(null);
 
   const isSuperAdmin = role === 'SUPER_ADMIN' || role === 'ADMIN';
   const podeEscolherMunicipio = isSuperAdmin;
@@ -84,6 +85,11 @@ export function MunicipioEntidadeProvider({ children }: { children: React.ReactN
   // ── Inicialização baseada no role ─────────────────────────────────────────
   useEffect(() => {
     if (!token || !role) return;
+
+    // Evita duplo disparo quando a sessão NextAuth passa por loading→authenticated
+    const key = `${token}|${role}|${jwtMunId}|${jwtEntId}`;
+    if (initKey.current === key) return;
+    initKey.current = key;
 
     async function init() {
       setLoading(true);

@@ -1537,12 +1537,14 @@ function TabSintetica({
     queryKey: ['sintetica-mensal-geral', anoAtual, entidadeId, municipioId],
     queryFn: () => apiRequest(`/pagamentos/sintetica-mensal?${contextParams}`, { token }),
     enabled: !!token,
+    staleTime: 5 * 60_000,
   });
 
   const { data: setoresData, isLoading: loadingSetores } = useQuery<{ id: number; nome: string; total: number; qtd: number; pct: number }[]>({
     queryKey: ['por-setor-geral', anoAtual, entidadeId, municipioId],
     queryFn: () => apiRequest(`/pagamentos/por-setor?${contextParams}`, { token }),
     enabled: !!token,
+    staleTime: 5 * 60_000,
   });
 
   // Último mês com dados lançados no sistema (baseado em totaisMes)
@@ -2800,7 +2802,7 @@ export default function DashboardPage() {
       return apiRequest(`/pagamentos/summary?${params}`, { token });
     },
     enabled: !!token,
-    refetchInterval: 60_000,
+    staleTime: 5 * 60_000,
   });
 
   return (
