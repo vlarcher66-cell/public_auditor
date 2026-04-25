@@ -181,9 +181,12 @@ export default function DashboardGeralPage() {
   const [lastUpdate, setLastUpdate] = useState(new Date());
   const [grupoTooltip, setGrupoTooltip] = useState<number | null>(null);
 
-  const ctxParams: Record<string, string> = {};
-  if (entidadeSelecionada?.id) ctxParams.entidadeId = String(entidadeSelecionada.id);
-  else if (municipioSelecionado?.id) ctxParams.municipioId = String(municipioSelecionado.id);
+  const ctxParams = React.useMemo(() => {
+    const p: Record<string, string> = {};
+    if (entidadeSelecionada?.id) p.entidadeId = String(entidadeSelecionada.id);
+    else if (municipioSelecionado?.id) p.municipioId = String(municipioSelecionado.id);
+    return p;
+  }, [entidadeSelecionada?.id, municipioSelecionado?.id]); // eslint-disable-line
 
   const load = useCallback(async (mes?: number | null, fonte?: string | null, anoParam?: string) => {
     if (!token) return;
@@ -226,7 +229,7 @@ export default function DashboardGeralPage() {
     } finally {
       setLoading(false);
     }
-  }, [token, entidadeSelecionada, municipioSelecionado, mesSelecionado, fonteSelecionada, ano]); // eslint-disable-line
+  }, [token, ctxParams, mesSelecionado, fonteSelecionada, ano]); // eslint-disable-line
 
   useEffect(() => { load(); }, [token, entidadeSelecionada, municipioSelecionado]); // eslint-disable-line
 
