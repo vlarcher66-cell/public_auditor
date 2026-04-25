@@ -1554,13 +1554,21 @@ function TabSintetica({
   const mesReferencia = ultimoMesComDados || new Date().getMonth() + 1;
 
   // Meses para o gráfico de evolução
+  // totaisMes = total geral (todos os grupos)
+  // totaisExAnt = soma dos grupos "Outros Exercícios" (RP + DEA exercício anterior)
+  // mesmoExercicio = total - outrosExercicios
   const mesesNomes = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
   const evolucaoData = mesesNomes.map((nome, i) => {
     const mes = i + 1;
-    const total = sinteticaData?.totaisMes?.[mes] ?? 0;
-    const exAnt = sinteticaData?.totaisExAnt?.[mes] ?? 0;
-    const dea = total - exAnt;
-    return { mes: nome, total, dea: dea > 0 ? dea : 0, rp: exAnt > 0 ? exAnt : 0 };
+    const total          = sinteticaData?.totaisMes?.[mes] ?? 0;
+    const outrosExerc    = sinteticaData?.totaisExAnt?.[mes] ?? 0;
+    const mesmoExercicio = total - outrosExerc;
+    return {
+      mes: nome,
+      total,
+      mesmoExercicio: mesmoExercicio > 0 ? mesmoExercicio : 0,
+      outrosExerc:    outrosExerc   > 0 ? outrosExerc    : 0,
+    };
   });
 
   const totaisValidos = evolucaoData.filter(d => d.total > 0).map(d => d.total);
@@ -1593,33 +1601,33 @@ function TabSintetica({
   // Tooltip do gráfico de evolução
   const EvolucaoTooltip = ({ active, payload, label }: any) => {
     if (!active || !payload?.length) return null;
-    const dea      = payload.find((p: any) => p.dataKey === 'dea')?.value   ?? 0;
-    const rp       = payload.find((p: any) => p.dataKey === 'rp')?.value    ?? 0;
-    const exercicio = payload.find((p: any) => p.dataKey === 'total')?.value ?? (dea + rp);
+    const mesmoExerc  = payload.find((p: any) => p.dataKey === 'mesmoExercicio')?.value ?? 0;
+    const outrosExerc = payload.find((p: any) => p.dataKey === 'outrosExerc')?.value    ?? 0;
+    const totalGeral  = payload.find((p: any) => p.dataKey === 'total')?.value           ?? (mesmoExerc + outrosExerc);
     const fmtBRL = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 2 });
     return (
-      <div style={{ background: '#0F2A4E', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', padding: '10px 16px', fontSize: '11px', boxShadow: '0 8px 32px rgba(0,0,0,0.32)', minWidth: '220px' }}>
+      <div style={{ background: '#0F2A4E', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', padding: '10px 16px', fontSize: '11px', boxShadow: '0 8px 32px rgba(0,0,0,0.32)', minWidth: '240px' }}>
         <div style={{ fontWeight: 700, color: '#93c5fd', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '8px' }}>{label}</div>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px', marginBottom: '4px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
             <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#1e4d95' }} />
-            <span style={{ color: 'rgba(255,255,255,0.6)' }}>DEA</span>
+            <span style={{ color: 'rgba(255,255,255,0.6)' }}>Mesmo Exercício</span>
           </div>
-          <span style={{ fontWeight: 700, color: '#fff' }}>{fmtBRL(dea)}</span>
+          <span style={{ fontWeight: 700, color: '#fff' }}>{fmtBRL(mesmoExerc)}</span>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px', marginBottom: '4px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
             <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#C9A84C' }} />
-            <span style={{ color: 'rgba(255,255,255,0.6)' }}>Restos a Pagar</span>
+            <span style={{ color: 'rgba(255,255,255,0.6)' }}>Outros Exercícios</span>
           </div>
-          <span style={{ fontWeight: 700, color: '#fff' }}>{fmtBRL(rp)}</span>
+          <span style={{ fontWeight: 700, color: '#fff' }}>{fmtBRL(outrosExerc)}</span>
         </div>
         <div style={{ borderTop: '1px solid rgba(255,255,255,0.1)', marginTop: '8px', paddingTop: '8px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
             <div style={{ width: '12px', height: '2px', background: '#ef4444', borderRadius: '1px' }} />
-            <span style={{ fontWeight: 700, color: '#ef4444' }}>Exercício</span>
+            <span style={{ fontWeight: 700, color: '#ef4444' }}>Total Geral</span>
           </div>
-          <span style={{ fontWeight: 700, color: '#ef4444' }}>{fmtBRL(exercicio)}</span>
+          <span style={{ fontWeight: 700, color: '#ef4444' }}>{fmtBRL(totalGeral)}</span>
         </div>
       </div>
     );
@@ -1774,12 +1782,12 @@ function TabSintetica({
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px', flexWrap: 'wrap', gap: '12px' }}>
           <div>
             <div style={{ fontSize: '15px', fontWeight: 700, color: '#0F2A4E' }}>Evolução Mensal da Despesa {anoAtual}</div>
-            <div style={{ fontSize: '12px', color: '#94a3b8', marginTop: '2px' }}>Despesas do exercício (DEA) + Restos a Pagar (RP) por mês</div>
+            <div style={{ fontSize: '12px', color: '#94a3b8', marginTop: '2px' }}>Mesmo Exercício + Outros Exercícios (RP + DEA ant.) por mês</div>
           </div>
           <div style={{ display: 'flex', gap: '16px', fontSize: '11px' }}>
-            {[['#1e4d95','DEA'],['#C9A84C','Restos a Pagar'],['#ef4444','Total']].map(([cor, label]) => (
+            {[['#1e4d95','Mesmo Exercício'],['#C9A84C','Outros Exercícios'],['#ef4444','Total Geral']].map(([cor, label]) => (
               <span key={label} style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-                <span style={{ width: label === 'Total' ? '16px' : '10px', height: label === 'Total' ? '2px' : '10px', background: cor, borderRadius: '2px', display: 'inline-block' }} />
+                <span style={{ width: label === 'Total Geral' ? '16px' : '10px', height: label === 'Total Geral' ? '2px' : '10px', background: cor, borderRadius: '2px', display: 'inline-block' }} />
                 <span style={{ color: '#64748b' }}>{label}</span>
               </span>
             ))}
@@ -1799,8 +1807,8 @@ function TabSintetica({
                   label={{ value: `Média: ${fmtK(mediaEvolucao)}`, position: 'insideTopRight', fontSize: 10, fill: '#94a3b8' }}
                 />
               )}
-              <Bar dataKey="dea" stackId="a" fill="#1e4d95" radius={[0,0,0,0]} maxBarSize={40} />
-              <Bar dataKey="rp"  stackId="a" fill="#C9A84C" radius={[4,4,0,0]} maxBarSize={40} />
+              <Bar dataKey="mesmoExercicio" stackId="a" fill="#1e4d95" radius={[0,0,0,0]} maxBarSize={40} />
+              <Bar dataKey="outrosExerc"    stackId="a" fill="#C9A84C" radius={[4,4,0,0]} maxBarSize={40} />
               <Line type="monotone" dataKey="total" stroke="#ef4444" strokeWidth={2.5} dot={{ fill: '#ef4444', r: 3, strokeWidth: 0 }} />
             </ComposedChart>
           </ResponsiveContainer>
