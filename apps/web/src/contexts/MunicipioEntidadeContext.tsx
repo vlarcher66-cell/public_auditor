@@ -63,14 +63,6 @@ export function MunicipioEntidadeProvider({ children }: { children: React.ReactN
   const podeEscolherMunicipio = isSuperAdmin;
   const podeEscolherEntidade  = isSuperAdmin || role === 'GESTOR';
 
-  // ── Carrega municípios (só SUPER_ADMIN/ADMIN precisa da lista) ────────────
-  useEffect(() => {
-    if (!token || !isSuperAdmin) return;
-    apiRequest<Municipio[]>('/municipios/list', { token })
-      .then((rows) => setMunicipios(rows))
-      .catch(() => {});
-  }, [token, role]);
-
   // ── Carrega entidades quando município muda ───────────────────────────────
   const carregarEntidades = useCallback(async (munId: number) => {
     if (!token) return;
