@@ -1039,7 +1039,7 @@ function TabDespesaAnalitica({ token, entidadeId, municipioId }: { token: string
                               <span style={{ fontSize: '10px', color: '#475569', background: '#f1f5f9', borderRadius: '4px', padding: '2px 6px' }}>{subgrupoNome}</span>
                             </td>
                             <td style={{ padding: '8px 10px', color: '#64748b', whiteSpace: 'nowrap' }}>{row.fonte_recurso ?? '—'}</td>
-                            <td style={{ padding: '8px 10px', textAlign: 'right', color: '#0F2A4E', fontWeight: 700, whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}>{fmtBRL(row.valor_bruto)}</td>
+                            <td style={{ padding: '8px 10px', textAlign: 'right', color: '#0F2A4E', fontWeight: 700, whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}>{fmtBRL(Number(row.valor_bruto))}</td>
                           </tr>
                         );
                       })}
