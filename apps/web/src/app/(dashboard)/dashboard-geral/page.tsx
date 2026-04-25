@@ -168,6 +168,7 @@ export default function DashboardGeralPage() {
   const [ano,        setAno]        = useState(String(anoAtual));
   const [loading,    setLoading]    = useState(true);
   const [despesa,    setDespesa]    = useState<DespesaSummary | null>(null);
+  const [ultimoMesFechadoRef, setUltimoMesFechadoRef] = useState<number>(0);
   const [receita,    setReceita]    = useState<ReceitaSummaryResponse | null>(null);
   const [indice,     setIndice]     = useState<Indice15 | null>(null);
   const [contas,     setContas]     = useState<ContasResumo | null>(null);
@@ -207,6 +208,13 @@ export default function DashboardGeralPage() {
         apiRequest<{ valor_total: number }>('/transferencias-bancarias/summary', { token, params: p }).catch(() => null),
       ]);
       setDespesa(desp);
+      // Atualiza referência de meses fechados só na visão anual
+      if (!mesAtual && desp?.porMes) {
+        const ult = (desp.porMes as any[])
+          .filter((m: any) => Number(m.total) > 0)
+          .reduce((max: number, m: any) => Math.max(max, Number(m.mes)), 0);
+        if (ult > 0) setUltimoMesFechadoRef(ult);
+      }
       setReceita(rec ?? null);
       setIndice(ind);
       setContas(cnt);
@@ -263,10 +271,8 @@ export default function DashboardGeralPage() {
     };
   }).filter(d => d.receita > 0 || d.despesaPaga > 0);
 
-  // Último mês fechado = último mês com despesa paga > 0
-  const ultimoMesFechado = (despesa?.porMes ?? [])
-    .filter((m: any) => Number(m.total) > 0)
-    .reduce((max: number, m: any) => Math.max(max, Number(m.mes)), 0);
+  // Último mês fechado — usa referência fixa para não mudar ao filtrar por mês
+  const ultimoMesFechado = ultimoMesFechadoRef;
 
   // Metas com executado cruzado
   const metasComExec = metas.slice(0, 5).map(m => {
