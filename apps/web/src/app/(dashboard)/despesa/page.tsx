@@ -470,6 +470,287 @@ function TabDespesaAnalitica({ token, entidadeId, municipioId }: { token: string
         )}
       </div>
 
+      {/* ── HEATMAP + WATERFALL ─────────────────────────────────────────── */}
+      {!isLoading && gruposComDados.length > 0 && (() => {
+        const MESES_LABEL = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+        const fmtBRL = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 2 });
+
+        // ── dados heatmap ──
+        const heatRows = gruposComDados.map(g => ({
+          nome: g.nome.length > 22 ? g.nome.slice(0, 22) + '…' : g.nome,
+          nomeCompleto: g.nome,
+          meses: MESES_LABEL.map((_, i) => somaGrupoMes(g.id, i + 1)),
+        }));
+        const allVals = heatRows.flatMap(r => r.meses).filter(v => v > 0);
+        const maxHeat = allVals.length ? Math.max(...allVals) : 1;
+
+        // semáforo pastel: verde claro → amarelo claro → vermelho claro
+        function heatColor(v: number): string {
+          if (v === 0) return '#f8fafc';
+          const t = Math.pow(v / maxHeat, 0.6); // 0..1
+          if (t < 0.5) {
+            // verde→amarelo: #dcfce7 → #fef9c3
+            const tt = t / 0.5;
+            const r = Math.round(220 + (254 - 220) * tt);
+            const g = Math.round(252 + (249 - 252) * tt);
+            const b = Math.round(231 + (195 - 231) * tt);
+            return `rgb(${r},${g},${b})`;
+          } else {
+            // amarelo→vermelho: #fef9c3 → #fecaca
+            const tt = (t - 0.5) / 0.5;
+            const r = Math.round(254 + (254 - 254) * tt);
+            const g = Math.round(249 + (202 - 249) * tt);
+            const b = Math.round(195 + (202 - 195) * tt);
+            return `rgb(${r},${g},${b})`;
+          }
+        }
+        // texto sempre escuro — fundo nunca fica tão escuro a ponto de precisar de branco
+        function textColor(_v: number): string { return '#1e293b'; }
+
+        // ── dados waterfall ──
+        const totalGeral = gruposComDados.reduce((s, g) => s + somaGrupoTotal(g.id), 0);
+        const topGrupos = [...gruposComDados].sort((a,b) => somaGrupoTotal(b.id) - somaGrupoTotal(a.id)).slice(0, 8);
+        let runningTotal = totalGeral;
+        const waterfallData = topGrupos.map((g, i) => {
+          const val = somaGrupoTotal(g.id);
+          const start = runningTotal - val;
+          runningTotal = start;
+          return {
+            nome: g.nome.length > 20 ? g.nome.slice(0, 20) + '…' : g.nome,
+            nomeCompleto: g.nome,
+            valor: val,
+            start,
+            pct: totalGeral > 0 ? (val / totalGeral) * 100 : 0,
+            color: i === 0 ? '#C9A84C' : i === 1 ? '#1e4d95' : i === 2 ? '#2563eb' : '#64748b',
+          };
+        });
+
+        // ── insights dinâmicos heatmap ──
+        const grupoMaisHeavy = gruposComDados.reduce((a, b) => somaGrupoTotal(a.id) > somaGrupoTotal(b.id) ? a : b);
+        const mesPicoIdx = MESES_LABEL.map((_, i) => allVals.length
+          ? heatRows.reduce((s, r) => s + r.meses[i], 0) : 0).indexOf(
+          Math.max(...MESES_LABEL.map((_, i) => heatRows.reduce((s, r) => s + r.meses[i], 0)))
+        );
+        const mesPicoValor = heatRows.reduce((s, r) => s + r.meses[mesPicoIdx], 0);
+        const mesesComDados = MESES_LABEL.filter((_, i) => heatRows.some(r => r.meses[i] > 0)).length;
+
+        // ── insights dinâmicos waterfall ──
+        const top3Pct = waterfallData.slice(0, 3).reduce((s, d) => s + d.pct, 0);
+        const cobertoTotal = waterfallData.reduce((s, d) => s + d.valor, 0);
+        const pctCoberto = totalGeral > 0 ? (cobertoTotal / totalGeral) * 100 : 0;
+        const concentrado = top3Pct > 70;
+
+        // ── componente popover ──
+        function InfoPopover({ insights }: { insights: React.ReactNode }) {
+          const [aberto, setAberto] = React.useState(false);
+          const [fixado, setFixado] = React.useState(false);
+          const ref = React.useRef<HTMLDivElement>(null);
+
+          React.useEffect(() => {
+            if (!fixado) return;
+            function handler(e: MouseEvent) {
+              if (ref.current && !ref.current.contains(e.target as Node)) {
+                setAberto(false);
+                setFixado(false);
+              }
+            }
+            document.addEventListener('mousedown', handler);
+            return () => document.removeEventListener('mousedown', handler);
+          }, [fixado]);
+
+          return (
+            <div ref={ref} style={{ position: 'relative' }}>
+              <button
+                onMouseEnter={() => { if (!fixado) setAberto(true); }}
+                onMouseLeave={() => { if (!fixado) setAberto(false); }}
+                onClick={() => { setFixado(f => !f); setAberto(a => !a); }}
+                title="Como analisar este gráfico"
+                style={{
+                  width: '22px', height: '22px', borderRadius: '50%',
+                  background: aberto ? '#C9A84C' : 'rgba(255,255,255,0.15)',
+                  border: '1.5px solid rgba(255,255,255,0.35)',
+                  color: '#fff', fontSize: '11px', fontWeight: 700,
+                  cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  transition: 'background 0.2s',
+                  flexShrink: 0,
+                }}
+              >?</button>
+              {aberto && (
+                <div style={{
+                  position: 'absolute', top: '30px', right: 0, zIndex: 50,
+                  width: '300px', background: '#fff',
+                  borderRadius: '12px', boxShadow: '0 8px 32px rgba(15,42,78,0.18)',
+                  border: '1px solid #e2e8f0', overflow: 'hidden',
+                }}>
+                  <div style={{ background: 'linear-gradient(135deg, #0F2A4E, #1e4d95)', padding: '10px 14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <span style={{ fontSize: '11px', fontWeight: 700, color: '#fff' }}>Como analisar</span>
+                    {fixado && (
+                      <button onClick={() => { setAberto(false); setFixado(false); }}
+                        style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.6)', cursor: 'pointer', fontSize: '14px', lineHeight: 1, padding: '0 2px' }}>×</button>
+                    )}
+                  </div>
+                  <div style={{ padding: '12px 14px', fontSize: '11px', color: '#334155', lineHeight: 1.6 }}>
+                    {insights}
+                  </div>
+                </div>
+              )}
+            </div>
+          );
+        }
+
+        return (
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginTop: '0' }}>
+
+            {/* ── HEATMAP ── */}
+            <div style={{ background: '#fff', borderRadius: '16px', border: '1px solid #e2e8f0', overflow: 'hidden', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
+              <div style={{ background: 'linear-gradient(135deg, #0F2A4E 0%, #1e4d95 100%)', padding: '16px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div>
+                  <div style={{ fontSize: '13px', fontWeight: 700, color: '#fff', letterSpacing: '0.04em' }}>Mapa de Calor</div>
+                  <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.5)', marginTop: '2px' }}>Intensidade de gasto — Grupo × Mês</div>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <div style={{ width: '60px', height: '6px', borderRadius: '3px', background: 'linear-gradient(90deg, #dcfce7, #fef9c3 50%, #fecaca)' }} />
+                    <span style={{ fontSize: '9px', color: 'rgba(255,255,255,0.5)' }}>baixo → alto</span>
+                  </div>
+                  <InfoPopover insights={
+                    <div>
+                      <p style={{ marginBottom: '8px', color: '#475569' }}>
+                        Células vermelhas indicam maior concentração de gasto; verdes, menor. Linhas vermelhas em meses consecutivos sugerem contratos contínuos ou folha de pagamento.
+                      </p>
+                      <div style={{ borderTop: '1px solid #f1f5f9', paddingTop: '8px', display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                        <span style={{ fontSize: '10px', fontWeight: 700, color: '#0F2A4E', marginBottom: '2px' }}>📊 Seus dados agora</span>
+                        <span>• Grupo de maior gasto: <strong>{grupoMaisHeavy.nome}</strong> — {fmtBRL(somaGrupoTotal(grupoMaisHeavy.id))}</span>
+                        <span>• Mês de pico: <strong>{MESES_LABEL[mesPicoIdx]}</strong> — {fmtBRL(mesPicoValor)}</span>
+                        <span>• Meses com movimentação: <strong>{mesesComDados} de 12</strong></span>
+                        {mesesComDados < 12 && (
+                          <span style={{ color: '#f59e0b' }}>⚠️ Meses sem dados podem indicar exercício incompleto ou filtro aplicado.</span>
+                        )}
+                      </div>
+                    </div>
+                  } />
+                </div>
+              </div>
+              <div style={{ padding: '16px', overflowX: 'auto' }}>
+                <table style={{ width: '100%', borderCollapse: 'separate', borderSpacing: '3px' }}>
+                  <thead>
+                    <tr>
+                      <td style={{ width: '130px' }} />
+                      {MESES_LABEL.map(m => (
+                        <td key={m} style={{ textAlign: 'center', fontSize: '9px', fontWeight: 700, color: '#94a3b8', letterSpacing: '0.05em', paddingBottom: '4px' }}>{m.toUpperCase()}</td>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {heatRows.map((row, ri) => (
+                      <tr key={ri}>
+                        <td style={{ paddingRight: '8px', paddingBottom: '3px' }}>
+                          <div title={row.nomeCompleto} style={{ fontSize: '10px', color: '#334155', fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '130px' }}>
+                            {row.nome}
+                          </div>
+                        </td>
+                        {row.meses.map((v, mi) => (
+                          <td key={mi} style={{ padding: '0' }}>
+                            <div
+                              title={v > 0 ? `${row.nomeCompleto} — ${MESES_LABEL[mi]}: ${fmtBRL(v)}` : '—'}
+                              style={{
+                                background: heatColor(v),
+                                borderRadius: '5px',
+                                height: '28px',
+                                minWidth: '32px',
+                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                fontSize: '8px', fontWeight: 700,
+                                color: textColor(v),
+                                cursor: 'default',
+                              }}
+                            >
+                              {v > 0 ? fmtBRL(v) : ''}
+                            </div>
+                          </td>
+                        ))}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* ── WATERFALL ── */}
+            <div style={{ background: '#fff', borderRadius: '16px', border: '1px solid #e2e8f0', overflow: 'hidden', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
+              <div style={{ background: 'linear-gradient(135deg, #0F2A4E 0%, #1e4d95 100%)', padding: '16px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div>
+                  <div style={{ fontSize: '13px', fontWeight: 700, color: '#fff', letterSpacing: '0.04em' }}>Cascata de Despesa</div>
+                  <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.5)', marginTop: '2px' }}>Composição do total — do maior ao menor grupo</div>
+                </div>
+                <InfoPopover insights={
+                  <div>
+                    <p style={{ marginBottom: '8px', color: '#475569' }}>
+                      Cada barra representa a fatia de um grupo no total geral. Quanto maior a barra, maior a participação. Grupos com mais de 50% merecem atenção especial do controle interno.
+                    </p>
+                    <div style={{ borderTop: '1px solid #f1f5f9', paddingTop: '8px', display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                      <span style={{ fontSize: '10px', fontWeight: 700, color: '#0F2A4E', marginBottom: '2px' }}>📊 Seus dados agora</span>
+                      <span>• Total geral: <strong>{fmtBRL(totalGeral)}</strong></span>
+                      <span>• Maior grupo: <strong>{waterfallData[0]?.nomeCompleto}</strong> ({waterfallData[0]?.pct.toFixed(1)}%)</span>
+                      <span>• Top 3 grupos somam: <strong>{top3Pct.toFixed(1)}%</strong> do total</span>
+                      <span>• Top {waterfallData.length} grupos cobrem: <strong>{pctCoberto.toFixed(1)}%</strong></span>
+                      {concentrado && (
+                        <span style={{ color: '#ef4444' }}>⚠️ Alta concentração: 3 grupos respondem por mais de 70% da despesa.</span>
+                      )}
+                    </div>
+                  </div>
+                } />
+              </div>
+              <div style={{ padding: '20px' }}>
+                {/* Barra total no topo */}
+                <div style={{ marginBottom: '16px', padding: '10px 14px', background: 'linear-gradient(135deg, #0F2A4E, #1e4d95)', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <span style={{ fontSize: '11px', fontWeight: 700, color: '#fff' }}>TOTAL GERAL</span>
+                  <span style={{ fontSize: '13px', fontWeight: 800, color: '#C9A84C' }}>{fmtBRL(totalGeral)}</span>
+                </div>
+                {/* Cascata */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  {waterfallData.map((item, i) => (
+                    <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      <div title={item.nomeCompleto} style={{ width: '140px', flexShrink: 0, fontSize: '10px', color: '#475569', fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        {item.nome}
+                      </div>
+                      <div style={{ flex: 1, position: 'relative', height: '28px', background: '#f1f5f9', borderRadius: '6px', overflow: 'hidden' }}>
+                        <div style={{
+                          position: 'absolute', left: 0, top: 0, bottom: 0,
+                          width: `${item.pct}%`,
+                          background: `linear-gradient(90deg, ${item.color}dd, ${item.color})`,
+                          borderRadius: '6px',
+                          display: 'flex', alignItems: 'center', paddingLeft: '8px',
+                          transition: 'width 0.6s cubic-bezier(0.4,0,0.2,1)',
+                        }}>
+                          {item.pct > 18 && (
+                            <span style={{ fontSize: '9px', fontWeight: 700, color: '#fff', whiteSpace: 'nowrap' }}>
+                              {fmtBRL(item.valor)}
+                            </span>
+                          )}
+                        </div>
+                        {item.pct <= 18 && (
+                          <span style={{ position: 'absolute', left: `${item.pct + 1}%`, top: '50%', transform: 'translateY(-50%)', fontSize: '9px', fontWeight: 700, color: '#475569', whiteSpace: 'nowrap' }}>
+                            {fmtBRL(item.valor)}
+                          </span>
+                        )}
+                      </div>
+                      <div style={{ width: '42px', flexShrink: 0, textAlign: 'right', fontSize: '10px', fontWeight: 700, color: item.color }}>
+                        {item.pct.toFixed(1)}%
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <div style={{ marginTop: '14px', padding: '8px 12px', background: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontSize: '10px', color: '#64748b' }}>Top {waterfallData.length} grupos cobrem</span>
+                  <span style={{ fontSize: '12px', fontWeight: 700, color: '#0F2A4E' }}>{pctCoberto.toFixed(1)}% do total</span>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        );
+      })()}
+
       {/* Listagem de Processos */}
       {(() => {
         const totalProc = processos?.total ?? 0;
@@ -478,7 +759,6 @@ function TabDespesaAnalitica({ token, entidadeId, municipioId }: { token: string
         const fmtBRL  = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 2 });
         return (
           <div style={{ background: '#fff', borderRadius: '14px', border: '1px solid #e2e8f0', overflow: 'hidden', boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
-            {/* Cabeçalho */}
             <div style={{ background: 'linear-gradient(135deg, #0F2A4E, #1e4d95)', padding: '14px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <span style={{ fontSize: '13px', fontWeight: 700, color: '#fff' }}>Processos de Pagamento</span>
               {!loadingProc && totalProc > 0 && (
@@ -556,33 +836,22 @@ function TabDespesaAnalitica({ token, entidadeId, municipioId }: { token: string
                           <tr key={row.id} style={{ borderBottom: '1px solid #f1f5f9', background: i % 2 === 0 ? '#fff' : '#fafafa' }}
                             onMouseEnter={e => (e.currentTarget.style.background = '#f0f7ff')}
                             onMouseLeave={e => (e.currentTarget.style.background = i % 2 === 0 ? '#fff' : '#fafafa')}>
-                            {/* Tipo */}
                             <td style={{ padding: '8px 10px', whiteSpace: 'nowrap' }}>
                               <span style={{ fontSize: '10px', fontWeight: 700, color: tipoColor, background: tipoBg, borderRadius: '4px', padding: '2px 6px' }}>{tipo}</span>
                             </td>
-                            {/* Data */}
                             <td style={{ padding: '8px 10px', color: '#475569', whiteSpace: 'nowrap' }}>{fmtDate(row.data_pagamento)}</td>
-                            {/* Nº Processo */}
                             <td style={{ padding: '8px 10px', color: '#0F2A4E', fontWeight: 600, whiteSpace: 'nowrap' }}>{row.num_processo ?? '—'}</td>
-                            {/* Nº Empenho */}
                             <td style={{ padding: '8px 10px', color: '#475569', whiteSpace: 'nowrap' }}>{row.num_empenho ?? '—'}</td>
-                            {/* Credor */}
                             <td style={{ padding: '8px 10px', color: '#334155', maxWidth: '180px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={row.credor_nome}>{row.credor_nome}</td>
-                            {/* Histórico */}
                             <td style={{ padding: '8px 10px', color: '#64748b', maxWidth: '160px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={row.historico ?? ''}>{row.historico ?? '—'}</td>
-                            {/* Setor */}
                             <td style={{ padding: '8px 10px', color: '#475569', maxWidth: '140px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={row.setor_nome ?? ''}>{row.setor_nome ?? '—'}</td>
-                            {/* Grupo */}
                             <td style={{ padding: '8px 10px', maxWidth: '140px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={grupoNome}>
                               <span style={{ fontSize: '10px', color: '#1e4d95', background: '#eff6ff', borderRadius: '4px', padding: '2px 6px', fontWeight: 500 }}>{grupoNome}</span>
                             </td>
-                            {/* Subgrupo */}
                             <td style={{ padding: '8px 10px', maxWidth: '140px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={subgrupoNome}>
                               <span style={{ fontSize: '10px', color: '#475569', background: '#f1f5f9', borderRadius: '4px', padding: '2px 6px' }}>{subgrupoNome}</span>
                             </td>
-                            {/* Fonte */}
                             <td style={{ padding: '8px 10px', color: '#64748b', whiteSpace: 'nowrap' }}>{row.fonte_recurso ?? '—'}</td>
-                            {/* Valor */}
                             <td style={{ padding: '8px 10px', textAlign: 'right', color: '#0F2A4E', fontWeight: 700, whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}>{fmtBRL(row.valor_bruto)}</td>
                           </tr>
                         );
@@ -591,7 +860,6 @@ function TabDespesaAnalitica({ token, entidadeId, municipioId }: { token: string
                   </table>
                 </div>
 
-                {/* Paginação */}
                 {totalPages > 1 && (
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 20px', borderTop: '1px solid #e2e8f0', background: '#f8fafc' }}>
                     <span style={{ fontSize: '11px', color: '#94a3b8' }}>
@@ -615,182 +883,6 @@ function TabDespesaAnalitica({ token, entidadeId, municipioId }: { token: string
                 )}
               </>
             )}
-          </div>
-        );
-      })()}
-
-      {/* ── HEATMAP + WATERFALL ─────────────────────────────────────────── */}
-      {!isLoading && gruposComDados.length > 0 && (() => {
-        const MESES_LABEL = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
-        const fmtBRL = (v: number) => v >= 1_000_000
-          ? `R$${(v/1_000_000).toFixed(1)}M`
-          : v >= 1_000 ? `R$${(v/1_000).toFixed(0)}k` : `R$${v.toFixed(0)}`;
-        const fmtFull = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 2 });
-
-        // ── dados heatmap ──
-        const heatRows = gruposComDados.map(g => ({
-          nome: g.nome.length > 22 ? g.nome.slice(0, 22) + '…' : g.nome,
-          nomeCompleto: g.nome,
-          meses: MESES_LABEL.map((_, i) => somaGrupoMes(g.id, i + 1)),
-        }));
-        const allVals = heatRows.flatMap(r => r.meses).filter(v => v > 0);
-        const maxHeat = allVals.length ? Math.max(...allVals) : 1;
-
-        // interpolação navy→dourado por intensidade
-        function heatColor(v: number): string {
-          if (v === 0) return '#f1f5f9';
-          const t = Math.pow(v / maxHeat, 0.5);
-          const r = Math.round(15  + (201 - 15)  * t);
-          const g = Math.round(42  + (168 - 42)  * t);
-          const b = Math.round(78  + (76  - 78)  * t);
-          return `rgb(${r},${g},${b})`;
-        }
-        function textColor(v: number): string {
-          if (v === 0) return '#cbd5e1';
-          return v / maxHeat > 0.45 ? '#fff' : '#0F2A4E';
-        }
-
-        // ── dados waterfall ──
-        const totalGeral = gruposComDados.reduce((s, g) => s + somaGrupoTotal(g.id), 0);
-        const topGrupos = [...gruposComDados].sort((a,b) => somaGrupoTotal(b.id) - somaGrupoTotal(a.id)).slice(0, 8);
-        let runningTotal = totalGeral;
-        const waterfallData = topGrupos.map((g, i) => {
-          const val = somaGrupoTotal(g.id);
-          const start = runningTotal - val;
-          runningTotal = start;
-          return {
-            nome: g.nome.length > 16 ? g.nome.slice(0, 16) + '…' : g.nome,
-            nomeCompleto: g.nome,
-            valor: val,
-            start,
-            pct: totalGeral > 0 ? (val / totalGeral) * 100 : 0,
-            color: i === 0 ? '#C9A84C' : i === 1 ? '#1e4d95' : i === 2 ? '#2563eb' : '#64748b',
-          };
-        });
-
-        return (
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginTop: '0' }}>
-
-            {/* ── HEATMAP ── */}
-            <div style={{ background: '#fff', borderRadius: '16px', border: '1px solid #e2e8f0', overflow: 'hidden', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
-              <div style={{ background: 'linear-gradient(135deg, #0F2A4E 0%, #1e4d95 100%)', padding: '16px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <div>
-                  <div style={{ fontSize: '13px', fontWeight: 700, color: '#fff', letterSpacing: '0.04em' }}>Mapa de Calor</div>
-                  <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.5)', marginTop: '2px' }}>Intensidade de gasto — Grupo × Mês</div>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <div style={{ width: '48px', height: '6px', borderRadius: '3px', background: 'linear-gradient(90deg, #f1f5f9, #0F2A4E 40%, #C9A84C)' }} />
-                  <span style={{ fontSize: '9px', color: 'rgba(255,255,255,0.5)' }}>baixo → alto</span>
-                </div>
-              </div>
-              <div style={{ padding: '16px', overflowX: 'auto' }}>
-                <table style={{ width: '100%', borderCollapse: 'separate', borderSpacing: '3px' }}>
-                  <thead>
-                    <tr>
-                      <td style={{ width: '130px' }} />
-                      {MESES_LABEL.map(m => (
-                        <td key={m} style={{ textAlign: 'center', fontSize: '9px', fontWeight: 700, color: '#94a3b8', letterSpacing: '0.05em', paddingBottom: '4px' }}>{m.toUpperCase()}</td>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {heatRows.map((row, ri) => (
-                      <tr key={ri}>
-                        <td style={{ paddingRight: '8px', paddingBottom: '3px' }}>
-                          <div title={row.nomeCompleto} style={{ fontSize: '10px', color: '#334155', fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '130px' }}>
-                            {row.nome}
-                          </div>
-                        </td>
-                        {row.meses.map((v, mi) => (
-                          <td key={mi} style={{ padding: '0' }}>
-                            <div
-                              title={v > 0 ? `${row.nomeCompleto} — ${MESES_LABEL[mi]}: ${fmtFull(v)}` : '—'}
-                              style={{
-                                background: heatColor(v),
-                                borderRadius: '5px',
-                                height: '28px',
-                                minWidth: '32px',
-                                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                fontSize: '8px', fontWeight: 700,
-                                color: textColor(v),
-                                transition: 'transform 0.15s, box-shadow 0.15s',
-                                cursor: v > 0 ? 'default' : 'default',
-                              }}
-                            >
-                              {v > 0 ? fmtBRL(v) : ''}
-                            </div>
-                          </td>
-                        ))}
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-
-            {/* ── WATERFALL ── */}
-            <div style={{ background: '#fff', borderRadius: '16px', border: '1px solid #e2e8f0', overflow: 'hidden', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
-              <div style={{ background: 'linear-gradient(135deg, #0F2A4E 0%, #1e4d95 100%)', padding: '16px 20px' }}>
-                <div style={{ fontSize: '13px', fontWeight: 700, color: '#fff', letterSpacing: '0.04em' }}>Cascata de Despesa</div>
-                <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.5)', marginTop: '2px' }}>Composição do total — do maior ao menor grupo</div>
-              </div>
-              <div style={{ padding: '20px' }}>
-                {/* Barra total no topo */}
-                <div style={{ marginBottom: '16px', padding: '10px 14px', background: 'linear-gradient(135deg, #0F2A4E, #1e4d95)', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <span style={{ fontSize: '11px', fontWeight: 700, color: '#fff' }}>TOTAL GERAL</span>
-                  <span style={{ fontSize: '13px', fontWeight: 800, color: '#C9A84C' }}>{fmtFull(totalGeral)}</span>
-                </div>
-                {/* Cascata */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                  {waterfallData.map((item, i) => (
-                    <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                      {/* Nome */}
-                      <div title={item.nomeCompleto} style={{ width: '130px', flexShrink: 0, fontSize: '10px', color: '#475569', fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                        {item.nome}
-                      </div>
-                      {/* Barra */}
-                      <div style={{ flex: 1, position: 'relative', height: '28px', background: '#f1f5f9', borderRadius: '6px', overflow: 'hidden' }}>
-                        <div style={{
-                          position: 'absolute', left: 0, top: 0, bottom: 0,
-                          width: `${item.pct}%`,
-                          background: `linear-gradient(90deg, ${item.color}dd, ${item.color})`,
-                          borderRadius: '6px',
-                          display: 'flex', alignItems: 'center', paddingLeft: '8px',
-                          transition: 'width 0.6s cubic-bezier(0.4,0,0.2,1)',
-                        }}>
-                          {item.pct > 15 && (
-                            <span style={{ fontSize: '9px', fontWeight: 700, color: '#fff', whiteSpace: 'nowrap' }}>
-                              {fmtBRL(item.valor)}
-                            </span>
-                          )}
-                        </div>
-                        {item.pct <= 15 && (
-                          <span style={{ position: 'absolute', left: `${item.pct + 1}%`, top: '50%', transform: 'translateY(-50%)', fontSize: '9px', fontWeight: 700, color: '#475569', whiteSpace: 'nowrap' }}>
-                            {fmtBRL(item.valor)}
-                          </span>
-                        )}
-                      </div>
-                      {/* Pct */}
-                      <div style={{ width: '38px', flexShrink: 0, textAlign: 'right', fontSize: '10px', fontWeight: 700, color: item.color }}>
-                        {item.pct.toFixed(1)}%
-                      </div>
-                    </div>
-                  ))}
-                </div>
-                {/* Linha acumulada */}
-                {waterfallData.length > 0 && (() => {
-                  const cobertoTotal = waterfallData.reduce((s, d) => s + d.valor, 0);
-                  const pctCoberto = totalGeral > 0 ? (cobertoTotal / totalGeral) * 100 : 0;
-                  return (
-                    <div style={{ marginTop: '14px', padding: '8px 12px', background: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <span style={{ fontSize: '10px', color: '#64748b' }}>Top {waterfallData.length} grupos cobrem</span>
-                      <span style={{ fontSize: '12px', fontWeight: 700, color: '#0F2A4E' }}>{pctCoberto.toFixed(1)}% do total</span>
-                    </div>
-                  );
-                })()}
-              </div>
-            </div>
-
           </div>
         );
       })()}
