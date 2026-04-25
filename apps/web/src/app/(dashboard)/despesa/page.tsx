@@ -97,6 +97,8 @@ function TabDespesaAnalitica({ token, entidadeId, municipioId }: { token: string
   if (fSetor)      params.set('setorId', fSetor);
   if (fBloco)      params.set('blocoId', fBloco);
   if (fFonte)      params.set('fonteRecurso', fFonte);
+  if (fGrupo)      params.set('grupoId', fGrupo);
+  if (fSubgrupo)   params.set('subgrupoId', fSubgrupo);
 
   const { data, isLoading } = useQuery<AnaliticaData>({
     queryKey: ['analitica-mensal', ano, fEntidade, fSecretaria, fSetor, fBloco, fFonte, fGrupo, fSubgrupo],
@@ -111,8 +113,6 @@ function TabDespesaAnalitica({ token, entidadeId, municipioId }: { token: string
   }, [ano, fEntidade, fSecretaria, fSetor, fBloco, fFonte, fGrupo, fSubgrupo]);
 
   const procParams = new URLSearchParams(params);
-  if (fGrupo)    procParams.set('grupoId', fGrupo);
-  if (fSubgrupo) procParams.set('subgrupoId', fSubgrupo);
   procParams.set('page', String(procPage));
   procParams.set('limit', String(PROC_LIMIT));
   procParams.set('sortBy', sortBy);
