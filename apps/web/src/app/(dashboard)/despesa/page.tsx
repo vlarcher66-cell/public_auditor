@@ -134,14 +134,12 @@ function TabDespesaAnalitica({ token, entidadeId, municipioId }: { token: string
     enabled: !!token,
   });
 
-  // Expande automaticamente só na primeira carga (sem filtros ativos)
-  const jaExpandiuRef = React.useRef(false);
+  // Quando os dados chegam, expande todos os grupos do resultado atual
   useEffect(() => {
-    if (data?.grupos && !jaExpandiuRef.current) {
-      jaExpandiuRef.current = true;
+    if (data?.grupos) {
       setExpandidos(new Set(data.grupos.map(g => g.id)));
     }
-  }, [data?.grupos]);
+  }, [data]);
 
   function toggleGrupo(id: number) {
     setExpandidos(prev => {
@@ -252,10 +250,10 @@ function TabDespesaAnalitica({ token, entidadeId, municipioId }: { token: string
             <ChevronDown size={11} style={{ position: 'absolute', right: '6px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8', pointerEvents: 'none' }} />
           </div>
         ))}
-        {(fEntidade || fSecretaria || fSetor || fBloco || fFonte) && (
-          <button onClick={() => { setFEntidade(''); setFSecretaria(''); setFSetor(''); setFBloco(''); setFFonte(''); }}
-            style={{ fontSize: '11px', color: '#ef4444', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '6px', padding: '5px 8px', cursor: 'pointer', fontWeight: 500, flexShrink: 0 }}>
-            Limpar
+        {(fEntidade || fSecretaria || fSetor || fBloco || fFonte || fGrupo || fSubgrupo) && (
+          <button onClick={() => { setFEntidade(''); setFSecretaria(''); setFSetor(''); setFBloco(''); setFFonte(''); setFGrupo(''); setFSubgrupo(''); }}
+            style={{ fontSize: '11px', color: '#ef4444', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '6px', padding: '5px 8px', cursor: 'pointer', fontWeight: 600, flexShrink: 0, whiteSpace: 'nowrap' }}>
+            ✕ Limpar filtros
           </button>
         )}
       </div>
