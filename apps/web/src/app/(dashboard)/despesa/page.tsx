@@ -1597,11 +1597,53 @@ function TabSintetica({
     const rp = payload.find((p: any) => p.dataKey === 'rp')?.value ?? 0;
     const total = dea + rp;
     return (
-      <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '10px 14px', fontSize: '12px', boxShadow: '0 4px 16px rgba(0,0,0,0.12)' }}>
-        <div style={{ fontWeight: 700, color: '#0F2A4E', marginBottom: '6px' }}>{label}</div>
-        <div style={{ color: '#1e4d95' }}>DEA: <strong>{fmtK(dea)}</strong></div>
-        <div style={{ color: '#C9A84C' }}>Restos a Pagar: <strong>{fmtK(rp)}</strong></div>
-        <div style={{ borderTop: '1px solid #e2e8f0', marginTop: '6px', paddingTop: '6px', color: '#0F2A4E', fontWeight: 700 }}>Total: {fmtK(total)}</div>
+      <div style={{ background: '#0F2A4E', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', padding: '10px 16px', fontSize: '11px', boxShadow: '0 8px 32px rgba(0,0,0,0.32)', minWidth: '190px' }}>
+        <div style={{ fontWeight: 700, color: '#93c5fd', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '8px' }}>{label}</div>
+        {dea > 0 && (
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px', marginBottom: '4px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#1e4d95' }} />
+              <span style={{ color: 'rgba(255,255,255,0.6)' }}>DEA</span>
+            </div>
+            <span style={{ fontWeight: 700, color: '#fff' }}>{fmtK(dea)}</span>
+          </div>
+        )}
+        {rp > 0 && (
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px', marginBottom: '4px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#C9A84C' }} />
+              <span style={{ color: 'rgba(255,255,255,0.6)' }}>Restos a Pagar</span>
+            </div>
+            <span style={{ fontWeight: 700, color: '#fff' }}>{fmtK(rp)}</span>
+          </div>
+        )}
+        <div style={{ borderTop: '1px solid rgba(255,255,255,0.1)', marginTop: '8px', paddingTop: '8px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px' }}>
+          <span style={{ fontWeight: 700, color: '#ef4444' }}>▶ Total</span>
+          <span style={{ fontWeight: 700, color: '#ef4444' }}>{fmtK(total)}</span>
+        </div>
+      </div>
+    );
+  };
+
+  // Tooltip do gráfico de distribuição por grupo
+  const GrupoTooltip = ({ active, payload }: any) => {
+    if (!active || !payload?.length) return null;
+    const d = payload[0];
+    const pct = totalPie > 0 ? ((d.value / totalPie) * 100).toFixed(1) : '0.0';
+    return (
+      <div style={{ background: '#0F2A4E', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', padding: '10px 16px', fontSize: '11px', boxShadow: '0 8px 32px rgba(0,0,0,0.32)', minWidth: '180px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px' }}>
+          <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: d.payload.color }} />
+          <span style={{ fontWeight: 700, color: '#93c5fd', textTransform: 'uppercase', letterSpacing: '0.06em', fontSize: '10px' }}>{d.name}</span>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px', marginBottom: '4px' }}>
+          <span style={{ color: 'rgba(255,255,255,0.6)' }}>Valor</span>
+          <span style={{ fontWeight: 700, color: '#fff' }}>{formatCurrency(d.value)}</span>
+        </div>
+        <div style={{ borderTop: '1px solid rgba(255,255,255,0.1)', marginTop: '6px', paddingTop: '6px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px' }}>
+          <span style={{ color: 'rgba(255,255,255,0.6)' }}>Participação</span>
+          <span style={{ fontWeight: 700, color: '#C9A84C' }}>{pct}%</span>
+        </div>
       </div>
     );
   };
@@ -1889,7 +1931,7 @@ function TabSintetica({
                     <Pie data={pieData} cx={80} cy={80} innerRadius={50} outerRadius={80} dataKey="value" strokeWidth={2}>
                       {pieData.map((entry, i) => <Cell key={i} fill={entry.color} />)}
                     </Pie>
-                    <Tooltip formatter={(v: number) => [formatCurrency(v), '']} contentStyle={{ fontSize: '11px', borderRadius: '8px' }} />
+                    <Tooltip content={<GrupoTooltip />} />
                   </PieChart>
                 </div>
                 <div style={{ flex: 1, maxHeight: '260px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '6px' }}>
