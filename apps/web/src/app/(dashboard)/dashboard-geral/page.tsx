@@ -431,7 +431,7 @@ export default function DashboardGeralPage() {
                 color={saldo >= 0 ? '#10b981' : '#ef4444'}
                 bg={saldo >= 0 ? '#ecfdf5' : '#fef2f2'}
                 delay={0.2} highlight={true} />
-              <KpiCard label="Índice de Saúde" value={pctSaude}
+              <KpiCard label="Repasse 15%" value={pctSaude}
                 sub={`Mín. 15% — ${superavit >= 0 ? '+' : ''}R$ ${fmt(superavit)}`}
                 icon={<ShieldCheck size={18}/>}
                 color={pctSaude >= 20 ? '#10b981' : pctSaude >= 15 ? '#3b82f6' : '#ef4444'}
@@ -725,7 +725,7 @@ export default function DashboardGeralPage() {
                 <div className="flex items-center justify-between px-5 py-3"
                   style={{ background: 'linear-gradient(90deg, #0F2A4E, #1e4d95)' }}>
                   <div>
-                    <h3 className="text-sm font-bold text-white">Índice de Saúde 15%</h3>
+                    <h3 className="text-sm font-bold text-white">Repasse 15%</h3>
                     <p className="text-[11px] text-blue-200">Acumulado {ano}</p>
                   </div>
                   <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
