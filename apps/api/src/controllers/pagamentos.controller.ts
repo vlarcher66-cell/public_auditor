@@ -341,17 +341,17 @@ export async function autoClassificarSetores(req: Request, res: Response): Promi
 }
 
 export async function getPorSetor(req: Request, res: Response): Promise<void> {
-  const { ano, entidadeId } = req.query as Record<string, string>;
+  const { ano, entidadeId, secretariaId, setorId, blocoId, fonteRecurso, grupoId, subgrupoId } = req.query as Record<string, string>;
   const anoFiltro = ano || new Date().getFullYear().toString();
-  const tf = getTenantFilter(req.user!);
+  const tenantFilter = getTenantFilter(req.user!);
+  const filtros = { anoFiltro, entidadeId, secretariaId, setorId, blocoId, fonteRecurso, grupoId, subgrupoId, tenantFilter };
 
   const rows = await db('fact_ordem_pagamento as f')
-    .join('dim_setor as st', 'f.fk_setor_pag', 'st.id')
-    .modify((q: any) => {
-      q.whereRaw('EXTRACT(YEAR FROM f.data_pagamento) = ?', [anoFiltro]);
-      applyTenantFilter(q, tf, 'f.fk_entidade', 'f.fk_municipio');
-      if (entidadeId) q.where('f.fk_entidade', entidadeId);
-    })
+    .leftJoin('dim_credor as c', 'f.fk_credor', 'c.id')
+    .leftJoin('dim_setor as st', 'f.fk_setor_pag', 'st.id')
+    .join('dim_fonte_recurso as fr', 'f.fk_fonte_recurso', 'fr.id')
+    .modify((q: any) => applyFiltrosSintetica(q, filtros))
+    .whereNotNull('st.id')
     .select(
       'st.id',
       'st.descricao as nome',
