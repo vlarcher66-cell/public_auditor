@@ -1593,33 +1593,33 @@ function TabSintetica({
   // Tooltip do gráfico de evolução
   const EvolucaoTooltip = ({ active, payload, label }: any) => {
     if (!active || !payload?.length) return null;
-    const dea = payload.find((p: any) => p.dataKey === 'dea')?.value ?? 0;
-    const rp = payload.find((p: any) => p.dataKey === 'rp')?.value ?? 0;
-    const total = dea + rp;
+    const dea      = payload.find((p: any) => p.dataKey === 'dea')?.value   ?? 0;
+    const rp       = payload.find((p: any) => p.dataKey === 'rp')?.value    ?? 0;
+    const exercicio = payload.find((p: any) => p.dataKey === 'total')?.value ?? (dea + rp);
+    const fmtBRL = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 2 });
     return (
-      <div style={{ background: '#0F2A4E', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', padding: '10px 16px', fontSize: '11px', boxShadow: '0 8px 32px rgba(0,0,0,0.32)', minWidth: '190px' }}>
+      <div style={{ background: '#0F2A4E', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', padding: '10px 16px', fontSize: '11px', boxShadow: '0 8px 32px rgba(0,0,0,0.32)', minWidth: '220px' }}>
         <div style={{ fontWeight: 700, color: '#93c5fd', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '8px' }}>{label}</div>
-        {dea > 0 && (
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px', marginBottom: '4px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#1e4d95' }} />
-              <span style={{ color: 'rgba(255,255,255,0.6)' }}>DEA</span>
-            </div>
-            <span style={{ fontWeight: 700, color: '#fff' }}>{fmtK(dea)}</span>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px', marginBottom: '4px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#1e4d95' }} />
+            <span style={{ color: 'rgba(255,255,255,0.6)' }}>DEA</span>
           </div>
-        )}
-        {rp > 0 && (
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px', marginBottom: '4px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#C9A84C' }} />
-              <span style={{ color: 'rgba(255,255,255,0.6)' }}>Restos a Pagar</span>
-            </div>
-            <span style={{ fontWeight: 700, color: '#fff' }}>{fmtK(rp)}</span>
+          <span style={{ fontWeight: 700, color: '#fff' }}>{fmtBRL(dea)}</span>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px', marginBottom: '4px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#C9A84C' }} />
+            <span style={{ color: 'rgba(255,255,255,0.6)' }}>Restos a Pagar</span>
           </div>
-        )}
+          <span style={{ fontWeight: 700, color: '#fff' }}>{fmtBRL(rp)}</span>
+        </div>
         <div style={{ borderTop: '1px solid rgba(255,255,255,0.1)', marginTop: '8px', paddingTop: '8px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px' }}>
-          <span style={{ fontWeight: 700, color: '#ef4444' }}>▶ Total</span>
-          <span style={{ fontWeight: 700, color: '#ef4444' }}>{fmtK(total)}</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <div style={{ width: '12px', height: '2px', background: '#ef4444', borderRadius: '1px' }} />
+            <span style={{ fontWeight: 700, color: '#ef4444' }}>Exercício</span>
+          </div>
+          <span style={{ fontWeight: 700, color: '#ef4444' }}>{fmtBRL(exercicio)}</span>
         </div>
       </div>
     );
