@@ -104,8 +104,11 @@ function TabDespesaAnalitica({ token, entidadeId, municipioId }: { token: string
     enabled: !!token,
   });
 
-  // reset paginação ao mudar filtros
-  useEffect(() => { setProcPage(1); }, [ano, fEntidade, fSecretaria, fSetor, fBloco, fFonte, fGrupo, fSubgrupo]);
+  // reset paginação e recolhe matriz ao mudar filtros
+  useEffect(() => {
+    setProcPage(1);
+    setExpandidos(new Set());
+  }, [ano, fEntidade, fSecretaria, fSetor, fBloco, fFonte, fGrupo, fSubgrupo]);
 
   const procParams = new URLSearchParams(params);
   if (fGrupo)    procParams.set('grupoId', fGrupo);
@@ -131,9 +134,13 @@ function TabDespesaAnalitica({ token, entidadeId, municipioId }: { token: string
     enabled: !!token,
   });
 
-  // Expande todos os grupos automaticamente quando os dados chegam
+  // Expande automaticamente só na primeira carga (sem filtros ativos)
+  const jaExpandiuRef = React.useRef(false);
   useEffect(() => {
-    if (data?.grupos) setExpandidos(new Set(data.grupos.map(g => g.id)));
+    if (data?.grupos && !jaExpandiuRef.current) {
+      jaExpandiuRef.current = true;
+      setExpandidos(new Set(data.grupos.map(g => g.id)));
+    }
   }, [data?.grupos]);
 
   function toggleGrupo(id: number) {
