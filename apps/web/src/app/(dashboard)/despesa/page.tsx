@@ -91,18 +91,19 @@ function TabDespesaAnalitica({ token, entidadeId, municipioId }: { token: string
     enabled: !!token,
   });
 
-  const params = new URLSearchParams({ ano: String(ano) });
-  if (fEntidade)   params.set('entidadeId', fEntidade);
-  if (fSecretaria) params.set('secretariaId', fSecretaria);
-  if (fSetor)      params.set('setorId', fSetor);
-  if (fBloco)      params.set('blocoId', fBloco);
-  if (fFonte)      params.set('fonteRecurso', fFonte);
-  if (fGrupo)      params.set('grupoId', fGrupo);
-  if (fSubgrupo)   params.set('subgrupoId', fSubgrupo);
-
   const { data, isLoading } = useQuery<AnaliticaData>({
     queryKey: ['analitica-mensal', ano, fEntidade, fSecretaria, fSetor, fBloco, fFonte, fGrupo, fSubgrupo],
-    queryFn: () => apiRequest(`/pagamentos/analitica-mensal?${params}`, { token }),
+    queryFn: () => {
+      const p = new URLSearchParams({ ano: String(ano) });
+      if (fEntidade)   p.set('entidadeId', fEntidade);
+      if (fSecretaria) p.set('secretariaId', fSecretaria);
+      if (fSetor)      p.set('setorId', fSetor);
+      if (fBloco)      p.set('blocoId', fBloco);
+      if (fFonte)      p.set('fonteRecurso', fFonte);
+      if (fGrupo)      p.set('grupoId', fGrupo);
+      if (fSubgrupo)   p.set('subgrupoId', fSubgrupo);
+      return apiRequest(`/pagamentos/analitica-mensal?${p}`, { token });
+    },
     enabled: !!token,
   });
 
@@ -111,12 +112,6 @@ function TabDespesaAnalitica({ token, entidadeId, municipioId }: { token: string
     setProcPage(1);
     setExpandidos(new Set());
   }, [ano, fEntidade, fSecretaria, fSetor, fBloco, fFonte, fGrupo, fSubgrupo]);
-
-  const procParams = new URLSearchParams(params);
-  procParams.set('page', String(procPage));
-  procParams.set('limit', String(PROC_LIMIT));
-  procParams.set('sortBy', sortBy);
-  procParams.set('sortDir', sortDir);
 
   const { data: processos, isLoading: loadingProc } = useQuery<{
     rows: {
@@ -130,7 +125,21 @@ function TabDespesaAnalitica({ token, entidadeId, municipioId }: { token: string
     total: number; page: number; limit: number;
   }>({
     queryKey: ['analitica-processos', ano, fEntidade, fSecretaria, fSetor, fBloco, fFonte, fGrupo, fSubgrupo, procPage, sortBy, sortDir],
-    queryFn: () => apiRequest(`/pagamentos?${procParams}`, { token }),
+    queryFn: () => {
+      const p = new URLSearchParams({ ano: String(ano) });
+      if (fEntidade)   p.set('entidadeId', fEntidade);
+      if (fSecretaria) p.set('secretariaId', fSecretaria);
+      if (fSetor)      p.set('setorId', fSetor);
+      if (fBloco)      p.set('blocoId', fBloco);
+      if (fFonte)      p.set('fonteRecurso', fFonte);
+      if (fGrupo)      p.set('grupoId', fGrupo);
+      if (fSubgrupo)   p.set('subgrupoId', fSubgrupo);
+      p.set('page', String(procPage));
+      p.set('limit', String(PROC_LIMIT));
+      p.set('sortBy', sortBy);
+      p.set('sortDir', sortDir);
+      return apiRequest(`/pagamentos?${p}`, { token });
+    },
     enabled: !!token,
   });
 
