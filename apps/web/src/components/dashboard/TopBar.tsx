@@ -1,10 +1,13 @@
 'use client';
 
 import { useSession } from 'next-auth/react';
-import { Bell, ChevronDown, Building2, MapPin, Menu } from 'lucide-react';
+import { Bell, ChevronDown, Building2, MapPin, Menu, CalendarCheck } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
 import { useMunicipioEntidade, Municipio, Entidade } from '@/contexts/MunicipioEntidadeContext';
 import { useSidebar } from '@/contexts/SidebarContext';
+import { apiRequest } from '@/lib/api';
+
+const MESES_ABREV = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
 
 interface TopBarProps {
   title: string;
@@ -129,6 +132,24 @@ export default function TopBar({ title, subtitle }: TopBarProps) {
     loading,
   } = useMunicipioEntidade();
 
+  const [mesFechado, setMesFechado] = useState<number>(0);
+  const token = (session as any)?.accessToken as string | undefined;
+
+  useEffect(() => {
+    if (!token || !entidadeSelecionada) return;
+    const ano = new Date().getFullYear();
+    const params: Record<string, string> = { ano: String(ano) };
+    if (entidadeSelecionada?.id) params.entidadeId = String(entidadeSelecionada.id);
+    apiRequest<{ porMes: { mes: number; total: number }[] }>('/pagamentos/summary', { token, params })
+      .then(data => {
+        const ult = (data?.porMes ?? [])
+          .filter((m: any) => Number(m.total) > 0)
+          .reduce((max: number, m: any) => Math.max(max, Number(m.mes)), 0);
+        setMesFechado(ult);
+      })
+      .catch(() => {});
+  }, [token, entidadeSelecionada]); // eslint-disable-line
+
   return (
     <header style={{
       height: '64px', background: '#fff', borderBottom: '1px solid #f1f5f9',
@@ -206,6 +227,19 @@ export default function TopBar({ title, subtitle }: TopBarProps) {
               <EntidadeTipoBadge tipo={entidadeSelecionada.tipo} />
             </div>
           ) : null}
+          {/* Badge mês fechado */}
+          {mesFechado > 0 && (
+            <div style={{
+              display: 'flex', alignItems: 'center', gap: '5px',
+              padding: '5px 10px', borderRadius: '8px',
+              background: '#f0fdf4', border: '1.5px solid #bbf7d0',
+              fontSize: '11px', fontWeight: 600, color: '#15803d',
+              whiteSpace: 'nowrap',
+            }}>
+              <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#22c55e', display: 'inline-block' }} />
+              Fechado até {MESES_ABREV[mesFechado - 1]}/{new Date().getFullYear()}
+            </div>
+          )}
         </div>
       )}
 
