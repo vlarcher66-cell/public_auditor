@@ -1554,20 +1554,25 @@ function TabSintetica({
   const mesReferencia = ultimoMesComDados || new Date().getMonth() + 1;
 
   // Meses para o gráfico de evolução
-  // totaisMes = total geral (todos os grupos)
-  // totaisExAnt = soma dos grupos "Outros Exercícios" (RP + DEA exercício anterior)
-  // mesmoExercicio = total - outrosExercicios
+  // Separa RP e DEA (exercício anterior) usando o nome do grupo na matrix
   const mesesNomes = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+
+  const idRP  = sinteticaData?.grupos.find(g => g.nome.toUpperCase().includes('RESTOS A PAGAR'))?.id;
+  const idDEA = sinteticaData?.grupos.find(g => g.nome.toUpperCase().includes('EXERC') && g.nome.toUpperCase().includes('ANTERIOR'))?.id;
+
   const evolucaoData = mesesNomes.map((nome, i) => {
-    const mes = i + 1;
+    const mes            = i + 1;
     const total          = sinteticaData?.totaisMes?.[mes] ?? 0;
+    const rp             = idRP  ? (sinteticaData?.matrix?.[idRP]?.[mes]  ?? 0) : 0;
+    const dea            = idDEA ? (sinteticaData?.matrix?.[idDEA]?.[mes] ?? 0) : 0;
     const outrosExerc    = sinteticaData?.totaisExAnt?.[mes] ?? 0;
     const mesmoExercicio = total - outrosExerc;
     return {
       mes: nome,
       total,
       mesmoExercicio: mesmoExercicio > 0 ? mesmoExercicio : 0,
-      outrosExerc:    outrosExerc   > 0 ? outrosExerc    : 0,
+      rp:  rp  > 0 ? rp  : 0,
+      dea: dea > 0 ? dea : 0,
     };
   });
 
@@ -1601,33 +1606,36 @@ function TabSintetica({
   // Tooltip do gráfico de evolução
   const EvolucaoTooltip = ({ active, payload, label }: any) => {
     if (!active || !payload?.length) return null;
-    const mesmoExerc  = payload.find((p: any) => p.dataKey === 'mesmoExercicio')?.value ?? 0;
-    const outrosExerc = payload.find((p: any) => p.dataKey === 'outrosExerc')?.value    ?? 0;
-    const totalGeral  = payload.find((p: any) => p.dataKey === 'total')?.value           ?? (mesmoExerc + outrosExerc);
+    const mesmoExerc = payload.find((p: any) => p.dataKey === 'mesmoExercicio')?.value ?? 0;
+    const rpVal      = payload.find((p: any) => p.dataKey === 'rp')?.value             ?? 0;
+    const deaVal     = payload.find((p: any) => p.dataKey === 'dea')?.value            ?? 0;
+    const totalGeral = payload.find((p: any) => p.dataKey === 'total')?.value          ?? (mesmoExerc + rpVal + deaVal);
     const fmtBRL = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 2 });
+    const Row = ({ cor, label: l, valor, destaque }: { cor: string; label: string; valor: number; destaque?: boolean }) => (
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px', marginBottom: '4px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: cor }} />
+          <span style={{ color: destaque ? cor : 'rgba(255,255,255,0.6)' }}>{l}</span>
+        </div>
+        <span style={{ fontWeight: 700, color: destaque ? cor : '#fff' }}>{fmtBRL(valor)}</span>
+      </div>
+    );
     return (
-      <div style={{ background: '#0F2A4E', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', padding: '10px 16px', fontSize: '11px', boxShadow: '0 8px 32px rgba(0,0,0,0.32)', minWidth: '240px' }}>
+      <div style={{ background: '#0F2A4E', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', padding: '10px 16px', fontSize: '11px', boxShadow: '0 8px 32px rgba(0,0,0,0.32)', minWidth: '260px' }}>
         <div style={{ fontWeight: 700, color: '#93c5fd', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '8px' }}>{label}</div>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px', marginBottom: '4px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#1e4d95' }} />
-            <span style={{ color: 'rgba(255,255,255,0.6)' }}>Mesmo Exercício</span>
-          </div>
-          <span style={{ fontWeight: 700, color: '#fff' }}>{fmtBRL(mesmoExerc)}</span>
+        <Row cor="#1e4d95" label="Mesmo Exercício" valor={mesmoExerc} />
+        <div style={{ borderLeft: '2px solid rgba(255,255,255,0.08)', marginLeft: '4px', paddingLeft: '10px', marginBottom: '4px' }}>
+          <Row cor="#C9A84C" label="Restos a Pagar" valor={rpVal} />
+          <Row cor="#f97316" label="DEA (Exerc. Anterior)" valor={deaVal} />
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px', marginBottom: '4px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#C9A84C' }} />
-            <span style={{ color: 'rgba(255,255,255,0.6)' }}>Outros Exercícios</span>
+        <div style={{ borderTop: '1px solid rgba(255,255,255,0.1)', marginTop: '6px', paddingTop: '6px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <div style={{ width: '12px', height: '2px', background: '#ef4444', borderRadius: '1px' }} />
+              <span style={{ fontWeight: 700, color: '#ef4444' }}>Total Geral</span>
+            </div>
+            <span style={{ fontWeight: 700, color: '#ef4444' }}>{fmtBRL(totalGeral)}</span>
           </div>
-          <span style={{ fontWeight: 700, color: '#fff' }}>{fmtBRL(outrosExerc)}</span>
-        </div>
-        <div style={{ borderTop: '1px solid rgba(255,255,255,0.1)', marginTop: '8px', paddingTop: '8px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <div style={{ width: '12px', height: '2px', background: '#ef4444', borderRadius: '1px' }} />
-            <span style={{ fontWeight: 700, color: '#ef4444' }}>Total Geral</span>
-          </div>
-          <span style={{ fontWeight: 700, color: '#ef4444' }}>{fmtBRL(totalGeral)}</span>
         </div>
       </div>
     );
@@ -1782,13 +1790,13 @@ function TabSintetica({
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px', flexWrap: 'wrap', gap: '12px' }}>
           <div>
             <div style={{ fontSize: '15px', fontWeight: 700, color: '#0F2A4E' }}>Evolução Mensal da Despesa {anoAtual}</div>
-            <div style={{ fontSize: '12px', color: '#94a3b8', marginTop: '2px' }}>Mesmo Exercício + Outros Exercícios (RP + DEA ant.) por mês</div>
+            <div style={{ fontSize: '12px', color: '#94a3b8', marginTop: '2px' }}>Mesmo Exercício + Restos a Pagar + DEA (Exerc. Anterior) por mês</div>
           </div>
-          <div style={{ display: 'flex', gap: '16px', fontSize: '11px' }}>
-            {[['#1e4d95','Mesmo Exercício'],['#C9A84C','Outros Exercícios'],['#ef4444','Total Geral']].map(([cor, label]) => (
-              <span key={label} style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-                <span style={{ width: label === 'Total Geral' ? '16px' : '10px', height: label === 'Total Geral' ? '2px' : '10px', background: cor, borderRadius: '2px', display: 'inline-block' }} />
-                <span style={{ color: '#64748b' }}>{label}</span>
+          <div style={{ display: 'flex', gap: '16px', fontSize: '11px', flexWrap: 'wrap' }}>
+            {([['#1e4d95','Mesmo Exercício','sq'],['#C9A84C','Restos a Pagar','sq'],['#f97316','DEA (Exerc. Anterior)','sq'],['#ef4444','Total Geral','ln']] as [string,string,string][]).map(([cor, lbl, tipo]) => (
+              <span key={lbl} style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                <span style={{ width: tipo === 'ln' ? '16px' : '10px', height: tipo === 'ln' ? '2px' : '10px', background: cor, borderRadius: '2px', display: 'inline-block' }} />
+                <span style={{ color: '#64748b' }}>{lbl}</span>
               </span>
             ))}
           </div>
@@ -1807,9 +1815,10 @@ function TabSintetica({
                   label={{ value: `Média: ${fmtK(mediaEvolucao)}`, position: 'insideTopRight', fontSize: 10, fill: '#94a3b8' }}
                 />
               )}
-              <Bar dataKey="mesmoExercicio" stackId="a" fill="#1e4d95" radius={[0,0,0,0]} maxBarSize={40} />
-              <Bar dataKey="outrosExerc"    stackId="a" fill="#C9A84C" radius={[4,4,0,0]} maxBarSize={40} />
-              <Line type="monotone" dataKey="total" stroke="#ef4444" strokeWidth={2.5} dot={{ fill: '#ef4444', r: 3, strokeWidth: 0 }} />
+              <Bar dataKey="mesmoExercicio" stackId="a" fill="#1e4d95" radius={[0,0,0,0]} maxBarSize={40} name="Mesmo Exercício" />
+              <Bar dataKey="rp"             stackId="a" fill="#C9A84C" radius={[0,0,0,0]} maxBarSize={40} name="Restos a Pagar" />
+              <Bar dataKey="dea"            stackId="a" fill="#f97316" radius={[4,4,0,0]} maxBarSize={40} name="DEA (Exerc. Anterior)" />
+              <Line type="monotone" dataKey="total" stroke="#ef4444" strokeWidth={2.5} dot={{ fill: '#ef4444', r: 3, strokeWidth: 0 }} name="Total Geral" />
             </ComposedChart>
           </ResponsiveContainer>
         )}
