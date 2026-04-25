@@ -1929,41 +1929,87 @@ function TabDespesaSintetica({ token, entidadeId, municipioId }: { token: string
         </div>
 
         {/* Pizza por grupo */}
-        <div style={{ background: '#fff', borderRadius: '14px', border: '1px solid #e2e8f0', overflow: 'hidden', boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
-          <div style={{ background: 'linear-gradient(135deg, #0F2A4E, #1e4d95)', padding: '14px 20px' }}>
-            <h3 style={{ fontSize: '13px', fontWeight: 700, color: '#fff', margin: 0, textTransform: 'uppercase', letterSpacing: '0.06em' }}>(%) Despesas por Grupo</h3>
-          </div>
-          <div style={{ padding: '16px 20px 20px' }}>
-          {isLoading ? (
-            <div style={{ height: '220px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8', gap: '8px' }}><Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} /> Carregando...</div>
-          ) : pieData.length === 0 ? (
-            <div style={{ height: '220px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8', fontSize: '12px' }}>Sem dados classificados</div>
-          ) : (() => {
-            const totalPieGrupo = pieData.reduce((a, d) => a + d.value, 0);
-            return (
-              <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
-                <div style={{ flex: '0 0 auto' }}>
-                  <PieChart width={170} height={170}>
-                    <Pie data={pieData} cx={80} cy={80} innerRadius={50} outerRadius={80} dataKey="value" strokeWidth={2} paddingAngle={2}>
-                      {pieData.map((entry, i) => <Cell key={i} fill={entry.color} />)}
-                    </Pie>
-                    <Tooltip formatter={(v: number) => [formatCurrency(v), '']} contentStyle={{ fontSize: '11px', borderRadius: '8px' }} />
-                  </PieChart>
-                </div>
-                <div style={{ flex: 1, maxHeight: '180px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                  {pieData.map((d, i) => (
-                    <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <span style={{ width: '10px', height: '10px', borderRadius: '2px', background: d.color, flexShrink: 0 }} />
-                      <span style={{ fontSize: '11px', color: '#475569', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={d.name}>{d.name}</span>
-                      <span style={{ fontSize: '10px', color: '#94a3b8', whiteSpace: 'nowrap' }}>{totalPieGrupo > 0 ? ((d.value / totalPieGrupo) * 100).toFixed(1) : 0}%</span>
-                    </div>
-                  ))}
-                </div>
+        {(() => {
+          const [hoveredIndexPie, setHoveredIndexPie] = React.useState<number | null>(null);
+          const totalPieGrupo = pieData.reduce((a, d) => a + d.value, 0);
+          return (
+            <div style={{ background: '#fff', borderRadius: '16px', border: '1px solid #e2e8f0', overflow: 'hidden', boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
+              <div style={{ background: 'linear-gradient(135deg, #0F2A4E, #1e4d95)', padding: '14px 20px' }}>
+                <span style={{ fontSize: '13px', fontWeight: 700, color: '#fff', letterSpacing: '0.04em' }}>Distribuição por Grupo</span>
               </div>
-            );
-          })()}
-          </div>
-        </div>
+              <div style={{ padding: '16px 20px 20px' }}>
+                {isLoading ? (
+                  <div style={{ height: '260px', background: '#f1f5f9', borderRadius: '10px' }} />
+                ) : pieData.length === 0 ? (
+                  <div style={{ height: '260px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8', fontSize: '13px' }}>Sem dados classificados</div>
+                ) : (
+                  <div style={{ display: 'flex', gap: '20px', alignItems: 'center' }}>
+                    {/* Donut */}
+                    <div style={{ flex: '0 0 auto' }}>
+                      <PieChart width={220} height={220}>
+                        <Pie
+                          data={pieData}
+                          cx={105} cy={105}
+                          innerRadius={65} outerRadius={100}
+                          dataKey="value"
+                          paddingAngle={2}
+                          strokeWidth={0}
+                          onMouseEnter={(_, index) => setHoveredIndexPie(index)}
+                          onMouseLeave={() => setHoveredIndexPie(null)}
+                        >
+                          {pieData.map((entry, i) => (
+                            <Cell
+                              key={i}
+                              fill={entry.color}
+                              opacity={hoveredIndexPie === null || hoveredIndexPie === i ? 1 : 0.35}
+                              style={{ cursor: 'pointer', transition: 'opacity 0.2s' }}
+                            />
+                          ))}
+                        </Pie>
+                        <Tooltip content={<GrupoTooltip />} />
+                      </PieChart>
+                    </div>
+
+                    {/* Legenda com barra de progresso e valor */}
+                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      {pieData.map((d, i) => {
+                        const pct = totalPieGrupo > 0 ? (d.value / totalPieGrupo) * 100 : 0;
+                        const isHovered = hoveredIndexPie === i;
+                        return (
+                          <div
+                            key={i}
+                            onMouseEnter={() => setHoveredIndexPie(i)}
+                            onMouseLeave={() => setHoveredIndexPie(null)}
+                            style={{
+                              display: 'flex', alignItems: 'center', gap: '8px',
+                              padding: '5px 8px', borderRadius: '8px', cursor: 'default',
+                              background: isHovered ? '#f8fafc' : 'transparent',
+                              transition: 'background 0.15s',
+                            }}
+                          >
+                            <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: d.color, flexShrink: 0, transition: 'transform 0.15s', transform: isHovered ? 'scale(1.4)' : 'scale(1)' }} />
+                            <span style={{ fontSize: '11px', color: isHovered ? '#0F2A4E' : '#475569', fontWeight: isHovered ? 600 : 400, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', transition: 'color 0.15s' }} title={d.name}>
+                              {d.name}
+                            </span>
+                            <div style={{ width: '60px', height: '4px', background: '#f1f5f9', borderRadius: '99px', flexShrink: 0 }}>
+                              <div style={{ height: '100%', borderRadius: '99px', background: d.color, width: `${pct}%`, transition: 'width 0.4s ease' }} />
+                            </div>
+                            <span style={{ fontSize: '10px', color: '#64748b', whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}>
+                              {formatCurrency(d.value)}
+                            </span>
+                            <span style={{ fontSize: '10px', fontWeight: 700, color: d.color, whiteSpace: 'nowrap', minWidth: '36px', textAlign: 'right' }}>
+                              {pct.toFixed(1)}%
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          );
+        })()}
       </div>
 
       {/* Gráfico por Setor */}
