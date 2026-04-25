@@ -928,39 +928,50 @@ export default function DashboardGeralPage() {
                       </thead>
                       <tbody>
                         {curvaABC.map((c, i) => {
-                          const clColor = c.classe === 'A' ? { bg: '#eff6ff', text: '#2563eb', bar: '#3b82f6' }
-                                        : c.classe === 'B' ? { bg: '#fffbeb', text: '#d97706', bar: '#f59e0b' }
-                                        : { bg: '#fef2f2', text: '#dc2626', bar: '#ef4444' };
+                          const clColor = c.classe === 'A' ? { bg: '#eff6ff', text: '#2563eb', bar: '#3b82f6', row: 'rgba(59,130,246,0.03)' }
+                                        : c.classe === 'B' ? { bg: '#fffbeb', text: '#d97706', bar: '#f59e0b', row: 'rgba(245,158,11,0.03)' }
+                                        : { bg: '#fef2f2', text: '#dc2626', bar: '#ef4444', row: 'rgba(239,68,68,0.03)' };
                           return (
-                            <tr key={i} className="border-b border-slate-50 hover:bg-slate-50/80 transition-colors">
-                              <td className="px-4 py-2 text-[10px] font-bold text-slate-300">{c.rank}</td>
-                              <td className="px-3 py-2 font-medium text-slate-700 max-w-[200px] truncate" title={c.nome}>
+                            <motion.tr key={i}
+                              initial={{ opacity: 0, x: -10 }}
+                              animate={{ opacity: 1, x: 0 }}
+                              transition={{ duration: 0.3, delay: i * 0.04 }}
+                              className="border-b border-slate-50 hover:bg-slate-50 transition-colors"
+                              style={{ background: clColor.row }}
+                            >
+                              <td className="px-4 py-2.5 text-[10px] font-bold text-slate-300">{c.rank}</td>
+                              <td className="px-3 py-2.5 font-semibold text-slate-700 max-w-[200px] truncate text-[11px]" title={c.nome}>
                                 {c.nome}
                               </td>
-                              <td className="px-3 py-2 text-right font-mono text-[11px] font-semibold text-slate-800">
+                              <td className="px-3 py-2.5 text-right font-mono text-[11px] font-bold text-slate-800">
                                 R$ {fmt(c.valor)}
                               </td>
-                              <td className="px-3 py-2 text-right text-[10px] text-slate-500">
-                                {c.pctIndividual.toFixed(1)}%
+                              <td className="px-3 py-2.5 text-right">
+                                <CountUp end={c.pctIndividual} decimals={1} suffix="%" duration={1} delay={i * 0.04}
+                                  className="text-[10px] font-semibold" style={{ color: clColor.text }} />
                               </td>
-                              <td className="px-3 py-2">
+                              <td className="px-3 py-2.5">
                                 <div className="flex items-center gap-1.5">
-                                  <div className="flex-1 h-2 bg-slate-100 rounded-full overflow-hidden">
-                                    <div className="h-full rounded-full transition-all duration-500"
-                                      style={{ width: `${Math.min(c.pctAcum, 100)}%`, background: clColor.bar }} />
+                                  <div className="flex-1 h-2.5 bg-slate-100 rounded-full overflow-hidden">
+                                    <motion.div
+                                      initial={{ width: 0 }}
+                                      animate={{ width: `${Math.min(c.pctAcum, 100)}%` }}
+                                      transition={{ duration: 0.8, delay: 0.2 + i * 0.04 }}
+                                      className="h-full rounded-full"
+                                      style={{ background: `linear-gradient(90deg, ${clColor.bar}99, ${clColor.bar})` }}
+                                    />
                                   </div>
-                                  <span className="text-[9px] font-mono text-slate-400 w-8 text-right">
-                                    {c.pctAcum.toFixed(0)}%
-                                  </span>
+                                  <CountUp end={c.pctAcum} decimals={0} suffix="%" duration={1} delay={0.2 + i * 0.04}
+                                    className="text-[9px] font-bold w-8 text-right" style={{ color: clColor.text }} />
                                 </div>
                               </td>
-                              <td className="px-3 py-2 text-center">
-                                <span className="inline-flex items-center justify-center w-5 h-5 rounded-full text-[10px] font-bold"
-                                  style={{ background: clColor.bg, color: clColor.text }}>
+                              <td className="px-3 py-2.5 text-center">
+                                <span className="inline-flex items-center justify-center w-6 h-6 rounded-full text-[11px] font-bold shadow-sm"
+                                  style={{ background: clColor.bg, color: clColor.text, border: `1.5px solid ${clColor.bar}40` }}>
                                   {c.classe}
                                 </span>
                               </td>
-                            </tr>
+                            </motion.tr>
                           );
                         })}
                       </tbody>
