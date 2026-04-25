@@ -143,6 +143,63 @@ function DarkTooltipSetor({ active, payload }: any) {
   );
 }
 
+// ─── InfoPopover global ───────────────────────────────────────────────────────
+
+function InfoPopover({ insights }: { insights: React.ReactNode }) {
+  const [aberto, setAberto] = React.useState(false);
+  const [fixado, setFixado] = React.useState(false);
+  const ref = React.useRef<HTMLDivElement>(null);
+
+  React.useEffect(() => {
+    if (!fixado) return;
+    function handler(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        setAberto(false); setFixado(false);
+      }
+    }
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [fixado]);
+
+  return (
+    <div ref={ref} style={{ position: 'relative' }}>
+      <button
+        onMouseEnter={() => { if (!fixado) setAberto(true); }}
+        onMouseLeave={() => { if (!fixado) setAberto(false); }}
+        onClick={() => { setFixado(f => !f); setAberto(a => !a); }}
+        title="Como analisar este gráfico"
+        style={{
+          width: '22px', height: '22px', borderRadius: '50%',
+          background: aberto ? '#C9A84C' : 'rgba(255,255,255,0.15)',
+          border: '1.5px solid rgba(255,255,255,0.35)',
+          color: '#fff', fontSize: '11px', fontWeight: 700,
+          cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+          transition: 'background 0.2s', flexShrink: 0,
+        }}
+      >?</button>
+      {aberto && (
+        <div style={{
+          position: 'absolute', top: '30px', right: 0, zIndex: 50,
+          width: '300px', background: '#fff',
+          borderRadius: '12px', boxShadow: '0 8px 32px rgba(15,42,78,0.18)',
+          border: '1px solid #e2e8f0', overflow: 'hidden',
+        }}>
+          <div style={{ background: 'linear-gradient(135deg, #0F2A4E, #1e4d95)', padding: '10px 14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <span style={{ fontSize: '11px', fontWeight: 700, color: '#fff' }}>Como analisar</span>
+            {fixado && (
+              <button onClick={() => { setAberto(false); setFixado(false); }}
+                style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.6)', cursor: 'pointer', fontSize: '14px', lineHeight: 1, padding: '0 2px' }}>×</button>
+            )}
+          </div>
+          <div style={{ padding: '12px 14px', fontSize: '11px', color: '#334155', lineHeight: 1.6 }}>
+            {insights}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 
 function TabDespesaAnalitica({ token, entidadeId, municipioId }: { token: string | undefined; entidadeId?: number; municipioId?: number }) {
@@ -1284,10 +1341,11 @@ function TabOutrosExercicios({ token, entidadeId, municipioId }: { token: string
         <div style={{ background: '#fff', borderRadius: '14px', border: '1px solid #e2e8f0', overflow: 'hidden', boxShadow: '0 1px 4px rgba(0,0,0,0.05)' }}>
           <div style={{ background: 'linear-gradient(135deg, #0F2A4E 0%, #1a3a6b 60%, #0F2A4E 100%)', padding: '12px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <h3 style={{ margin: 0, fontSize: '11px', fontWeight: 700, color: '#fff', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Evolução Mensal — RP vs DEA</h3>
-            <div style={{ display: 'flex', gap: '12px', fontSize: '10px' }}>
+            <div style={{ display: 'flex', gap: '12px', fontSize: '10px', alignItems: 'center' }}>
               <span style={{ display: 'flex', alignItems: 'center', gap: '4px', color: '#93c5fd' }}><span style={{ width: '10px', height: '10px', background: '#1e4d95', borderRadius: '2px', display: 'inline-block' }} />RP</span>
               <span style={{ display: 'flex', alignItems: 'center', gap: '4px', color: '#fde68a' }}><span style={{ width: '10px', height: '10px', background: '#C9A84C', borderRadius: '2px', display: 'inline-block' }} />DEA</span>
               <span style={{ display: 'flex', alignItems: 'center', gap: '4px', color: '#fca5a5' }}><span style={{ width: '20px', height: '2px', background: '#ef4444', display: 'inline-block' }} />Total</span>
+              <InfoPopover insights={<><strong>Evolução RP vs DEA</strong><br /><strong>RP (Restos a Pagar):</strong> valores empenhados em anos anteriores que estão sendo pagos agora.<br /><br /><strong>DEA (Despesas de Exercícios Anteriores):</strong> despesas reconhecidas fora do exercício de competência.<br /><br />⚠️ Volume elevado de RP pode indicar dificuldades de caixa no ano anterior. DEA elevado pode sinalizar irregularidades contábeis.</>} />
             </div>
           </div>
           <div style={{ padding: '16px 20px' }}>
@@ -1351,8 +1409,9 @@ function TabOutrosExercicios({ token, entidadeId, municipioId }: { token: string
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {/* Top subgrupos */}
         <div style={{ background: '#fff', borderRadius: '14px', border: '1px solid #e2e8f0', overflow: 'hidden', boxShadow: '0 1px 4px rgba(0,0,0,0.05)' }}>
-          <div style={{ background: 'linear-gradient(135deg, #0F2A4E 0%, #1a3a6b 60%, #0F2A4E 100%)', padding: '12px 16px' }}>
+          <div style={{ background: 'linear-gradient(135deg, #0F2A4E 0%, #1a3a6b 60%, #0F2A4E 100%)', padding: '12px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <h3 style={{ margin: 0, fontSize: '11px', fontWeight: 700, color: '#fff', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Top Subgrupos</h3>
+            <InfoPopover insights={<><strong>Top Subgrupos — Outros Exercícios</strong><br />Ranking dos subgrupos de despesa com maior volume de RP e DEA.<br /><br />A barra horizontal representa o percentual do total de outros exercícios que aquele subgrupo representa.<br /><br />💡 Subgrupos com valor alto podem indicar contratos de longa duração ou atrasos sistemáticos de pagamento.</>} />
           </div>
           <div style={{ padding: '16px 20px' }}>
           {porSubgrupoEnriquecido.length === 0 ? (
@@ -1385,8 +1444,9 @@ function TabOutrosExercicios({ token, entidadeId, municipioId }: { token: string
 
         {/* Top setores */}
         <div style={{ background: '#fff', borderRadius: '14px', border: '1px solid #e2e8f0', overflow: 'hidden', boxShadow: '0 1px 4px rgba(0,0,0,0.05)' }}>
-          <div style={{ background: 'linear-gradient(135deg, #0F2A4E 0%, #1a3a6b 60%, #0F2A4E 100%)', padding: '12px 16px' }}>
+          <div style={{ background: 'linear-gradient(135deg, #0F2A4E 0%, #1a3a6b 60%, #0F2A4E 100%)', padding: '12px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <h3 style={{ margin: 0, fontSize: '11px', fontWeight: 700, color: '#fff', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Top Setores</h3>
+            <InfoPopover insights={<><strong>Top Setores — Outros Exercícios</strong><br />Setores com maior volume de pagamentos de RP e DEA.<br /><br />Setores que aparecem frequentemente neste ranking podem ter processos de liquidação demorados ou dificuldades orçamentárias recorrentes.</>} />
           </div>
           <div style={{ padding: '16px 20px' }}>
           {(data?.porSetor ?? []).length === 0 ? (
@@ -1422,7 +1482,10 @@ function TabOutrosExercicios({ token, entidadeId, municipioId }: { token: string
       {topCredores.length > 0 && (
         <div style={{ background: '#fff', borderRadius: '14px', border: '1px solid #e2e8f0', overflow: 'hidden', boxShadow: '0 1px 4px rgba(0,0,0,0.05)' }}>
           <div style={{ background: 'linear-gradient(90deg, #0F2A4E, #1e4d95)', padding: '12px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <h3 style={{ margin: 0, fontSize: '11px', fontWeight: 700, color: '#fff', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Top Credores — Outros Exercícios</h3>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <h3 style={{ margin: 0, fontSize: '11px', fontWeight: 700, color: '#fff', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Top Credores — Outros Exercícios</h3>
+              <InfoPopover insights={<><strong>Top Credores — Outros Exercícios</strong><br />Credores com maior volume recebido via RP e DEA.<br /><br />💡 Um credor que aparece continuamente neste ranking pode indicar contratos não quitados no exercício de competência — sinal de alerta para auditoria.<br /><br />A coluna <strong>% Acum.</strong> mostra o percentual acumulado até aquele credor no ranking.</>} />
+            </div>
             <span style={{ fontSize: '10px', color: '#93c5fd' }}>{topCredores.length} registros · {fmt(totalGeral)}</span>
           </div>
           <div style={{ overflowX: 'auto' }}>
@@ -1864,7 +1927,12 @@ function TabDespesaSintetica({ token, entidadeId, municipioId }: { token: string
             </colgroup>
             <thead>
               <tr style={{ background: '#0F2A4E' }}>
-                <th style={{ ...TH, textAlign: 'center', padding: '9px 14px' }}>Descrição</th>
+                <th style={{ ...TH, textAlign: 'left', padding: '9px 14px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    Descrição
+                    <InfoPopover insights={<><strong>Matriz de Despesa Sintética</strong><br />Cada linha representa um <strong>grupo de natureza de despesa</strong> e cada coluna um mês do ano.<br /><br />📊 Os valores mostram o total pago em cada mês por grupo.<br /><br />🔵 <strong>Exercícios Anteriores:</strong> linhas em azul claro indicam Restos a Pagar e DEA — despesas de anos passados pagas neste exercício.<br /><br />💡 Use os filtros acima para recortar por secretaria, setor ou fonte de recurso.</>} />
+                  </div>
+                </th>
                 {MESES.map((m, i) => <th key={i} style={TH}>{m}</th>)}
                 <th style={{ ...TH, color: '#fde68a', borderLeft: '1px solid rgba(255,255,255,0.12)' }}>Total</th>
                 <th style={{ ...TH, color: '#fde68a' }}>Média</th>
@@ -1994,7 +2062,10 @@ function TabDespesaSintetica({ token, entidadeId, municipioId }: { token: string
         {/* Evolução Mensal */}
         <div style={{ background: '#fff', borderRadius: '14px', border: '1px solid #e2e8f0', overflow: 'hidden', boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
           <div style={{ background: 'linear-gradient(135deg, #0F2A4E, #1e4d95)', padding: '14px 20px' }}>
-            <h3 style={{ fontSize: '13px', fontWeight: 700, color: '#fff', margin: 0, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Evolução das Despesas</h3>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <h3 style={{ fontSize: '13px', fontWeight: 700, color: '#fff', margin: 0, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Evolução das Despesas</h3>
+              <InfoPopover insights={<><strong>Evolução Mensal das Despesas</strong><br />Barras mostram o total pago em cada mês do ano selecionado.<br /><br />📈 Compare meses para identificar picos de pagamento — frequentemente relacionados a 13º salário, contratos sazonais ou repasses.<br /><br />💡 Meses com R$0 ainda não tiveram pagamentos registrados.</>} />
+            </div>
           </div>
           <div style={{ padding: '16px 20px 20px' }}>
           {isLoading ? (
@@ -2022,8 +2093,9 @@ function TabDespesaSintetica({ token, entidadeId, municipioId }: { token: string
           const totalPieGrupo = pieData.reduce((a, d) => a + d.value, 0);
           return (
             <div style={{ background: '#fff', borderRadius: '16px', border: '1px solid #e2e8f0', overflow: 'hidden', boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
-              <div style={{ background: 'linear-gradient(135deg, #0F2A4E, #1e4d95)', padding: '14px 20px' }}>
+              <div style={{ background: 'linear-gradient(135deg, #0F2A4E, #1e4d95)', padding: '14px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <span style={{ fontSize: '13px', fontWeight: 700, color: '#fff', letterSpacing: '0.04em' }}>Distribuição por Grupo</span>
+                <InfoPopover insights={<><strong>Distribuição por Grupo</strong><br />Mostra a fatia de cada grupo de despesa no total do período filtrado.<br /><br />🖱️ Passe o mouse na fatia ou na legenda para ver valor e percentual.<br /><br />💡 Aplique filtros (secretaria, setor) para ver a composição de uma área específica.</>} />
               </div>
               <div style={{ padding: '16px 20px 20px' }}>
                 {isLoading ? (
@@ -2115,8 +2187,9 @@ function TabDespesaSintetica({ token, entidadeId, municipioId }: { token: string
 
       {/* Crescimento Mensal */}
       <div style={{ background: '#fff', borderRadius: '14px', border: '1px solid #e2e8f0', overflow: 'hidden', boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
-        <div style={{ background: 'linear-gradient(135deg, #0F2A4E, #1e4d95)', padding: '14px 20px' }}>
+        <div style={{ background: 'linear-gradient(135deg, #0F2A4E, #1e4d95)', padding: '14px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <h3 style={{ fontSize: '13px', fontWeight: 700, color: '#fff', margin: 0, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Crescimento Mensal da Despesa (%)</h3>
+          <InfoPopover insights={<><strong>Crescimento Mensal (%)</strong><br />Mostra a variação percentual do total de despesas de um mês para o seguinte.<br /><br />📈 Valores <strong>positivos</strong> indicam que o mês gastou mais que o anterior.<br />📉 Valores <strong>negativos</strong> indicam redução nos pagamentos.<br /><br />⚠️ Queda de -100% em Abril geralmente indica que os pagamentos do mês anterior não se repetiram — comum no início de exercício ou após folha de 13º.</>} />
         </div>
         <div style={{ padding: '16px 20px 20px' }}>
         {isLoading ? (
@@ -2431,13 +2504,14 @@ function TabSintetica({
             <div style={{ fontSize: '15px', fontWeight: 700, color: '#0F2A4E' }}>Evolução Mensal da Despesa {anoAtual}</div>
             <div style={{ fontSize: '12px', color: '#94a3b8', marginTop: '2px' }}>Mesmo Exercício + Restos a Pagar + DEA (Exerc. Anterior) por mês</div>
           </div>
-          <div style={{ display: 'flex', gap: '16px', fontSize: '11px', flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', gap: '16px', fontSize: '11px', flexWrap: 'wrap', alignItems: 'center' }}>
             {([['#1e4d95','Mesmo Exercício','sq'],['#C9A84C','Restos a Pagar','sq'],['#f97316','DEA (Exerc. Anterior)','sq'],['#ef4444','Total Geral','ln']] as [string,string,string][]).map(([cor, lbl, tipo]) => (
               <span key={lbl} style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
                 <span style={{ width: tipo === 'ln' ? '16px' : '10px', height: tipo === 'ln' ? '2px' : '10px', background: cor, borderRadius: '2px', display: 'inline-block' }} />
                 <span style={{ color: '#64748b' }}>{lbl}</span>
               </span>
             ))}
+            <InfoPopover insights={<><strong>Evolução Mensal da Despesa</strong><br />Barras empilhadas mostram o total pago por mês dividido em 3 categorias:<br /><br />🔵 <strong>Mesmo Exercício:</strong> despesas do ano corrente.<br />🟡 <strong>Restos a Pagar (RP):</strong> compromissos de anos anteriores pagos neste exercício.<br />🟠 <strong>DEA:</strong> Despesas de Exercícios Anteriores reconhecidas agora.<br /><br />A linha vermelha mostra o <strong>Total Geral</strong> mês a mês. Meses sem barra ainda não tiveram pagamentos.</>} />
           </div>
         </div>
         {loadingSintetica ? (
@@ -2485,7 +2559,8 @@ function TabSintetica({
                   <div style={{ fontSize: '13px', fontWeight: 700, color: '#fff' }}>Curva ABC — Credores por Despesa</div>
                   <div style={{ fontSize: '11px', color: 'rgba(147,197,253,0.9)', marginTop: '2px' }}>Concentração de pagamentos por credor</div>
                 </div>
-                <div style={{ display: 'flex', gap: '6px' }}>
+                <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                  <InfoPopover insights={<><strong>Curva ABC de Credores</strong><br />Classifica credores pelo volume de pagamentos recebidos:<br /><br />🔵 <strong>Classe A (≤80%):</strong> poucos credores que concentram a maior parte dos gastos. Merecem atenção prioritária na auditoria.<br />🟡 <strong>Classe B (≤95%):</strong> credores intermediários.<br />🔴 <strong>Classe C (&gt;95%):</strong> muitos credores com pequenos valores individuais.<br /><br />A coluna <strong>% Acum.</strong> mostra quanto do total aquele credor representa acumulado até ele.</>} />
                   {(['A','B','C'] as const).map(cl => (
                     <span key={cl} style={{
                       fontSize: '10px', fontWeight: 700, padding: '2px 8px', borderRadius: '999px',
@@ -2573,8 +2648,9 @@ function TabSintetica({
           const [hoveredIndex, setHoveredIndex] = React.useState<number | null>(null);
           return (
             <div style={{ background: '#fff', borderRadius: '16px', border: '1px solid #e2e8f0', boxShadow: '0 1px 4px rgba(0,0,0,0.06)', overflow: 'hidden' }}>
-              <div style={{ background: 'linear-gradient(135deg, #0F2A4E, #1e4d95)', padding: '14px 20px' }}>
+              <div style={{ background: 'linear-gradient(135deg, #0F2A4E, #1e4d95)', padding: '14px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <span style={{ fontSize: '13px', fontWeight: 700, color: '#fff', letterSpacing: '0.04em' }}>Distribuição por Grupo</span>
+                <InfoPopover insights={<><strong>Distribuição por Grupo de Despesa</strong><br />O gráfico de rosca mostra como o total de despesas está dividido entre os grupos de natureza de despesa.<br /><br />Passe o mouse sobre uma fatia para ver o valor e o percentual. Clique na legenda para destacar um grupo.<br /><br />💡 Grupos com fatia grande indicam onde o município concentra seus gastos — ideal para priorizar análises de conformidade.</>} />
               </div>
               <div style={{ padding: '16px 20px 20px' }}>
                 {loadingSintetica ? (
@@ -2773,9 +2849,12 @@ function GraficoPorSetor({ ano, token, fEntidade, fSecretaria, fSetor, fBloco, f
     <div style={{ background: '#fff', borderRadius: '14px', border: '1px solid #e2e8f0', overflow: 'hidden', boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
       {/* Header */}
       <div style={{ background: 'linear-gradient(135deg, #0F2A4E, #1e4d95)', padding: '14px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <h3 style={{ fontSize: '13px', fontWeight: 700, color: '#fff', margin: 0, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-          Despesas por Setor
-        </h3>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <h3 style={{ fontSize: '13px', fontWeight: 700, color: '#fff', margin: 0, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+            Despesas por Setor
+          </h3>
+          <InfoPopover insights={<><strong>Ranking de Despesas por Setor</strong><br />Exibe os <strong>top 20 setores</strong> ordenados pelo volume total de pagamentos.<br /><br />A linha tracejada indica a <strong>média</strong> entre os setores — setores acima dela têm concentração de gastos relevante.<br /><br />💡 Use o filtro de Setor acima para detalhar um setor específico nas demais visões.</>} />
+        </div>
         {!isLoading && rows.length > 0 && (
           <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.75)', background: 'rgba(255,255,255,0.12)', borderRadius: '6px', padding: '3px 10px', fontWeight: 500 }}>
             {rows.length} setores · {fmtK(totalGeral)} total
@@ -3199,7 +3278,10 @@ function TabDespesaDiarias({ token, entidadeId, municipioId }: { token: string |
         return (
           <div style={{ background: '#fff', borderRadius: '14px', border: '1px solid #e2e8f0', overflow: 'hidden', boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
             <div style={{ background: 'linear-gradient(135deg, #0F2A4E, #1e4d95)', padding: '14px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0' }}>
-              <h3 style={{ fontSize: '13px', fontWeight: 700, color: '#fff', margin: 0 }}>Diárias por Setor</h3>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <h3 style={{ fontSize: '13px', fontWeight: 700, color: '#fff', margin: 0 }}>Diárias por Setor</h3>
+                <InfoPopover insights={<><strong>Diárias por Setor</strong><br />Gráfico radial que mostra quais setores tiveram maior volume de gastos com diárias.<br /><br />Cada barra representa um setor — quanto mais longa, maior o valor gasto em diárias.<br /><br />⚠️ Setores com volume desproporcional de diárias em relação à sua estrutura podem merecer atenção especial na fiscalização.</>} />
+              </div>
               <span style={{ fontSize: '10px', color: '#93c5fd' }}>Top {setores.length} · {formatCurrency(totalGeral2)}</span>
             </div>
             <div style={{ padding: '16px 24px 24px' }}>
@@ -3248,8 +3330,9 @@ function TabDespesaDiarias({ token, entidadeId, municipioId }: { token: string |
 
         {/* Pizza por subgrupo */}
         <div style={{ background: '#fff', borderRadius: '14px', border: '1px solid #e2e8f0', overflow: 'hidden', boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
-          <div style={{ background: 'linear-gradient(135deg, #0F2A4E, #1e4d95)', padding: '14px 20px', marginBottom: '0' }}>
+          <div style={{ background: 'linear-gradient(135deg, #0F2A4E, #1e4d95)', padding: '14px 20px', marginBottom: '0', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <h3 style={{ fontSize: '13px', fontWeight: 700, color: '#fff', margin: 0 }}>(%) Participação nas Diárias</h3>
+            <InfoPopover insights={<><strong>Participação nas Diárias por Subgrupo</strong><br />Distribuição percentual das diárias entre os subgrupos de despesa.<br /><br />Passe o mouse nas fatias para ver valor e participação de cada subgrupo.<br /><br />💡 Subgrupos com participação muito alta podem indicar concentração em um tipo específico de viagem ou beneficiário.</>} />
           </div>
           <div style={{ padding: '16px 20px 20px' }}>
           {isLoading ? (
@@ -3432,8 +3515,9 @@ function TabDespesaDiarias({ token, entidadeId, municipioId }: { token: string |
 
       {/* Evolução Mensal — full width */}
       <div style={{ background: '#fff', borderRadius: '14px', border: '1px solid #e2e8f0', overflow: 'hidden', boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
-        <div style={{ background: 'linear-gradient(135deg, #0F2A4E, #1e4d95)', padding: '14px 20px' }}>
+        <div style={{ background: 'linear-gradient(135deg, #0F2A4E, #1e4d95)', padding: '14px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <h3 style={{ fontSize: '13px', fontWeight: 700, color: '#fff', margin: 0 }}>Evolução das Diárias</h3>
+          <InfoPopover insights={<><strong>Evolução Mensal das Diárias</strong><br />Total pago em diárias mês a mês.<br /><br />📈 Picos costumam coincidir com eventos, campanhas de saúde, eleições ou períodos de maior atividade administrativa.<br /><br />💡 Compare com outros anos para identificar tendências de crescimento.</>} />
         </div>
         <div style={{ padding: '16px 20px 20px' }}>
         {isLoading ? (
@@ -3457,8 +3541,9 @@ function TabDespesaDiarias({ token, entidadeId, municipioId }: { token: string |
 
       {/* Crescimento Mensal */}
       <div style={{ background: '#fff', borderRadius: '14px', border: '1px solid #e2e8f0', overflow: 'hidden', boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
-        <div style={{ background: 'linear-gradient(135deg, #0F2A4E, #1e4d95)', padding: '14px 20px' }}>
+        <div style={{ background: 'linear-gradient(135deg, #0F2A4E, #1e4d95)', padding: '14px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <h3 style={{ fontSize: '13px', fontWeight: 700, color: '#fff', margin: 0 }}>Crescimento Mensal das Diárias (%)</h3>
+          <InfoPopover insights={<><strong>Crescimento Mensal das Diárias (%)</strong><br />Variação percentual do total de diárias de um mês para o seguinte.<br /><br />📈 Crescimento acima de 50% em um mês merece investigação — pode indicar aumento atípico de viagens ou pagamentos retroativos.<br /><br />Valores negativos são normais após meses de pico.</>} />
         </div>
         <div style={{ padding: '16px 20px 20px' }}>
         {isLoading ? (
