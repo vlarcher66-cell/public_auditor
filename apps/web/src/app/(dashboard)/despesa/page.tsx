@@ -149,6 +149,7 @@ function InfoPopover({ insights }: { insights: React.ReactNode }) {
   const [aberto, setAberto] = React.useState(false);
   const [fixado, setFixado] = React.useState(false);
   const ref = React.useRef<HTMLDivElement>(null);
+  const timerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
 
   React.useEffect(() => {
     if (!fixado) return;
@@ -161,11 +162,24 @@ function InfoPopover({ insights }: { insights: React.ReactNode }) {
     return () => document.removeEventListener('mousedown', handler);
   }, [fixado]);
 
+  function handleMouseEnter() {
+    if (timerRef.current) clearTimeout(timerRef.current);
+    if (!fixado) setAberto(true);
+  }
+
+  function handleMouseLeave() {
+    if (fixado) return;
+    timerRef.current = setTimeout(() => setAberto(false), 150);
+  }
+
   return (
-    <div ref={ref} style={{ position: 'relative' }}>
+    <div
+      ref={ref}
+      style={{ position: 'relative' }}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
+    >
       <button
-        onMouseEnter={() => { if (!fixado) setAberto(true); }}
-        onMouseLeave={() => { if (!fixado) setAberto(false); }}
         onClick={() => { setFixado(f => !f); setAberto(a => !a); }}
         title="Como analisar este gráfico"
         style={{
@@ -186,10 +200,8 @@ function InfoPopover({ insights }: { insights: React.ReactNode }) {
         }}>
           <div style={{ background: 'linear-gradient(135deg, #0F2A4E, #1e4d95)', padding: '10px 14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <span style={{ fontSize: '11px', fontWeight: 700, color: '#fff' }}>Como analisar</span>
-            {fixado && (
-              <button onClick={() => { setAberto(false); setFixado(false); }}
-                style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.6)', cursor: 'pointer', fontSize: '14px', lineHeight: 1, padding: '0 2px' }}>×</button>
-            )}
+            <button onClick={() => { setAberto(false); setFixado(false); }}
+              style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.6)', cursor: 'pointer', fontSize: '14px', lineHeight: 1, padding: '0 2px' }}>×</button>
           </div>
           <div style={{ padding: '12px 14px', fontSize: '11px', color: '#334155', lineHeight: 1.6 }}>
             {insights}
