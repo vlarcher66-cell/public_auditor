@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
+import ReactDOM from 'react-dom';
 import { useSession } from 'next-auth/react';
 import { useQuery } from '@tanstack/react-query';
 import { DollarSign, TrendingDown, Banknote, FileCheck, ArrowRight, BarChart2, Clock, TrendingUp, ChevronDown, FileDown, Loader2, ChevronRight, Layers2, LayoutDashboard, Table2, BriefcaseBusiness } from 'lucide-react';
@@ -148,13 +149,40 @@ function DarkTooltipSetor({ active, payload }: any) {
 function InfoPopover({ insights }: { insights: React.ReactNode }) {
   const [aberto, setAberto] = React.useState(false);
   const [fixado, setFixado] = React.useState(false);
-  const ref = React.useRef<HTMLDivElement>(null);
+  const [pos, setPos] = React.useState<{ top: number; left: number } | null>(null);
+  const btnRef = React.useRef<HTMLButtonElement>(null);
+  const popoverRef = React.useRef<HTMLDivElement>(null);
   const timerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  function calcularPos() {
+    if (!btnRef.current || !popoverRef.current) return;
+    const btn = btnRef.current.getBoundingClientRect();
+    const popW = popoverRef.current.offsetWidth || 300;
+    const popH = popoverRef.current.offsetHeight || 200;
+    const margin = 8;
+    let left = btn.right - popW;
+    if (left < margin) left = margin;
+    if (left + popW > window.innerWidth - margin) left = window.innerWidth - popW - margin;
+    let top = btn.bottom + 6;
+    if (top + popH > window.innerHeight - margin) top = btn.top - popH - 6;
+    if (top < margin) top = margin;
+    setPos({ top, left });
+  }
+
+  React.useEffect(() => {
+    if (!aberto) { setPos(null); return; }
+    // aguarda o DOM renderizar para medir a altura real
+    const frame = requestAnimationFrame(calcularPos);
+    function onScroll() { calcularPos(); }
+    window.addEventListener('scroll', onScroll, true);
+    return () => { cancelAnimationFrame(frame); window.removeEventListener('scroll', onScroll, true); };
+  }, [aberto]);
 
   React.useEffect(() => {
     if (!fixado) return;
     function handler(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) {
+      const target = e.target as Node;
+      if (!btnRef.current?.contains(target) && !popoverRef.current?.contains(target)) {
         setAberto(false); setFixado(false);
       }
     }
@@ -172,14 +200,44 @@ function InfoPopover({ insights }: { insights: React.ReactNode }) {
     timerRef.current = setTimeout(() => setAberto(false), 150);
   }
 
+  // renderiza sempre no portal; visível apenas quando pos foi calculado
+  const popover = ReactDOM.createPortal(
+    <div
+      ref={popoverRef}
+      onMouseEnter={() => { if (timerRef.current) clearTimeout(timerRef.current); }}
+      onMouseLeave={() => { if (!fixado) timerRef.current = setTimeout(() => setAberto(false), 150); }}
+      style={{
+        position: 'fixed',
+        top: pos?.top ?? -9999,
+        left: pos?.left ?? -9999,
+        visibility: (aberto && pos) ? 'visible' : 'hidden',
+        pointerEvents: (aberto && pos) ? 'auto' : 'none',
+        zIndex: 9999,
+        width: '300px', background: '#fff',
+        borderRadius: '12px', boxShadow: '0 8px 32px rgba(15,42,78,0.18)',
+        border: '1px solid #e2e8f0', overflow: 'hidden',
+      }}
+    >
+      <div style={{ background: 'linear-gradient(135deg, #0F2A4E, #1e4d95)', padding: '10px 14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <span style={{ fontSize: '11px', fontWeight: 700, color: '#fff' }}>Como analisar</span>
+        <button onClick={() => { setAberto(false); setFixado(false); }}
+          style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.6)', cursor: 'pointer', fontSize: '14px', lineHeight: 1, padding: '0 2px' }}>×</button>
+      </div>
+      <div style={{ padding: '12px 14px', fontSize: '11px', color: '#334155', lineHeight: 1.6 }}>
+        {insights}
+      </div>
+    </div>,
+    document.body
+  );
+
   return (
     <div
-      ref={ref}
       style={{ position: 'relative' }}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
     >
       <button
+        ref={btnRef}
         onClick={() => { setFixado(f => !f); setAberto(a => !a); }}
         title="Como analisar este gráfico"
         style={{
@@ -191,23 +249,7 @@ function InfoPopover({ insights }: { insights: React.ReactNode }) {
           transition: 'background 0.2s', flexShrink: 0,
         }}
       >?</button>
-      {aberto && (
-        <div style={{
-          position: 'absolute', top: '30px', right: 0, zIndex: 50,
-          width: '300px', background: '#fff',
-          borderRadius: '12px', boxShadow: '0 8px 32px rgba(15,42,78,0.18)',
-          border: '1px solid #e2e8f0', overflow: 'hidden',
-        }}>
-          <div style={{ background: 'linear-gradient(135deg, #0F2A4E, #1e4d95)', padding: '10px 14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <span style={{ fontSize: '11px', fontWeight: 700, color: '#fff' }}>Como analisar</span>
-            <button onClick={() => { setAberto(false); setFixado(false); }}
-              style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.6)', cursor: 'pointer', fontSize: '14px', lineHeight: 1, padding: '0 2px' }}>×</button>
-          </div>
-          <div style={{ padding: '12px 14px', fontSize: '11px', color: '#334155', lineHeight: 1.6 }}>
-            {insights}
-          </div>
-        </div>
-      )}
+      {popover}
     </div>
   );
 }
@@ -702,63 +744,7 @@ function TabDespesaAnalitica({ token, entidadeId, municipioId }: { token: string
         const pctCoberto = totalGeral > 0 ? (cobertoTotal / totalGeral) * 100 : 0;
         const concentrado = top3Pct > 70;
 
-        // ── componente popover ──
-        function InfoPopover({ insights }: { insights: React.ReactNode }) {
-          const [aberto, setAberto] = React.useState(false);
-          const [fixado, setFixado] = React.useState(false);
-          const ref = React.useRef<HTMLDivElement>(null);
-
-          React.useEffect(() => {
-            if (!fixado) return;
-            function handler(e: MouseEvent) {
-              if (ref.current && !ref.current.contains(e.target as Node)) {
-                setAberto(false);
-                setFixado(false);
-              }
-            }
-            document.addEventListener('mousedown', handler);
-            return () => document.removeEventListener('mousedown', handler);
-          }, [fixado]);
-
-          return (
-            <div ref={ref} style={{ position: 'relative' }}>
-              <button
-                onMouseEnter={() => { if (!fixado) setAberto(true); }}
-                onMouseLeave={() => { if (!fixado) setAberto(false); }}
-                onClick={() => { setFixado(f => !f); setAberto(a => !a); }}
-                title="Como analisar este gráfico"
-                style={{
-                  width: '22px', height: '22px', borderRadius: '50%',
-                  background: aberto ? '#C9A84C' : 'rgba(255,255,255,0.15)',
-                  border: '1.5px solid rgba(255,255,255,0.35)',
-                  color: '#fff', fontSize: '11px', fontWeight: 700,
-                  cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  transition: 'background 0.2s',
-                  flexShrink: 0,
-                }}
-              >?</button>
-              {aberto && (
-                <div style={{
-                  position: 'absolute', top: '30px', right: 0, zIndex: 50,
-                  width: '300px', background: '#fff',
-                  borderRadius: '12px', boxShadow: '0 8px 32px rgba(15,42,78,0.18)',
-                  border: '1px solid #e2e8f0', overflow: 'hidden',
-                }}>
-                  <div style={{ background: 'linear-gradient(135deg, #0F2A4E, #1e4d95)', padding: '10px 14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <span style={{ fontSize: '11px', fontWeight: 700, color: '#fff' }}>Como analisar</span>
-                    {fixado && (
-                      <button onClick={() => { setAberto(false); setFixado(false); }}
-                        style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.6)', cursor: 'pointer', fontSize: '14px', lineHeight: 1, padding: '0 2px' }}>×</button>
-                    )}
-                  </div>
-                  <div style={{ padding: '12px 14px', fontSize: '11px', color: '#334155', lineHeight: 1.6 }}>
-                    {insights}
-                  </div>
-                </div>
-              )}
-            </div>
-          );
-        }
+        // ── componente popover (usa o global InfoPopover) ──
 
         return (
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginTop: '24px' }}>
