@@ -761,13 +761,81 @@ function TabGeralReceita({
   const cardStyle: React.CSSProperties = { background: '#fff', borderRadius: 16, border: '1px solid #e2e8f0', overflow: 'hidden' };
   const headerStyle: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: 8, padding: '12px 20px', background: 'linear-gradient(135deg, #0F2A4E, #1e4d95)' };
 
+  // Projeção anual baseada na média dos meses com dados
+  const projecaoAnual = mediaMensal * 12;
+  const pctAno = Math.round((mesesAtivos / 12) * 100);
+  const melhorMesIdx = mensal.indexOf(Math.max(...mensal));
+  const melhorMesVal = mensal[melhorMesIdx] ?? 0;
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginTop: 4 }}>
+
+      {/* ── Banner de Progresso do Ano ── */}
+      {mesesAtivos > 0 && (
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+          style={{ background: 'linear-gradient(135deg, #0F2A4E 0%, #1e4d95 60%, #2563b0 100%)', borderRadius: 16, padding: '16px 24px', display: 'flex', alignItems: 'center', gap: 24, flexWrap: 'wrap' }}
+        >
+          {/* Progresso do ano */}
+          <div style={{ flex: 1, minWidth: 200 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+              <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.6)', fontWeight: 500 }}>Progresso do ano · {ano}</span>
+              <span style={{ fontSize: 12, fontWeight: 700, color: '#C9A84C' }}>{mesesAtivos}/12 meses · {pctAno}%</span>
+            </div>
+            <div style={{ height: 6, background: 'rgba(255,255,255,0.12)', borderRadius: 99, overflow: 'hidden' }}>
+              <motion.div
+                initial={{ width: 0 }}
+                animate={{ width: `${pctAno}%` }}
+                transition={{ duration: 1.2, delay: 0.3, ease: 'easeOut' }}
+                style={{ height: '100%', background: 'linear-gradient(90deg, #C9A84C, #f59e0b)', borderRadius: 99, boxShadow: '0 0 8px rgba(201,168,76,0.6)' }}
+              />
+            </div>
+          </div>
+
+          {/* Separador */}
+          <div style={{ width: 1, height: 36, background: 'rgba(255,255,255,0.15)', flexShrink: 0 }} />
+
+          {/* Projeção anual */}
+          <div style={{ flexShrink: 0 }}>
+            <p style={{ fontSize: 10, color: 'rgba(255,255,255,0.5)', margin: '0 0 2px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Projeção Anual</p>
+            <p style={{ fontSize: 18, fontWeight: 800, color: '#fff', margin: 0, fontVariantNumeric: 'tabular-nums' }}>
+              R$ <CountUp end={projecaoAnual} duration={1.8} delay={0.4} decimals={2} decimal="," separator="." />
+            </p>
+          </div>
+
+          <div style={{ width: 1, height: 36, background: 'rgba(255,255,255,0.15)', flexShrink: 0 }} />
+
+          {/* Melhor mês */}
+          {melhorMesVal > 0 && (
+            <div style={{ flexShrink: 0 }}>
+              <p style={{ fontSize: 10, color: 'rgba(255,255,255,0.5)', margin: '0 0 2px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Melhor Mês</p>
+              <p style={{ fontSize: 14, fontWeight: 700, color: '#C9A84C', margin: 0 }}>
+                {MESES[melhorMesIdx]} · <span style={{ color: '#fff', fontVariantNumeric: 'tabular-nums' }}>R$ {fmtFull(melhorMesVal)}</span>
+              </p>
+            </div>
+          )}
+
+          <div style={{ width: 1, height: 36, background: 'rgba(255,255,255,0.15)', flexShrink: 0 }} />
+
+          {/* Média mensal */}
+          <div style={{ flexShrink: 0 }}>
+            <p style={{ fontSize: 10, color: 'rgba(255,255,255,0.5)', margin: '0 0 2px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Média Mensal</p>
+            <p style={{ fontSize: 14, fontWeight: 700, color: '#fff', margin: 0, fontVariantNumeric: 'tabular-nums' }}>R$ {fmtFull(mediaMensal)}</p>
+          </div>
+        </motion.div>
+      )}
 
       <div style={{ display: 'grid', gridTemplateColumns: '3fr 2fr', gap: 16, alignItems: 'start' }}>
 
         {/* ── Evolução Mensal ── */}
-        <div style={cardStyle}>
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.45, delay: 0.1 }}
+          style={cardStyle}
+        >
           <div style={headerStyle}>
             <TrendingUp size={15} color="rgba(255,255,255,0.6)" />
             <span style={{ fontSize: 13, fontWeight: 700, color: '#fff' }}>Evolução Mensal</span>
@@ -777,11 +845,12 @@ function TabGeralReceita({
             <InfoPopover insights={<><strong>Evolução Mensal da Receita</strong><br /><br />Barras mostram o total arrecadado em cada mês. A barra dourada indica o último mês com dados.<br /><br />📈 A linha verde mostra o crescimento acumulado no ano — ideal para projetar o total anual.<br /><br />💡 Meses com barra muito baixa podem indicar atraso no repasse ou na importação dos dados.</>} />
           </div>
           <div style={{ padding: '16px 20px 12px' }}>
-            {/* Barras */}
+            {/* Barras animadas */}
             <div style={{ display: 'flex', alignItems: 'flex-end', gap: 6, height: 136 }}>
               {mensal.map((v, i) => {
                 const pct = maxMensal > 0 ? (v / maxMensal) * 100 : 0;
                 const isAtual = i === ultimoMesIdx;
+                const isMelhor = i === melhorMesIdx && v > 0;
                 return (
                   <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, position: 'relative' }} className="group">
                     {v > 0 && (
@@ -789,16 +858,22 @@ function TabGeralReceita({
                         R$ {fmtFull(v)}
                       </div>
                     )}
+                    {isMelhor && (
+                      <div style={{ position: 'absolute', top: -18, left: '50%', transform: 'translateX(-50%)', fontSize: 9, color: '#C9A84C', fontWeight: 700, whiteSpace: 'nowrap' }}>★ maior</div>
+                    )}
                     <div style={{ width: '100%', height: 112, display: 'flex', alignItems: 'flex-end' }}>
-                      <div style={{
-                        width: '100%',
-                        height: pct > 0 ? `${Math.max(pct, 4)}%` : '3px',
-                        background: isAtual ? 'linear-gradient(180deg, #C9A84C, #e8c84a)' : v > 0 ? 'linear-gradient(180deg, #3b82f6, #1d4ed8)' : '#f1f5f9',
-                        borderRadius: '4px 4px 0 0',
-                        opacity: v > 0 ? 1 : 0.5,
-                        transition: 'height 0.5s ease',
-                        boxShadow: isAtual ? '0 -2px 8px rgba(201,168,76,0.4)' : v > 0 ? '0 -2px 6px rgba(59,130,246,0.25)' : 'none',
-                      }} />
+                      <motion.div
+                        initial={{ height: 0 }}
+                        animate={{ height: pct > 0 ? `${Math.max(pct, 4)}%` : '3px' }}
+                        transition={{ duration: 0.6, delay: i * 0.05, ease: [0.22, 1, 0.36, 1] }}
+                        style={{
+                          width: '100%',
+                          background: isAtual ? 'linear-gradient(180deg, #C9A84C, #e8c84a)' : v > 0 ? 'linear-gradient(180deg, #3b82f6, #1d4ed8)' : '#f1f5f9',
+                          borderRadius: '4px 4px 0 0',
+                          opacity: v > 0 ? 1 : 0.4,
+                          boxShadow: isAtual ? '0 -2px 10px rgba(201,168,76,0.5)' : v > 0 ? '0 -2px 8px rgba(59,130,246,0.3)' : 'none',
+                        }}
+                      />
                     </div>
                     <span style={{ fontSize: 9, fontWeight: isAtual ? 700 : 400, color: isAtual ? '#C9A84C' : '#94a3b8' }}>{MESES[i]}</span>
                   </div>
@@ -866,10 +941,15 @@ function TabGeralReceita({
               ))}
             </div>
           </div>
-        </div>
+        </motion.div>
 
         {/* ── Composição da Receita ── */}
-        <div style={cardStyle}>
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.45, delay: 0.2 }}
+          style={cardStyle}
+        >
           <div style={headerStyle}>
             <PieChartIcon size={15} color="rgba(255,255,255,0.6)" />
             <span style={{ fontSize: 13, fontWeight: 700, color: '#fff' }}>Composição da Receita</span>
@@ -882,10 +962,15 @@ function TabGeralReceita({
                 { label: 'Orçamentária', value: totalOrc, color: '#3b82f6' },
                 { label: 'Transf. Bancárias', value: totalTransf, color: '#f59e0b' },
                 { label: 'Extra-Orçamentária', value: totalExtra, color: '#8b5cf6' },
-              ].map((item) => {
+              ].map((item, idx) => {
                 const pct = totalGeral > 0 ? (item.value / totalGeral) * 100 : 0;
                 return (
-                  <div key={item.label}>
+                  <motion.div
+                    key={item.label}
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ duration: 0.4, delay: 0.3 + idx * 0.1 }}
+                  >
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                         <div style={{ width: 8, height: 8, borderRadius: '50%', background: item.color, flexShrink: 0 }} />
@@ -896,15 +981,20 @@ function TabGeralReceita({
                         <span style={{ fontSize: 12, fontWeight: 700, color: item.color, minWidth: 38, textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{pct.toFixed(1)}%</span>
                       </div>
                     </div>
-                    <div style={{ height: 6, background: '#f1f5f9', borderRadius: 99, overflow: 'hidden' }}>
-                      <div style={{
-                        height: '100%', width: `${pct}%`,
-                        background: `linear-gradient(90deg, ${item.color}, ${item.color}bb)`,
-                        borderRadius: 99, transition: 'width 0.7s ease',
-                        boxShadow: `0 1px 4px ${item.color}55`,
-                      }} />
+                    <div style={{ height: 7, background: '#f1f5f9', borderRadius: 99, overflow: 'hidden' }}>
+                      <motion.div
+                        initial={{ width: 0 }}
+                        animate={{ width: `${pct}%` }}
+                        transition={{ duration: 0.9, delay: 0.4 + idx * 0.12, ease: 'easeOut' }}
+                        style={{
+                          height: '100%',
+                          background: `linear-gradient(90deg, ${item.color}, ${item.color}cc)`,
+                          borderRadius: 99,
+                          boxShadow: `0 1px 6px ${item.color}55`,
+                        }}
+                      />
                     </div>
-                  </div>
+                  </motion.div>
                 );
               })}
             </div>
@@ -913,12 +1003,17 @@ function TabGeralReceita({
               <p style={{ fontSize: 16, fontWeight: 800, color: '#0F2A4E', margin: '4px 0 0', fontVariantNumeric: 'tabular-nums' }}>R$ {fmtFull(totalGeral)}</p>
             </div>
           </div>
-        </div>
+        </motion.div>
       </div>
 
       {/* ── Top Subgrupos ── */}
       {topSubgrupos.length > 0 && (
-        <div style={cardStyle}>
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.45, delay: 0.25 }}
+          style={cardStyle}
+        >
           <div style={headerStyle}>
             <BarChart2 size={15} color="rgba(255,255,255,0.6)" />
             <span style={{ fontSize: 13, fontWeight: 700, color: '#fff' }}>Principais Fontes de Receita</span>
@@ -930,10 +1025,22 @@ function TabGeralReceita({
               const pct = (valor / maxSg) * 100;
               const share = totalGeral > 0 ? ((valor / totalGeral) * 100).toFixed(1) : '0';
               return (
-                <div key={desc} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                  <div style={{ width: 22, height: 22, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 800, color: '#fff', flexShrink: 0, background: cores[i] }}>
+                <motion.div
+                  key={desc}
+                  initial={{ opacity: 0, x: -16 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ duration: 0.4, delay: 0.3 + i * 0.07 }}
+                  whileHover={{ x: 3 }}
+                  style={{ display: 'flex', alignItems: 'center', gap: 12 }}
+                >
+                  <motion.div
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    transition={{ type: 'spring', stiffness: 300, damping: 18, delay: 0.3 + i * 0.07 }}
+                    style={{ width: 24, height: 24, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 800, color: '#fff', flexShrink: 0, background: cores[i], boxShadow: `0 2px 8px ${cores[i]}55` }}
+                  >
                     {i + 1}
-                  </div>
+                  </motion.div>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 5 }}>
                       <span style={{ fontSize: 11, fontWeight: 500, color: '#374151', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', paddingRight: 8 }}>{desc}</span>
@@ -942,15 +1049,20 @@ function TabGeralReceita({
                         <span style={{ fontSize: 11, fontWeight: 700, color: '#0F2A4E', fontVariantNumeric: 'tabular-nums' }}>R$ {fmtFull(valor)}</span>
                       </div>
                     </div>
-                    <div style={{ height: 5, background: '#f1f5f9', borderRadius: 99, overflow: 'hidden' }}>
-                      <div style={{ height: '100%', width: `${pct}%`, background: `linear-gradient(90deg, ${cores[i]}, ${cores[i]}bb)`, borderRadius: 99, transition: 'width 0.7s ease', boxShadow: `0 1px 4px ${cores[i]}44` }} />
+                    <div style={{ height: 6, background: '#f1f5f9', borderRadius: 99, overflow: 'hidden' }}>
+                      <motion.div
+                        initial={{ width: 0 }}
+                        animate={{ width: `${pct}%` }}
+                        transition={{ duration: 0.8, delay: 0.35 + i * 0.07, ease: 'easeOut' }}
+                        style={{ height: '100%', background: `linear-gradient(90deg, ${cores[i]}, ${cores[i]}bb)`, borderRadius: 99, boxShadow: `0 1px 4px ${cores[i]}44` }}
+                      />
                     </div>
                   </div>
-                </div>
+                </motion.div>
               );
             })}
           </div>
-        </div>
+        </motion.div>
       )}
 
     </div>
