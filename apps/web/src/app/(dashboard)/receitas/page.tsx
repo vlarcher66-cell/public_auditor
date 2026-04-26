@@ -973,46 +973,71 @@ function PainelAnalitica({ grupos }: { grupos: Grupo[] }) {
           <span style={{ fontSize: 13, fontWeight: 700, color: '#fff' }}>Composição por Grupo</span>
           <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.45)', marginLeft: 'auto', fontFamily: 'monospace' }}>participação %</span>
         </div>
-        <div style={{ padding: '12px 16px 16px' }}>
-          <ResponsiveContainer width="100%" height={160}>
-            <PieChart margin={{ top: 0, right: 0, bottom: 0, left: 0 }}>
-              <Pie
-                data={pieData}
-                cx="50%"
-                cy="50%"
-                innerRadius={48}
-                outerRadius={70}
-                paddingAngle={3}
-                dataKey="value"
-                label={false}
-                labelLine={false}
-              >
-                {pieData.map((entry, index) => (
-                  <Cell key={entry.cod} fill={GRUPO_COLORS[entry.cod] ?? GRUPO_AREA_COLORS[index % 3]} />
-                ))}
-              </Pie>
-              <Tooltip content={<CustomPieTooltip />} />
-            </PieChart>
-          </ResponsiveContainer>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 4 }}>
+        <div style={{ padding: '16px 20px', display: 'flex', gap: 20, alignItems: 'center' }}>
+          {/* Donut */}
+          <div style={{ flexShrink: 0, position: 'relative', width: 160, height: 160 }}>
+            <ResponsiveContainer width={160} height={160}>
+              <PieChart>
+                <defs>
+                  {pieData.map((entry, index) => (
+                    <linearGradient key={`pieGrad${index}`} id={`pieGrad${index}`} x1="0" y1="0" x2="1" y2="1">
+                      <stop offset="0%" stopColor={GRUPO_COLORS[entry.cod] ?? GRUPO_AREA_COLORS[index % 3]} stopOpacity={1} />
+                      <stop offset="100%" stopColor={GRUPO_COLORS[entry.cod] ?? GRUPO_AREA_COLORS[index % 3]} stopOpacity={0.6} />
+                    </linearGradient>
+                  ))}
+                </defs>
+                <Pie
+                  data={pieData}
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={52}
+                  outerRadius={72}
+                  paddingAngle={3}
+                  dataKey="value"
+                  label={false}
+                  labelLine={false}
+                  isAnimationActive
+                >
+                  {pieData.map((entry, index) => (
+                    <Cell key={entry.cod} fill={`url(#pieGrad${index})`} stroke="none" />
+                  ))}
+                </Pie>
+                <Tooltip content={<CustomPieTooltip />} />
+              </PieChart>
+            </ResponsiveContainer>
+            {/* Texto central */}
+            <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%,-50%)', textAlign: 'center', pointerEvents: 'none' }}>
+              <div style={{ fontSize: 10, color: '#94a3b8', fontWeight: 500, whiteSpace: 'nowrap' }}>Total</div>
+              <div style={{ fontSize: 13, fontWeight: 800, color: '#0F2A4E', whiteSpace: 'nowrap' }}>{fmtK(totalPie)}</div>
+            </div>
+          </div>
+
+          {/* Legenda detalhada */}
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 10 }}>
             {pieData.map((entry, index) => {
-              const pct = totalPie > 0 ? ((entry.value / totalPie) * 100).toFixed(1) : '0';
+              const pct = totalPie > 0 ? (entry.value / totalPie) * 100 : 0;
+              const color = GRUPO_COLORS[entry.cod] ?? GRUPO_AREA_COLORS[index % 3];
               return (
-                <div key={entry.cod} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <div style={{ width: 10, height: 10, borderRadius: 3, background: GRUPO_COLORS[entry.cod] ?? GRUPO_AREA_COLORS[index % 3], flexShrink: 0 }} />
-                    <span style={{ fontSize: 11, color: '#475569' }}>{entry.name}</span>
+                <div key={entry.cod}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+                      <div style={{ width: 10, height: 10, borderRadius: '50%', background: color, flexShrink: 0 }} />
+                      <span style={{ fontSize: 11, color: '#1e293b', fontWeight: 500 }}>{entry.name}</span>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <span style={{ fontSize: 11, color: '#475569', fontVariantNumeric: 'tabular-nums' }}>R$ {fmtFull(entry.value)}</span>
+                      <span style={{ fontSize: 11, fontWeight: 700, color, minWidth: 38, textAlign: 'right' }}>{pct.toFixed(1)}%</span>
+                    </div>
                   </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <span style={{ fontSize: 10, color: '#94a3b8' }}>{pct}%</span>
-                    <span style={{ fontSize: 11, fontWeight: 700, color: '#0F2A4E' }}>{fmtK(entry.value)}</span>
+                  <div style={{ height: 4, background: '#f1f5f9', borderRadius: 99, overflow: 'hidden' }}>
+                    <div style={{ height: '100%', width: `${pct}%`, background: color, borderRadius: 99, transition: 'width 0.7s ease' }} />
                   </div>
                 </div>
               );
             })}
             <div style={{ borderTop: '1px solid #f1f5f9', paddingTop: 8, marginTop: 2, display: 'flex', justifyContent: 'space-between' }}>
-              <span style={{ fontSize: 11, color: '#94a3b8' }}>Total</span>
-              <span style={{ fontSize: 12, fontWeight: 700, color: '#C9A84C' }}>{fmtK(totalPie)}</span>
+              <span style={{ fontSize: 11, color: '#94a3b8' }}>Total geral</span>
+              <span style={{ fontSize: 12, fontWeight: 700, color: '#C9A84C' }}>R$ {fmtFull(totalPie)}</span>
             </div>
           </div>
         </div>
