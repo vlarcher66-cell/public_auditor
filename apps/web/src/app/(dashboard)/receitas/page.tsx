@@ -16,6 +16,7 @@ import Link from 'next/link';
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, AreaChart, Area, CartesianGrid, Legend, LabelList,
+  RadialBarChart, RadialBar, Treemap, ScatterChart, Scatter, ZAxis,
 } from 'recharts';
 
 // ─── Formatação ───────────────────────────────────────────────────────────────
@@ -1221,6 +1222,272 @@ function PainelAnalitica({ grupos }: { grupos: Grupo[] }) {
   );
 }
 
+// ─── Painel Sintética ─────────────────────────────────────────────────────────
+
+const TRIMESTRES = ['Q1 (Jan-Mar)', 'Q2 (Abr-Jun)', 'Q3 (Jul-Set)', 'Q4 (Out-Dez)'];
+const TRIMESTRE_MESES = [[0,1,2],[3,4,5],[6,7,8],[9,10,11]];
+
+function CustomTooltipDark({ active, payload, label }: any) {
+  if (!active || !payload?.length) return null;
+  return (
+    <div style={{ background: '#0F2A4E', borderRadius: 10, padding: '10px 14px', boxShadow: '0 4px 20px rgba(0,0,0,0.25)', minWidth: 160 }}>
+      {label && <p style={{ color: '#C9A84C', fontSize: 11, fontWeight: 700, margin: '0 0 6px' }}>{label}</p>}
+      {payload.map((p: any, i: number) => (
+        <p key={i} style={{ color: '#fff', fontSize: 11, margin: '2px 0', display: 'flex', justifyContent: 'space-between', gap: 12 }}>
+          <span style={{ color: 'rgba(255,255,255,0.6)' }}>{p.name}</span>
+          <span style={{ fontWeight: 700 }}>R$ {fmtFull(p.value)}</span>
+        </p>
+      ))}
+    </div>
+  );
+}
+
+function PainelSintetica({ grupos }: { grupos: Grupo[] }) {
+  if (grupos.length === 0) return null;
+
+  const cardStyle: React.CSSProperties = {
+    background: '#fff', borderRadius: 16, border: '1px solid #e2e8f0',
+    boxShadow: '0 1px 4px rgba(0,0,0,0.06)', overflow: 'hidden',
+  };
+  const headerStyle: React.CSSProperties = {
+    padding: '12px 20px', background: 'linear-gradient(135deg, #0F2A4E, #1e4d95)',
+    display: 'flex', alignItems: 'center', gap: 8,
+  };
+
+  // ── 1. RadialBarChart — execução mensal vs média ──
+  const todosMeses = MESES.map((_, i) => grupos.reduce((acc, g) => acc + g.meses[i], 0));
+  const mediaMensal = todosMeses.filter(v => v > 0).reduce((a, v) => a + v, 0) / Math.max(1, todosMeses.filter(v => v > 0).length);
+  const radialData = todosMeses.map((v, i) => ({
+    mes: MESES[i],
+    value: v,
+    pct: mediaMensal > 0 ? Math.min(Math.round((v / mediaMensal) * 100), 150) : 0,
+    fill: v === 0 ? '#e2e8f0' : v >= mediaMensal ? '#10b981' : '#f59e0b',
+  })).filter(d => d.value > 0 || todosMeses.slice(0, todosMeses.indexOf(d.value) + 1).some(v => v > 0));
+
+  // ── 2. Treemap — peso de cada subgrupo ──
+  const treemapData = grupos.flatMap(g =>
+    g.subgrupos.map(sg => ({
+      name: sg.desc.length > 20 ? sg.desc.slice(0, 20) + '…' : sg.desc,
+      fullName: sg.desc,
+      size: soma(sg.meses),
+      grupo: g.cod,
+    }))
+  ).filter(d => d.size > 0).sort((a, b) => b.size - a.size).slice(0, 12);
+
+  const TREEMAP_COLORS: Record<string, string[]> = {
+    '1':  ['#0F2A4E','#1e3d6e','#1e4d95','#2563b0','#3b82f6','#60a5fa'],
+    '2':  ['#92400e','#b45309','#C9A84C','#d97706','#f59e0b','#fbbf24'],
+    'TB': ['#1e40af','#2563b0','#3b82f6','#60a5fa'],
+  };
+  const colorCounters: Record<string, number> = {};
+  const treemapWithColor = treemapData.map(d => {
+    const palette = TREEMAP_COLORS[d.grupo] ?? TREEMAP_COLORS['1'];
+    colorCounters[d.grupo] = (colorCounters[d.grupo] ?? 0);
+    const color = palette[colorCounters[d.grupo] % palette.length];
+    colorCounters[d.grupo]++;
+    return { ...d, color };
+  });
+
+  // ── 3. BarChart Trimestral ──
+  const trimData = TRIMESTRES.map((trim, ti) => {
+    const entry: Record<string, any> = { trim };
+    for (const g of grupos) {
+      const label = g.desc.replace('RECEITAS CORRENTES', 'Correntes').replace('RECEITAS DE CAPITAL / EXTRA-ORÇ.', 'Capital').replace('TRANSFERÊNCIAS BANCÁRIAS', 'Transf. Banc.');
+      entry[label] = TRIMESTRE_MESES[ti].reduce((acc, mi) => acc + g.meses[mi], 0);
+    }
+    return entry;
+  });
+  const trimLabels = grupos.map(g =>
+    g.desc.replace('RECEITAS CORRENTES', 'Correntes').replace('RECEITAS DE CAPITAL / EXTRA-ORÇ.', 'Capital').replace('TRANSFERÊNCIAS BANCÁRIAS', 'Transf. Banc.')
+  );
+
+  // ── 4. Scatter — Regularidade vs Volume ──
+  const scatterData = grupos.flatMap(g =>
+    g.subgrupos.map(sg => ({
+      regularidade: sg.meses.filter(v => v > 0).length,
+      volume: soma(sg.meses),
+      nome: sg.desc.length > 22 ? sg.desc.slice(0, 22) + '…' : sg.desc,
+      fullName: sg.desc,
+      grupo: g.cod,
+    }))
+  ).filter(d => d.volume > 0);
+
+  return (
+    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginTop: 20 }}>
+
+      {/* ── 1. RadialBarChart — Execução Mensal vs Média ── */}
+      <div style={cardStyle}>
+        <div style={headerStyle}>
+          <Activity size={15} color="rgba(255,255,255,0.6)" />
+          <span style={{ fontSize: 13, fontWeight: 700, color: '#fff' }}>Execução Mensal vs Média</span>
+          <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.45)', marginLeft: 'auto', fontFamily: 'monospace' }}>% da média anual</span>
+          <InfoPopover insights={<><strong>Execução Mensal vs Média</strong><br /><br />Cada barra radial representa um mês. O comprimento indica se aquele mês ficou acima ou abaixo da média mensal do ano.<br /><br />🟢 <strong>Verde</strong>: mês acima da média<br />🟡 <strong>Âmbar</strong>: mês abaixo da média<br /><br />💡 Meses consistentemente abaixo da média podem indicar sazonalidade de repasses ou atrasos na arrecadação.</>} />
+        </div>
+        <div style={{ padding: '16px', display: 'flex', gap: 16, alignItems: 'center' }}>
+          <ResponsiveContainer width="55%" height={220}>
+            <RadialBarChart
+              cx="50%" cy="50%"
+              innerRadius={20} outerRadius={100}
+              data={radialData}
+              startAngle={180} endAngle={-180}
+            >
+              <RadialBar dataKey="pct" background={{ fill: '#f1f5f9' }} isAnimationActive>
+                {radialData.map((entry, i) => <Cell key={i} fill={entry.fill} />)}
+              </RadialBar>
+              <Tooltip
+                content={({ active, payload }) => {
+                  if (!active || !payload?.length) return null;
+                  const d = payload[0].payload;
+                  return (
+                    <div style={{ background: '#0F2A4E', borderRadius: 10, padding: '8px 12px', fontSize: 11 }}>
+                      <p style={{ color: '#C9A84C', fontWeight: 700, margin: 0 }}>{d.mes}</p>
+                      <p style={{ color: '#fff', margin: '2px 0 0' }}>R$ {fmtFull(d.value)}</p>
+                      <p style={{ color: 'rgba(255,255,255,0.6)', margin: '1px 0 0' }}>{d.pct}% da média</p>
+                    </div>
+                  );
+                }}
+              />
+            </RadialBarChart>
+          </ResponsiveContainer>
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 6 }}>
+            {radialData.map((d, i) => (
+              <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <div style={{ width: 8, height: 8, borderRadius: '50%', background: d.fill, flexShrink: 0 }} />
+                  <span style={{ fontSize: 10, color: '#475569' }}>{d.mes}</span>
+                </div>
+                <span style={{ fontSize: 10, fontWeight: 700, color: d.fill }}>{d.pct}%</span>
+              </div>
+            ))}
+            <div style={{ marginTop: 6, paddingTop: 6, borderTop: '1px solid #f1f5f9' }}>
+              <p style={{ fontSize: 10, color: '#94a3b8', margin: 0 }}>Média mensal</p>
+              <p style={{ fontSize: 11, fontWeight: 700, color: '#0F2A4E', margin: '2px 0 0' }}>R$ {fmtFull(mediaMensal)}</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ── 2. Treemap — Peso por SubGrupo ── */}
+      <div style={cardStyle}>
+        <div style={headerStyle}>
+          <BarChart2 size={15} color="rgba(255,255,255,0.6)" />
+          <span style={{ fontSize: 13, fontWeight: 700, color: '#fff' }}>Peso por Subgrupo</span>
+          <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.45)', marginLeft: 'auto', fontFamily: 'monospace' }}>top 12 — área ∝ valor</span>
+          <InfoPopover insights={<><strong>Treemap — Peso por Subgrupo</strong><br /><br />Cada retângulo representa um subgrupo. A área é proporcional ao valor arrecadado — quanto maior o bloco, maior a contribuição.<br /><br />Tons mais escuros = Receitas Correntes · Tons dourados = Capital · Tons azuis = Transferências Bancárias<br /><br />💡 Use este gráfico para identificar rapidamente quais subgrupos dominam a receita sem precisar ler a tabela.</>} />
+        </div>
+        <div style={{ padding: '8px' }}>
+          <ResponsiveContainer width="100%" height={252}>
+            <Treemap
+              data={treemapWithColor}
+              dataKey="size"
+              aspectRatio={4 / 3}
+              isAnimationActive
+            >
+              <Tooltip
+                content={({ active, payload }) => {
+                  if (!active || !payload?.length) return null;
+                  const d = payload[0].payload;
+                  return (
+                    <div style={{ background: '#0F2A4E', borderRadius: 10, padding: '8px 12px', fontSize: 11 }}>
+                      <p style={{ color: '#C9A84C', fontWeight: 700, margin: 0 }}>{d.fullName ?? d.name}</p>
+                      <p style={{ color: '#fff', margin: '2px 0 0' }}>R$ {fmtFull(d.size ?? d.value)}</p>
+                    </div>
+                  );
+                }}
+              />
+            </Treemap>
+          </ResponsiveContainer>
+        </div>
+      </div>
+
+      {/* ── 3. BarChart Trimestral — col-span-1 ── */}
+      <div style={cardStyle}>
+        <div style={headerStyle}>
+          <TrendingUp size={15} color="rgba(255,255,255,0.6)" />
+          <span style={{ fontSize: 13, fontWeight: 700, color: '#fff' }}>Comparativo Trimestral</span>
+          <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.45)', marginLeft: 'auto', fontFamily: 'monospace' }}>por grupo de receita</span>
+          <InfoPopover insights={<><strong>Comparativo Trimestral</strong><br /><br />Agrupa a receita em quatro trimestres e compara o desempenho de cada grupo.<br /><br />• <strong>Q1</strong>: Jan–Mar · <strong>Q2</strong>: Abr–Jun · <strong>Q3</strong>: Jul–Set · <strong>Q4</strong>: Out–Dez<br /><br />📈 Trimestres com queda podem refletir atrasos de repasse ou sazonalidade.<br /><br />💡 Q4 costuma ser o mais alto por conta de repasses de final de ano e 13º salário.</>} />
+        </div>
+        <div style={{ padding: '12px 8px 12px 0' }}>
+          <ResponsiveContainer width="100%" height={220}>
+            <BarChart data={trimData} margin={{ top: 8, right: 16, bottom: 0, left: 8 }}>
+              <defs>
+                {trimLabels.map((_, i) => (
+                  <linearGradient key={i} id={`trimGrad${i}`} x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor={GRUPO_AREA_COLORS[i % 3]} stopOpacity={1} />
+                    <stop offset="100%" stopColor={GRUPO_AREA_COLORS[i % 3]} stopOpacity={0.7} />
+                  </linearGradient>
+                ))}
+              </defs>
+              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+              <XAxis dataKey="trim" tick={{ fontSize: 10, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
+              <YAxis tickFormatter={fmtK} tick={{ fontSize: 9, fill: '#94a3b8' }} axisLine={false} tickLine={false} width={55} />
+              <Tooltip content={<CustomTooltipDark />} />
+              <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 11, color: '#64748b', paddingTop: 8 }} />
+              {trimLabels.map((label, i) => (
+                <Bar key={label} dataKey={label} name={label} fill={`url(#trimGrad${i})`} radius={[4, 4, 0, 0]} maxBarSize={32} isAnimationActive />
+              ))}
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
+
+      {/* ── 4. Scatter — Regularidade vs Volume ── */}
+      <div style={cardStyle}>
+        <div style={headerStyle}>
+          <Target size={15} color="rgba(255,255,255,0.6)" />
+          <span style={{ fontSize: 13, fontWeight: 700, color: '#fff' }}>Regularidade vs Volume</span>
+          <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.45)', marginLeft: 'auto', fontFamily: 'monospace' }}>subgrupos por frequência</span>
+          <InfoPopover insights={<><strong>Regularidade vs Volume</strong><br /><br />Cada ponto representa um subgrupo de receita.<br /><br />• <strong>Eixo X</strong>: quantos meses o subgrupo teve receita (1–12)<br />• <strong>Eixo Y</strong>: valor total arrecadado no ano<br /><br />🎯 <strong>Ideal</strong>: canto superior direito — alto volume e alta regularidade<br />⚠️ <strong>Atenção</strong>: alto volume mas poucos meses pode indicar receita pontual e não recorrente<br />💡 Passe o mouse nos pontos para ver o subgrupo.</>} />
+        </div>
+        <div style={{ padding: '12px 8px 12px 0' }}>
+          <ResponsiveContainer width="100%" height={220}>
+            <ScatterChart margin={{ top: 8, right: 24, bottom: 8, left: 8 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+              <XAxis
+                type="number" dataKey="regularidade" name="Meses com receita"
+                domain={[0, 12]} ticks={[1,2,3,4,5,6,7,8,9,10,11,12]}
+                tick={{ fontSize: 9, fill: '#94a3b8' }} axisLine={false} tickLine={false}
+                label={{ value: 'meses com receita', position: 'insideBottom', offset: -4, fontSize: 9, fill: '#94a3b8' }}
+              />
+              <YAxis
+                type="number" dataKey="volume" name="Volume"
+                tickFormatter={fmtK} tick={{ fontSize: 9, fill: '#94a3b8' }} axisLine={false} tickLine={false} width={58}
+              />
+              <ZAxis range={[40, 200]} />
+              <Tooltip
+                cursor={{ strokeDasharray: '3 3' }}
+                content={({ active, payload }) => {
+                  if (!active || !payload?.length) return null;
+                  const d = payload[0].payload;
+                  return (
+                    <div style={{ background: '#0F2A4E', borderRadius: 10, padding: '8px 12px', fontSize: 11, maxWidth: 200 }}>
+                      <p style={{ color: '#C9A84C', fontWeight: 700, margin: 0, lineHeight: 1.3 }}>{d.fullName}</p>
+                      <p style={{ color: '#fff', margin: '4px 0 0' }}>R$ {fmtFull(d.volume)}</p>
+                      <p style={{ color: 'rgba(255,255,255,0.6)', margin: '2px 0 0' }}>{d.regularidade} meses com receita</p>
+                    </div>
+                  );
+                }}
+              />
+              {grupos.map((g, i) => (
+                <Scatter
+                  key={g.cod}
+                  name={g.desc.replace('RECEITAS CORRENTES','Correntes').replace('RECEITAS DE CAPITAL / EXTRA-ORÇ.','Capital').replace('TRANSFERÊNCIAS BANCÁRIAS','Transf. Banc.')}
+                  data={scatterData.filter(d => d.grupo === g.cod)}
+                  fill={GRUPO_AREA_COLORS[i % 3]}
+                  fillOpacity={0.8}
+                />
+              ))}
+              <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 11, color: '#64748b', paddingTop: 4 }} />
+            </ScatterChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
+
+    </div>
+  );
+}
+
 // ─── Página Principal ─────────────────────────────────────────────────────────
 
 export default function ReceitasPage() {
@@ -1353,7 +1620,10 @@ export default function ReceitasPage() {
                 </>
               )}
               {activeTab === 'sintetica' && (
-                <TabelaSintetica grupos={[...orcGrupos, ...transfGrupos]} titulo="Receita Sintética — Orçamentária" ano={ano} />
+                <>
+                  <TabelaSintetica grupos={[...orcGrupos, ...transfGrupos]} titulo="Receita Sintética — Orçamentária" ano={ano} />
+                  <PainelSintetica grupos={[...orcGrupos, ...transfGrupos]} />
+                </>
               )}
               {activeTab === 'extra' && (
                 extraGrupos.length > 0 ? (
