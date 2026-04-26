@@ -923,8 +923,13 @@ function PainelAnalitica({ grupos }: { grupos: Grupo[] }) {
                 axisLine={false}
                 tickLine={false}
               />
+              <defs>
+                <filter id="barShadow" x="-5%" y="-50%" width="130%" height="200%">
+                  <feDropShadow dx="2" dy="0" stdDeviation="4" floodColor="#3b82f6" floodOpacity="0.35" />
+                </filter>
+              </defs>
               <Tooltip content={<CustomBarTooltip />} cursor={{ fill: 'rgba(59,130,246,0.06)' }} />
-              <Bar dataKey="value" fill="url(#barGrad)" radius={[0, 6, 6, 0]} maxBarSize={18} isAnimationActive>
+              <Bar dataKey="value" fill="url(#barGrad)" radius={[0, 8, 8, 0]} maxBarSize={28} isAnimationActive style={{ filter: 'url(#barShadow)' }}>
                 <LabelList
                   dataKey="value"
                   position="right"
@@ -1006,9 +1011,14 @@ function PainelAnalitica({ grupos }: { grupos: Grupo[] }) {
               <defs>
                 {grupoLabels.map((label, i) => (
                   <linearGradient key={label} id={`areaGrad${i}`} x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor={GRUPO_AREA_COLORS[i % 3]} stopOpacity={0.18} />
-                    <stop offset="95%" stopColor={GRUPO_AREA_COLORS[i % 3]} stopOpacity={0.02} />
+                    <stop offset="0%" stopColor={GRUPO_AREA_COLORS[i % 3]} stopOpacity={0.35} />
+                    <stop offset="100%" stopColor={GRUPO_AREA_COLORS[i % 3]} stopOpacity={0.03} />
                   </linearGradient>
+                ))}
+                {grupoLabels.map((label, i) => (
+                  <filter key={`shadow${i}`} id={`lineShadow${i}`} x="-20%" y="-50%" width="140%" height="200%">
+                    <feDropShadow dx="0" dy="3" stdDeviation="4" floodColor={GRUPO_AREA_COLORS[i % 3]} floodOpacity="0.4" />
+                  </filter>
                 ))}
               </defs>
               <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
@@ -1027,10 +1037,11 @@ function PainelAnalitica({ grupos }: { grupos: Grupo[] }) {
                   dataKey={label}
                   name={label}
                   stroke={GRUPO_AREA_COLORS[i % 3]}
-                  strokeWidth={2.5}
+                  strokeWidth={3.5}
                   fill={`url(#areaGrad${i})`}
-                  dot={{ r: 3, fill: GRUPO_AREA_COLORS[i % 3], strokeWidth: 0 }}
-                  activeDot={{ r: 5, strokeWidth: 0 }}
+                  style={{ filter: `url(#lineShadow${i})` }}
+                  dot={{ r: 4, fill: '#fff', stroke: GRUPO_AREA_COLORS[i % 3], strokeWidth: 2.5 }}
+                  activeDot={{ r: 6, fill: '#fff', stroke: GRUPO_AREA_COLORS[i % 3], strokeWidth: 2.5 }}
                 />
               ))}
             </AreaChart>
