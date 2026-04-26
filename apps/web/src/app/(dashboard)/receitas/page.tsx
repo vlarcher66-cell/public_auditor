@@ -14,7 +14,7 @@ import { apiRequest } from '@/lib/api';
 import Link from 'next/link';
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
-  PieChart, Pie, Cell, AreaChart, Area, CartesianGrid, Legend,
+  PieChart, Pie, Cell, AreaChart, Area, CartesianGrid, Legend, LabelList,
 } from 'recharts';
 
 // ─── Formatação ───────────────────────────────────────────────────────────────
@@ -906,30 +906,31 @@ function PainelAnalitica({ grupos }: { grupos: Grupo[] }) {
         </div>
         <div style={{ padding: '12px 8px 12px 0' }}>
           <ResponsiveContainer width="100%" height={280}>
-            <BarChart data={topSg} layout="vertical" margin={{ top: 0, right: 20, bottom: 0, left: 8 }}>
+            <BarChart data={topSg} layout="vertical" margin={{ top: 0, right: 70, bottom: 0, left: 8 }}>
               <defs>
                 <linearGradient id="barGrad" x1="0" y1="0" x2="1" y2="0">
                   <stop offset="0%" stopColor="#1e4d95" />
                   <stop offset="100%" stopColor="#3b82f6" />
                 </linearGradient>
               </defs>
-              <XAxis
-                type="number"
-                tickFormatter={fmtK}
-                tick={{ fontSize: 9, fill: '#94a3b8' }}
-                axisLine={false}
-                tickLine={false}
-              />
+              <XAxis type="number" hide />
               <YAxis
                 type="category"
                 dataKey="name"
-                width={130}
+                width={160}
                 tick={{ fontSize: 10, fill: '#475569' }}
                 axisLine={false}
                 tickLine={false}
               />
               <Tooltip content={<CustomBarTooltip />} cursor={{ fill: 'rgba(59,130,246,0.06)' }} />
-              <Bar dataKey="value" fill="url(#barGrad)" radius={[0, 6, 6, 0]} maxBarSize={18} />
+              <Bar dataKey="value" fill="url(#barGrad)" radius={[0, 6, 6, 0]} maxBarSize={14}>
+                <LabelList
+                  dataKey="value"
+                  position="right"
+                  formatter={(v: number) => fmtK(v)}
+                  style={{ fontSize: 10, fill: '#475569', fontWeight: 600 }}
+                />
+              </Bar>
             </BarChart>
           </ResponsiveContainer>
         </div>
