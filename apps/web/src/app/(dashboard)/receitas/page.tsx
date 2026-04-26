@@ -901,8 +901,8 @@ function PainelAnalitica({ grupos }: { grupos: Grupo[] }) {
     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 16, marginBottom: 20 }}
       className="grid-cols-1 md:grid-cols-2">
 
-      {/* ── Top SubGrupos BarChart ── */}
-      <div style={cardStyle}>
+      {/* ── Top SubGrupos BarChart — largura total ── */}
+      <div style={{ ...cardStyle, gridColumn: '1 / -1' }}>
         <div style={headerStyle}>
           <BarChart2 size={15} color="rgba(255,255,255,0.6)" />
           <span style={{ fontSize: 13, fontWeight: 700, color: '#fff' }}>Top Subgrupos</span>
@@ -921,8 +921,8 @@ function PainelAnalitica({ grupos }: { grupos: Grupo[] }) {
               <YAxis
                 type="category"
                 dataKey="name"
-                width={210}
-                tick={{ fontSize: 10, fill: '#475569' }}
+                width={340}
+                tick={{ fontSize: 11, fill: '#475569' }}
                 axisLine={false}
                 tickLine={false}
               />
@@ -936,11 +936,7 @@ function PainelAnalitica({ grupos }: { grupos: Grupo[] }) {
                 <LabelList
                   dataKey="value"
                   position="right"
-                  formatter={(v: number) => {
-                    if (v >= 1_000_000) return `R$ ${(v / 1_000_000).toFixed(2)}M`;
-                    if (v >= 1_000) return `R$ ${(v / 1_000).toFixed(2)}K`;
-                    return `R$ ${fmtFull(v)}`;
-                  }}
+                  formatter={(v: number) => `R$ ${fmtFull(v)}`}
                   style={{ fontSize: 11, fill: '#475569', fontWeight: 600 }}
                 />
               </Bar>
