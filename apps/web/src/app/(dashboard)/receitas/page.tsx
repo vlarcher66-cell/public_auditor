@@ -920,8 +920,7 @@ function PainelAnalitica({ grupos }: { grupos: Grupo[] }) {
   };
 
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 16, marginBottom: 20 }}
-      className="grid-cols-1 md:grid-cols-2">
+    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 20 }}>
 
       {/* ── Top SubGrupos BarChart ── */}
       <div style={cardStyle}>
