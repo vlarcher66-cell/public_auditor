@@ -1323,13 +1323,14 @@ function PainelSintetica({ grupos }: { grupos: Grupo[] }) {
           <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.45)', marginLeft: 'auto', fontFamily: 'monospace' }}>% da média anual</span>
           <InfoPopover insights={<><strong>Execução Mensal vs Média</strong><br /><br />Cada barra radial representa um mês. O comprimento indica se aquele mês ficou acima ou abaixo da média mensal do ano.<br /><br />🟢 <strong>Verde</strong>: mês acima da média<br />🟡 <strong>Âmbar</strong>: mês abaixo da média<br /><br />💡 Meses consistentemente abaixo da média podem indicar sazonalidade de repasses ou atrasos na arrecadação.</>} />
         </div>
-        <div style={{ padding: '16px', display: 'flex', gap: 16, alignItems: 'center' }}>
-          <ResponsiveContainer width="55%" height={220}>
+        <div style={{ padding: '14px 16px', display: 'flex', gap: 12, alignItems: 'center' }}>
+          <ResponsiveContainer width="48%" height={230}>
             <RadialBarChart
               cx="50%" cy="50%"
-              innerRadius={20} outerRadius={100}
+              innerRadius={18} outerRadius={108}
               data={radialData}
               startAngle={180} endAngle={-180}
+              barSize={12}
             >
               <RadialBar dataKey="pct" background={{ fill: '#f1f5f9' }} isAnimationActive>
                 {radialData.map((entry, i) => <Cell key={i} fill={entry.fill} />)}
@@ -1339,7 +1340,7 @@ function PainelSintetica({ grupos }: { grupos: Grupo[] }) {
                   if (!active || !payload?.length) return null;
                   const d = payload[0].payload;
                   return (
-                    <div style={{ background: '#0F2A4E', borderRadius: 10, padding: '8px 12px', fontSize: 11 }}>
+                    <div style={{ background: '#0F2A4E', borderRadius: 10, padding: '8px 12px', fontSize: 11, boxShadow: '0 4px 16px rgba(0,0,0,0.25)' }}>
                       <p style={{ color: '#C9A84C', fontWeight: 700, margin: 0 }}>{d.mes}</p>
                       <p style={{ color: '#fff', margin: '2px 0 0' }}>R$ {fmtFull(d.value)}</p>
                       <p style={{ color: 'rgba(255,255,255,0.6)', margin: '1px 0 0' }}>{d.pct}% da média</p>
@@ -1349,18 +1350,30 @@ function PainelSintetica({ grupos }: { grupos: Grupo[] }) {
               />
             </RadialBarChart>
           </ResponsiveContainer>
-          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 6 }}>
-            {radialData.map((d, i) => (
-              <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <div style={{ width: 8, height: 8, borderRadius: '50%', background: d.fill, flexShrink: 0 }} />
-                  <span style={{ fontSize: 10, color: '#475569' }}>{d.mes}</span>
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 5 }}>
+            {radialData.map((d, i) => {
+              const isEmpty = d.value === 0;
+              const dotColor = isEmpty ? '#e2e8f0' : d.fill;
+              const nameColor = isEmpty ? '#cbd5e1' : '#475569';
+              const valColor = isEmpty ? '#cbd5e1' : '#64748b';
+              const pctColor = isEmpty ? '#cbd5e1' : d.fill;
+              return (
+                <div key={i} style={{ display: 'grid', gridTemplateColumns: '1fr auto auto', alignItems: 'center', gap: 6 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 5, minWidth: 0 }}>
+                    <div style={{ width: 7, height: 7, borderRadius: '50%', background: dotColor, flexShrink: 0 }} />
+                    <span style={{ fontSize: 10, color: nameColor, whiteSpace: 'nowrap' }}>{d.mes}</span>
+                  </div>
+                  <span style={{ fontSize: 9, color: valColor, fontVariantNumeric: 'tabular-nums', textAlign: 'right', whiteSpace: 'nowrap' }}>
+                    {isEmpty ? '—' : `R$ ${fmtFull(d.value)}`}
+                  </span>
+                  <span style={{ fontSize: 10, fontWeight: 700, color: pctColor, fontVariantNumeric: 'tabular-nums', textAlign: 'right', minWidth: 32, whiteSpace: 'nowrap' }}>
+                    {isEmpty ? '0%' : `${d.pct}%`}
+                  </span>
                 </div>
-                <span style={{ fontSize: 10, fontWeight: 700, color: d.fill }}>{d.pct}%</span>
-              </div>
-            ))}
-            <div style={{ marginTop: 6, paddingTop: 6, borderTop: '1px solid #f1f5f9' }}>
-              <p style={{ fontSize: 10, color: '#94a3b8', margin: 0 }}>Média mensal</p>
+              );
+            })}
+            <div style={{ marginTop: 5, paddingTop: 6, borderTop: '1px solid #f1f5f9' }}>
+              <p style={{ fontSize: 9, color: '#94a3b8', margin: 0 }}>Média mensal</p>
               <p style={{ fontSize: 11, fontWeight: 700, color: '#0F2A4E', margin: '2px 0 0' }}>R$ {fmtFull(mediaMensal)}</p>
             </div>
           </div>
