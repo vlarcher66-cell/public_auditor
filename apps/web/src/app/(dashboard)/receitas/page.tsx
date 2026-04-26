@@ -852,9 +852,31 @@ function PainelAnalitica({ grupos }: { grupos: Grupo[] }) {
       if (val > 0) sgFlat.push({ name: sg.desc, fullName: sg.desc, value: val });
     }
   }
+  function abreviarSubgrupo(name: string): string {
+    return name
+      .replace('TRANSFERÊNCIA FINANCEIRA RECEBIDA', 'Transf. Financeira Recebida')
+      .replace('SUS — Atenção Primária (AB/APS)', 'SUS · At. Primária (AB/APS)')
+      .replace('SUS — Atenção Especializada (MAC)', 'SUS · At. Especializada (MAC)')
+      .replace('SUS — Bloco Unificado', 'SUS · Bloco Unificado')
+      .replace('SUS — Estruturação (Bloco)', 'SUS · Estruturação')
+      .replace('SUS — Assistência Farmacêutica', 'SUS · Assist. Farmacêutica')
+      .replace('SUS — Atenção Primária', 'SUS · At. Primária')
+      .replace('SUS — Gestão do SUS', 'SUS · Gestão')
+      .replace('SUS — Vigilância em Saúde', 'SUS · Vigilância')
+      .replace('SUS — Manutenção (Bloco)', 'SUS · Manutenção')
+      .replace('Transferências dos Estados — SUS', 'Transf. Estados — SUS')
+      .replace('Transferências da União', 'Transf. União')
+      .replace('Transferências Correntes', 'Transf. Correntes')
+      .replace('Transferências de Capital', 'Transf. Capital')
+      .replace('Receita Patrimonial', 'Rec. Patrimonial')
+      .replace('Receita Tributária', 'Rec. Tributária')
+      .replace('Receitas Correntes Diversas', 'Rec. Diversas')
+      .replace('Contribuições Previdenciárias (RGPS / ITAPREV)', 'Contrib. Previdenciárias')
+      .replace('Operações de Crédito Interno', 'Op. Crédito Interno');
+  }
   const topSg = sgFlat.sort((a, b) => b.value - a.value).slice(0, 8).map(s => ({
     ...s,
-    name: s.name.length > 28 ? s.name.slice(0, 28) + '…' : s.name,
+    name: abreviarSubgrupo(s.name),
   }));
   const maxTopSg = topSg[0]?.value ?? 1;
 
@@ -921,7 +943,7 @@ function PainelAnalitica({ grupos }: { grupos: Grupo[] }) {
               <YAxis
                 type="category"
                 dataKey="name"
-                width={340}
+                width={200}
                 tick={{ fontSize: 11, fill: '#475569' }}
                 axisLine={false}
                 tickLine={false}
@@ -1179,8 +1201,8 @@ export default function ReceitasPage() {
               )}
               {activeTab === 'analitica' && (
                 <>
-                  <PainelAnalitica grupos={analiticaGrupos} />
                   <TabelaDRE grupos={analiticaGrupos} titulo="Receita Analítica" ano={ano} showFonte />
+                  <PainelAnalitica grupos={analiticaGrupos} />
                 </>
               )}
               {activeTab === 'sintetica' && (
