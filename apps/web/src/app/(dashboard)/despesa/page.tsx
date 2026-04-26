@@ -1684,7 +1684,7 @@ function TabDespesaSintetica({ token, entidadeId, municipioId }: { token: string
     setExportando(true);
     setImprimindo(true);
     // aguarda o DOM re-renderizar com gráficos em tamanho fixo
-    await new Promise(r => setTimeout(r, 300));
+    await new Promise(r => setTimeout(r, 500));
     try {
       const [{ default: html2canvas }, jspdfModule] = await Promise.all([
         import('html2canvas'),
@@ -1697,19 +1697,32 @@ function TabDespesaSintetica({ token, entidadeId, municipioId }: { token: string
       const pdfFiltersEl = el.querySelector<HTMLElement>('[data-pdf-filters]');
       if (pdfFiltersEl) pdfFiltersEl.style.display = 'block';
 
+      // Força largura e altura fixas para capturar todo o conteúdo, inclusive fora do viewport
       const prevWidth = el.style.width;
-      el.style.width = Math.max(el.scrollWidth, 1300) + 'px';
+      const prevHeight = el.style.height;
+      const prevOverflow = el.style.overflow;
+      const fullW = Math.max(el.scrollWidth, 1300);
+      const fullH = el.scrollHeight;
+      el.style.width = fullW + 'px';
+      el.style.height = fullH + 'px';
+      el.style.overflow = 'visible';
 
       const canvas = await html2canvas(el, {
         scale: 2,
         useCORS: true,
         logging: false,
         backgroundColor: '#ffffff',
-        width: el.scrollWidth,
-        windowWidth: el.scrollWidth,
+        width: fullW,
+        height: fullH,
+        windowWidth: fullW,
+        windowHeight: fullH,
+        scrollX: 0,
+        scrollY: -window.scrollY,
       });
 
       el.style.width = prevWidth;
+      el.style.height = prevHeight;
+      el.style.overflow = prevOverflow;
       if (pdfFiltersEl) pdfFiltersEl.style.display = 'none';
 
       const MARGIN = 8;
