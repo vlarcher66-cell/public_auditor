@@ -1667,6 +1667,7 @@ function TabDespesaSintetica({ token, entidadeId, municipioId }: { token: string
   const [ano, setAno] = useState(anoAtual);
   const anos = Array.from({ length: 5 }, (_, i) => anoAtual - i);
   const [exportando, setExportando] = useState(false);
+  const [imprimindo, setImprimindo] = useState(false);
   const printRef = useRef<HTMLDivElement>(null);
 
   // Filtros
@@ -1681,30 +1682,21 @@ function TabDespesaSintetica({ token, entidadeId, municipioId }: { token: string
   async function handleExportPDF() {
     if (!printRef.current) return;
     setExportando(true);
+    setImprimindo(true);
+    // aguarda o DOM re-renderizar com gráficos em tamanho fixo
+    await new Promise(r => setTimeout(r, 300));
     try {
       const [{ default: html2canvas }, jspdfModule] = await Promise.all([
         import('html2canvas'),
         import('jspdf'),
       ]);
-      // jsPDF v4 pode ser export default ou named export
       const jsPDF = (jspdfModule as any).jsPDF ?? (jspdfModule as any).default;
 
       const el = printRef.current;
 
-      // Mostra filtros estáticos, esconde filtros interativos
       const pdfFiltersEl = el.querySelector<HTMLElement>('[data-pdf-filters]');
       if (pdfFiltersEl) pdfFiltersEl.style.display = 'block';
 
-      // Remove overflow de todos os wrappers internos para capturar tudo
-      const tableWrappers = el.querySelectorAll<HTMLElement>('div[style*="overflow"]');
-      const prevWrappers: string[] = [];
-      tableWrappers.forEach((e, i) => {
-        prevWrappers[i] = e.style.overflow + '|' + e.style.overflowX;
-        e.style.overflow = 'visible';
-        e.style.overflowX = 'visible';
-      });
-
-      // Força largura mínima suficiente para a tabela inteira
       const prevWidth = el.style.width;
       el.style.width = Math.max(el.scrollWidth, 1300) + 'px';
 
@@ -1717,17 +1709,10 @@ function TabDespesaSintetica({ token, entidadeId, municipioId }: { token: string
         windowWidth: el.scrollWidth,
       });
 
-      // Restaura
       el.style.width = prevWidth;
       if (pdfFiltersEl) pdfFiltersEl.style.display = 'none';
-      tableWrappers.forEach((e, i) => {
-        const [ov, ovx] = prevWrappers[i].split('|');
-        e.style.overflow = ov;
-        e.style.overflowX = ovx;
-      });
 
       const MARGIN = 8;
-      // Página com tamanho exato do conteúdo — sem quebra de página
       const printW = 297 - MARGIN * 2;
       const scaledH = (canvas.height / 2) * (printW / (canvas.width / 2));
       const pageH = scaledH + MARGIN * 2;
@@ -1737,6 +1722,7 @@ function TabDespesaSintetica({ token, entidadeId, municipioId }: { token: string
       pdf.save(`despesa-sintetica-${ano}.pdf`);
     } finally {
       setExportando(false);
+      setImprimindo(false);
     }
   }
 
@@ -2068,6 +2054,16 @@ function TabDespesaSintetica({ token, entidadeId, municipioId }: { token: string
           <div style={{ padding: '16px 20px 20px' }}>
           {isLoading ? (
             <div style={{ height: '220px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8', gap: '8px' }}><Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} /> Carregando...</div>
+          ) : imprimindo ? (
+            <BarChart width={560} height={220} data={barData} margin={{ left: 0, right: 8, bottom: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+              <XAxis dataKey="mes" tick={{ fontSize: 10, fill: '#64748b' }} axisLine={false} tickLine={false} />
+              <YAxis tickFormatter={fmtK} tick={{ fontSize: 10, fill: '#64748b' }} axisLine={false} tickLine={false} width={60} />
+              <Bar dataKey="total" name="Total" radius={[4, 4, 0, 0]}>
+                {barData.map((_, i) => <Cell key={i} fill={i % 2 === 0 ? '#0F2A4E' : '#1e4d95'} />)}
+                <LabelList dataKey="total" position="top" formatter={fmtK} style={{ fontSize: '9px', fill: '#64748b' }} />
+              </Bar>
+            </BarChart>
           ) : (
             <ResponsiveContainer width="100%" height={220}>
               <BarChart data={barData} margin={{ left: 0, right: 8, bottom: 0 }}>
@@ -2129,7 +2125,7 @@ function TabDespesaSintetica({ token, entidadeId, municipioId }: { token: string
                     </div>
 
                     {/* Legenda com barra de progresso e valor */}
-                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '220px', overflowY: 'auto' }}>
+                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: imprimindo ? 'none' : '220px', overflowY: imprimindo ? 'visible' : 'auto' }}>
                       {pieData.map((d, i) => {
                         const pct = totalPieGrupo > 0 ? (d.value / totalPieGrupo) * 100 : 0;
                         const isHovered = hoveredIndexPie === i;
@@ -2181,6 +2177,7 @@ function TabDespesaSintetica({ token, entidadeId, municipioId }: { token: string
         fFonte={fFonte}
         fGrupo={fGrupo}
         fSubgrupo={fSubgrupo}
+        imprimindo={imprimindo}
       />
 
       {/* Crescimento Mensal */}
@@ -2192,6 +2189,15 @@ function TabDespesaSintetica({ token, entidadeId, municipioId }: { token: string
         <div style={{ padding: '16px 20px 20px' }}>
         {isLoading ? (
           <div style={{ height: '140px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8', gap: '8px' }}><Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} /> Carregando...</div>
+        ) : imprimindo ? (
+          <LineChart width={1200} height={140} data={crescData} margin={{ left: 8, right: 8, top: 20 }}>
+            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+            <XAxis dataKey="mes" tick={{ fontSize: 10, fill: '#64748b' }} axisLine={false} tickLine={false} />
+            <YAxis tickFormatter={(v) => `${v}%`} tick={{ fontSize: 10, fill: '#64748b' }} axisLine={false} tickLine={false} width={45} />
+            <Line type="monotone" dataKey="perc" stroke="#C9A84C" strokeWidth={2.5} dot={{ fill: '#C9A84C', r: 4, strokeWidth: 0 }}>
+              <LabelList dataKey="perc" position="top" formatter={(v: number) => v === 0 ? '' : `${v > 0 ? '+' : ''}${v.toFixed(2)}%`} style={{ fontSize: '9px', fill: '#64748b', fontWeight: 600 }} />
+            </Line>
+          </LineChart>
         ) : (
           <ResponsiveContainer width="100%" height={140}>
             <LineChart data={crescData} margin={{ left: 8, right: 8, top: 20 }}>
@@ -2794,7 +2800,7 @@ const SETOR_COLORS = [
   '#dc2626','#db2777','#65a30d','#9333ea','#0284c7',
 ];
 
-function GraficoPorSetor({ ano, token, fEntidade, fSecretaria, fSetor, fBloco, fFonte, fGrupo, fSubgrupo }: {
+function GraficoPorSetor({ ano, token, fEntidade, fSecretaria, fSetor, fBloco, fFonte, fGrupo, fSubgrupo, imprimindo }: {
   ano: string;
   token: string | undefined;
   fEntidade?: string;
@@ -2804,6 +2810,7 @@ function GraficoPorSetor({ ano, token, fEntidade, fSecretaria, fSetor, fBloco, f
   fFonte?: string;
   fGrupo?: string;
   fSubgrupo?: string;
+  imprimindo?: boolean;
 }) {
   const API_URL = process.env.NEXT_PUBLIC_API_URL || '';
 
@@ -2871,6 +2878,34 @@ function GraficoPorSetor({ ano, token, fEntidade, fSecretaria, fSetor, fBloco, f
           <BarChart2 size={32} style={{ opacity: 0.3 }} />
           <span style={{ fontSize: '12px' }}>Nenhum setor classificado para {ano}</span>
         </div>
+      ) : imprimindo ? (
+        <BarChart width={1200} height={260} data={chartData} margin={{ left: 8, right: 8, top: 20, bottom: 60 }} barCategoryGap="25%">
+          <CartesianGrid vertical={false} strokeDasharray="3 3" stroke="#f1f5f9" />
+          <XAxis
+            dataKey="nomeAbrev"
+            tick={{ fontSize: 10, fill: '#64748b' }}
+            axisLine={false} tickLine={false}
+            angle={-35} textAnchor="end" interval={0}
+          />
+          <YAxis
+            tickFormatter={fmtK}
+            tick={{ fontSize: 10, fill: '#94a3b8' }} axisLine={false} tickLine={false} width={55}
+          />
+          <ReferenceLine y={media} stroke="#C9A84C" strokeDasharray="4 3" strokeWidth={1.5}
+            label={{ value: `Média: ${fmtK(media)}`, position: 'insideTopRight', fontSize: 10, fill: '#C9A84C', fontWeight: 600 }}
+          />
+          <Bar dataKey="total" radius={[4, 4, 0, 0]} minPointSize={3}>
+            {chartData.map((entry, i) => (
+              <Cell key={i} fill={entry.color} />
+            ))}
+            <LabelList
+              dataKey="pct"
+              position="top"
+              formatter={(v: number) => `${v.toFixed(1)}%`}
+              style={{ fontSize: '9px', fill: '#475569', fontWeight: 600 }}
+            />
+          </Bar>
+        </BarChart>
       ) : (
         <ResponsiveContainer width="100%" height={260}>
           <BarChart data={chartData} margin={{ left: 8, right: 8, top: 20, bottom: 60 }} barCategoryGap="25%">
