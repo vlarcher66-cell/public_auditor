@@ -1565,7 +1565,7 @@ function PainelSintetica({ grupos }: { grupos: Grupo[] }) {
         const ultimoMesEvoIdx = totalPorMes.map((v, i) => v > 0 ? i : -1).filter(i => i >= 0).pop() ?? -1;
 
         return (
-          <div style={{ ...cardStyle, gridColumn: '1 / -1' }}>
+          <div style={cardStyle}>
             <div style={headerStyle}>
               <TrendingUp size={15} color="rgba(255,255,255,0.6)" />
               <span style={{ fontSize: 13, fontWeight: 700, color: '#fff' }}>Evolução Mensal por Grupo</span>
