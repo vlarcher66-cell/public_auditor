@@ -16,7 +16,7 @@ import Link from 'next/link';
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, Sector, AreaChart, Area, CartesianGrid, Legend, LabelList,
-  RadialBarChart, RadialBar, Treemap, ScatterChart, Scatter, ZAxis,
+  RadialBarChart, RadialBar, Treemap, ScatterChart, Scatter, ZAxis, ReferenceLine,
 } from 'recharts';
 
 // ─── Formatação ───────────────────────────────────────────────────────────────
@@ -687,223 +687,192 @@ function TabGeralReceita({
     '#3b82f6','#10b981','#f59e0b','#8b5cf6','#ef4444','#06b6d4',
   ];
 
-  return (
-    <div className="space-y-5">
+  const cardStyle: React.CSSProperties = { background: '#fff', borderRadius: 16, border: '1px solid #e2e8f0', overflow: 'hidden' };
+  const headerStyle: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: 8, padding: '12px 20px', background: 'linear-gradient(135deg, #0F2A4E, #1e4d95)' };
 
-      <div className="grid grid-cols-1 md:grid-cols-1 lg:grid-cols-5 gap-4">
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginTop: 4 }}>
+
+      <div style={{ display: 'grid', gridTemplateColumns: '3fr 2fr', gap: 16 }}>
 
         {/* ── Evolução Mensal ── */}
-        <div className="lg:col-span-3 bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <h3 className="text-sm font-bold text-[#0F2A4E]">Evolução Mensal</h3>
-              <p className="text-[11px] text-gray-400 mt-0.5">Receita arrecadada por mês — {ano}</p>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="flex items-center gap-1.5 text-[11px] text-gray-400">
-                <Calendar size={12} />
-                {ultimoMesIdx >= 0 ? `Até ${MESES[ultimoMesIdx]}` : ano}
-              </div>
-              <div style={{ background: '#0F2A4E', borderRadius: 6, padding: '2px 4px' }}>
-                <InfoPopover insights={<><strong>Evolução Mensal da Receita</strong><br /><br />Barras mostram o total arrecadado em cada mês. A barra dourada indica o último mês com dados.<br /><br />📈 A linha verde mostra o crescimento acumulado no ano — ideal para projetar o total anual.<br /><br />💡 Meses com barra muito baixa podem indicar atraso no repasse ou na importação dos dados.</>} />
-              </div>
-            </div>
+        <div style={cardStyle}>
+          <div style={headerStyle}>
+            <TrendingUp size={15} color="rgba(255,255,255,0.6)" />
+            <span style={{ fontSize: 13, fontWeight: 700, color: '#fff' }}>Evolução Mensal</span>
+            <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.45)', marginLeft: 'auto', fontFamily: 'monospace' }}>
+              {ultimoMesIdx >= 0 ? `Até ${MESES[ultimoMesIdx]}` : ano}
+            </span>
+            <InfoPopover insights={<><strong>Evolução Mensal da Receita</strong><br /><br />Barras mostram o total arrecadado em cada mês. A barra dourada indica o último mês com dados.<br /><br />📈 A linha verde mostra o crescimento acumulado no ano — ideal para projetar o total anual.<br /><br />💡 Meses com barra muito baixa podem indicar atraso no repasse ou na importação dos dados.</>} />
           </div>
-
-          {/* Barras */}
-          <div className="flex items-end gap-1.5 h-36">
-            {mensal.map((v, i) => {
-              const pct = maxMensal > 0 ? (v / maxMensal) * 100 : 0;
-              const isAtual = i === ultimoMesIdx;
-              return (
-                <div key={i} className="flex-1 flex flex-col items-center gap-1 group relative">
-                  {/* Tooltip */}
-                  {v > 0 && (
-                    <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 bg-[#0F2A4E] text-white text-[10px] rounded-lg px-2 py-1 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10 shadow-lg">
-                      {fmtFull(v)}
-                    </div>
-                  )}
-                  <div className="w-full relative" style={{ height: '112px', display: 'flex', alignItems: 'flex-end' }}>
-                    <div
-                      className="w-full rounded-t-lg transition-all duration-500"
-                      style={{
+          <div style={{ padding: '16px 20px 12px' }}>
+            {/* Barras */}
+            <div style={{ display: 'flex', alignItems: 'flex-end', gap: 6, height: 136 }}>
+              {mensal.map((v, i) => {
+                const pct = maxMensal > 0 ? (v / maxMensal) * 100 : 0;
+                const isAtual = i === ultimoMesIdx;
+                return (
+                  <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, position: 'relative' }} className="group">
+                    {v > 0 && (
+                      <div style={{ position: 'absolute', bottom: '100%', marginBottom: 6, left: '50%', transform: 'translateX(-50%)', background: '#0F2A4E', color: '#fff', fontSize: 10, borderRadius: 8, padding: '4px 8px', whiteSpace: 'nowrap', pointerEvents: 'none', zIndex: 10, boxShadow: '0 4px 12px rgba(0,0,0,0.2)', opacity: 0 }} className="group-hover:opacity-100 transition-opacity">
+                        R$ {fmtFull(v)}
+                      </div>
+                    )}
+                    <div style={{ width: '100%', height: 112, display: 'flex', alignItems: 'flex-end' }}>
+                      <div style={{
+                        width: '100%',
                         height: pct > 0 ? `${Math.max(pct, 4)}%` : '3px',
-                        background: isAtual
-                          ? 'linear-gradient(180deg, #C9A84C, #e8c84a)'
-                          : v > 0
-                          ? 'linear-gradient(180deg, #3b82f6, #1d4ed8)'
-                          : '#f1f5f9',
+                        background: isAtual ? 'linear-gradient(180deg, #C9A84C, #e8c84a)' : v > 0 ? 'linear-gradient(180deg, #3b82f6, #1d4ed8)' : '#f1f5f9',
+                        borderRadius: '4px 4px 0 0',
                         opacity: v > 0 ? 1 : 0.5,
-                      }}
-                    />
+                        transition: 'height 0.5s ease',
+                        boxShadow: isAtual ? '0 -2px 8px rgba(201,168,76,0.4)' : v > 0 ? '0 -2px 6px rgba(59,130,246,0.25)' : 'none',
+                      }} />
+                    </div>
+                    <span style={{ fontSize: 9, fontWeight: isAtual ? 700 : 400, color: isAtual ? '#C9A84C' : '#94a3b8' }}>{MESES[i]}</span>
                   </div>
-                  <span className={`text-[9px] font-medium ${isAtual ? 'text-[#C9A84C]' : 'text-gray-400'}`}>
-                    {MESES[i]}
-                  </span>
+                );
+              })}
+            </div>
+
+            {/* Crescimento Acumulado */}
+            {mesesAtivos >= 1 && acumulado[ultimoMesIdx >= 0 ? ultimoMesIdx : 0] > 0 && (
+              <div style={{ marginTop: 14, paddingTop: 14, borderTop: '1px solid #f1f5f9' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                  <span style={{ fontSize: 11, fontWeight: 600, color: '#475569' }}>Crescimento Acumulado</span>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: '#10b981' }}>R$ {fmtFull(acumulado[ultimoMesIdx >= 0 ? ultimoMesIdx : 0])}</span>
                 </div>
-              );
-            })}
-          </div>
-
-          {/* Gráfico de linha — crescimento acumulado */}
-          {mesesAtivos >= 1 && acumulado[ultimoMesIdx >= 0 ? ultimoMesIdx : 0] > 0 && (
-            <div className="mt-4 pt-4 border-t border-gray-100">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-[11px] font-semibold text-gray-500">Crescimento Acumulado</span>
-                <span className="text-[11px] font-bold text-emerald-600">
-                  R$ {fmtFull(acumulado[ultimoMesIdx >= 0 ? ultimoMesIdx : 0])}
-                </span>
+                <svg width="100%" height="64" viewBox="0 0 440 64" preserveAspectRatio="none" style={{ overflow: 'visible' }}>
+                  <defs>
+                    <linearGradient id="lineGradGeral" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#10b981" stopOpacity="0.28" />
+                      <stop offset="100%" stopColor="#10b981" stopOpacity="0.02" />
+                    </linearGradient>
+                  </defs>
+                  {(() => {
+                    const W = 440; const H = 64; const pad = 10;
+                    const pts = acumulado.map((v, i) => ({
+                      x: pad + (i / 11) * (W - pad * 2),
+                      y: v > 0 ? (H - pad) - (v / maxAcum) * (H - pad * 2) : H - pad,
+                      v, hasData: mensal[i] > 0,
+                    }));
+                    const activePts = pts.slice(0, Math.max(ultimoMesIdx + 1, 1));
+                    const pathD = [`M ${activePts[0].x} ${H - pad}`, ...activePts.map(p => `L ${p.x} ${p.y}`), `L ${activePts[activePts.length - 1].x} ${H - pad}`, 'Z'].join(' ');
+                    const lineD = activePts.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ');
+                    return (
+                      <>
+                        <path d={pathD} fill="url(#lineGradGeral)" />
+                        <path d={lineD} fill="none" stroke="#10b981" strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round" />
+                        {activePts.map((p, i) => p.hasData && (
+                          <g key={i}>
+                            <circle cx={p.x} cy={p.y} r={i === ultimoMesIdx ? 5 : 3} fill={i === ultimoMesIdx ? '#C9A84C' : '#10b981'} />
+                            {i === ultimoMesIdx && <circle cx={p.x} cy={p.y} r={9} fill="none" stroke="#C9A84C" strokeWidth="1.5" strokeOpacity="0.35" />}
+                          </g>
+                        ))}
+                      </>
+                    );
+                  })()}
+                </svg>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 4 }}>
+                  {MESES.map((m, i) => (
+                    <span key={i} style={{ fontSize: 9, color: i === ultimoMesIdx ? '#C9A84C' : '#cbd5e1', fontWeight: i === ultimoMesIdx ? 700 : 400 }}>{m}</span>
+                  ))}
+                </div>
               </div>
-              <svg width="100%" height="64" viewBox="0 0 440 64" preserveAspectRatio="none" className="overflow-visible">
-                <defs>
-                  <linearGradient id="lineGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#10b981" stopOpacity="0.3" />
-                    <stop offset="100%" stopColor="#10b981" stopOpacity="0.02" />
-                  </linearGradient>
-                </defs>
-                {(() => {
-                  const W = 440;
-                  const H = 64;
-                  const pad = 10;
-                  const pts = acumulado.map((v, i) => {
-                    const x = pad + (i / 11) * (W - pad * 2);
-                    const y = v > 0 ? (H - pad) - (v / maxAcum) * (H - pad * 2) : H - pad;
-                    return { x, y, v, hasData: mensal[i] > 0 };
-                  });
-                  // só pontos até o último mês com dados
-                  const activePts = pts.slice(0, Math.max(ultimoMesIdx + 1, 1));
-                  const pathD = [
-                    `M ${activePts[0].x} ${H - pad}`,
-                    ...activePts.map(p => `L ${p.x} ${p.y}`),
-                    `L ${activePts[activePts.length - 1].x} ${H - pad}`,
-                    'Z',
-                  ].join(' ');
-                  const lineD = activePts.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ');
-                  return (
-                    <>
-                      <path d={pathD} fill="url(#lineGrad)" />
-                      <path d={lineD} fill="none" stroke="#10b981" strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round" />
-                      {activePts.map((p, i) => p.hasData && (
-                        <g key={i}>
-                          <circle cx={p.x} cy={p.y} r={i === ultimoMesIdx ? 5 : 3} fill={i === ultimoMesIdx ? '#C9A84C' : '#10b981'} />
-                          {i === ultimoMesIdx && <circle cx={p.x} cy={p.y} r={9} fill="none" stroke="#C9A84C" strokeWidth="1.5" strokeOpacity="0.35" />}
-                        </g>
-                      ))}
-                    </>
-                  );
-                })()}
-              </svg>
-              <div className="flex justify-between mt-1">
-                {MESES.map((m, i) => (
-                  <span key={i} className={`text-[9px] ${i === ultimoMesIdx ? 'text-[#C9A84C] font-semibold' : 'text-gray-300'}`}>
-                    {m}
-                  </span>
-                ))}
-              </div>
-            </div>
-          )}
+            )}
 
-          {/* Legenda */}
-          <div className="flex items-center gap-4 mt-3 pt-3 border-t border-gray-100">
-            <div className="flex items-center gap-1.5">
-              <div className="w-3 h-3 rounded-sm bg-blue-500" />
-              <span className="text-[10px] text-gray-400">Meses anteriores</span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <div className="w-3 h-3 rounded-sm bg-[#C9A84C]" />
-              <span className="text-[10px] text-gray-400">Último mês com dados</span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <div className="w-3 h-2 rounded-sm bg-emerald-500" />
-              <span className="text-[10px] text-gray-400">Acumulado</span>
+            {/* Legenda */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginTop: 12, paddingTop: 12, borderTop: '1px solid #f1f5f9' }}>
+              {[
+                { color: '#3b82f6', label: 'Meses anteriores' },
+                { color: '#C9A84C', label: 'Último mês' },
+                { color: '#10b981', label: 'Acumulado' },
+              ].map(({ color, label }) => (
+                <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <div style={{ width: 10, height: 10, borderRadius: 3, background: color, flexShrink: 0 }} />
+                  <span style={{ fontSize: 10, color: '#94a3b8' }}>{label}</span>
+                </div>
+              ))}
             </div>
           </div>
         </div>
 
         {/* ── Composição da Receita ── */}
-        <div className="lg:col-span-2 bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
-          <div className="flex items-start justify-between mb-4">
-            <div>
-              <h3 className="text-sm font-bold text-[#0F2A4E]">Composição da Receita</h3>
-              <p className="text-[11px] text-gray-400 mt-0.5">Participação de cada fonte</p>
-            </div>
-            <div style={{ background: '#0F2A4E', borderRadius: 6, padding: '2px 4px' }}>
-              <InfoPopover insights={<><strong>Composição da Receita</strong><br /><br />Divide o total arrecadado em três categorias:<br /><br />• <strong>Orçamentária</strong>: receitas previstas no orçamento (LOA)<br />• <strong>Transf. Bancárias</strong>: movimentações financeiras entre contas do município<br />• <strong>Extra-Orçamentária</strong>: retenções, depósitos judiciais e valores fora do orçamento<br /><br />💡 A receita Extra-Orçamentária não representa renda livre — são recursos de terceiros retidos temporariamente.</>} />
-            </div>
+        <div style={cardStyle}>
+          <div style={headerStyle}>
+            <PieChartIcon size={15} color="rgba(255,255,255,0.6)" />
+            <span style={{ fontSize: 13, fontWeight: 700, color: '#fff' }}>Composição da Receita</span>
+            <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.45)', marginLeft: 'auto', fontFamily: 'monospace' }}>por fonte</span>
+            <InfoPopover insights={<><strong>Composição da Receita</strong><br /><br />Divide o total arrecadado em três categorias:<br /><br />• <strong>Orçamentária</strong>: receitas previstas no orçamento (LOA)<br />• <strong>Transf. Bancárias</strong>: movimentações financeiras entre contas do município<br />• <strong>Extra-Orçamentária</strong>: retenções, depósitos judiciais e valores fora do orçamento<br /><br />💡 A receita Extra-Orçamentária não representa renda livre — são recursos de terceiros retidos temporariamente.</>} />
           </div>
-
-          <div className="space-y-1.5">
-            {[
-              { label: 'Orçamentária', value: totalOrc, color: '#3b82f6' },
-              { label: 'Transf. Bancárias', value: totalTransf, color: '#f59e0b' },
-              { label: 'Extra-Orçamentária', value: totalExtra, color: '#8b5cf6' },
-            ].map((item) => {
-              const pct = totalGeral > 0 ? (item.value / totalGeral) * 100 : 0;
-              return (
-                <div key={item.label}>
-                  <div className="flex items-center justify-between mb-1">
-                    <div className="flex items-center gap-1.5">
-                      <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: item.color }} />
-                      <span className="text-[11px] text-gray-600">{item.label}</span>
+          <div style={{ padding: '16px 20px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+              {[
+                { label: 'Orçamentária', value: totalOrc, color: '#3b82f6' },
+                { label: 'Transf. Bancárias', value: totalTransf, color: '#f59e0b' },
+                { label: 'Extra-Orçamentária', value: totalExtra, color: '#8b5cf6' },
+              ].map((item) => {
+                const pct = totalGeral > 0 ? (item.value / totalGeral) * 100 : 0;
+                return (
+                  <div key={item.label}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <div style={{ width: 8, height: 8, borderRadius: '50%', background: item.color, flexShrink: 0 }} />
+                        <span style={{ fontSize: 12, color: '#475569' }}>{item.label}</span>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                        <span style={{ fontSize: 11, color: '#94a3b8', fontVariantNumeric: 'tabular-nums' }}>R$ {fmtFull(item.value)}</span>
+                        <span style={{ fontSize: 12, fontWeight: 700, color: item.color, minWidth: 38, textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{pct.toFixed(1)}%</span>
+                      </div>
                     </div>
-                    <span className="text-[11px] font-semibold text-gray-700">{pct.toFixed(1)}%</span>
+                    <div style={{ height: 6, background: '#f1f5f9', borderRadius: 99, overflow: 'hidden' }}>
+                      <div style={{
+                        height: '100%', width: `${pct}%`,
+                        background: `linear-gradient(90deg, ${item.color}, ${item.color}bb)`,
+                        borderRadius: 99, transition: 'width 0.7s ease',
+                        boxShadow: `0 1px 4px ${item.color}55`,
+                      }} />
+                    </div>
                   </div>
-                  <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                    <div
-                      className="h-full rounded-full transition-all duration-700"
-                      style={{ width: `${pct}%`, background: item.color }}
-                    />
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-
-          <div className="mt-4 pt-4 border-t border-gray-100">
-            <p className="text-[10px] text-gray-400 mb-1">Total consolidado</p>
-            <p className="text-base font-bold text-[#0F2A4E]">R$ {fmtFull(totalGeral)}</p>
+                );
+              })}
+            </div>
+            <div style={{ marginTop: 20, paddingTop: 14, borderTop: '1px solid #f1f5f9' }}>
+              <p style={{ fontSize: 10, color: '#94a3b8', margin: 0 }}>Total consolidado</p>
+              <p style={{ fontSize: 16, fontWeight: 800, color: '#0F2A4E', margin: '4px 0 0', fontVariantNumeric: 'tabular-nums' }}>R$ {fmtFull(totalGeral)}</p>
+            </div>
           </div>
         </div>
       </div>
 
       {/* ── Top Subgrupos ── */}
       {topSubgrupos.length > 0 && (
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <h3 className="text-sm font-bold text-[#0F2A4E]">Principais Fontes de Receita</h3>
-              <p className="text-[11px] text-gray-400 mt-0.5">Top {topSubgrupos.length} subgrupos por valor arrecadado</p>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="text-[11px] text-gray-400">{ano}</span>
-              <div style={{ background: '#0F2A4E', borderRadius: 6, padding: '2px 4px' }}>
-                <InfoPopover insights={<><strong>Principais Fontes de Receita</strong><br /><br />Ranking dos subgrupos que mais contribuíram para a arrecadação total.<br /><br />A barra horizontal representa o percentual em relação ao maior subgrupo. O número à direita mostra a fatia no total geral.<br /><br />⚠️ Dependência excessiva de um único subgrupo (ex: SUS) pode representar risco fiscal caso o repasse seja suspenso ou atrasado.</>} />
-              </div>
-            </div>
+        <div style={cardStyle}>
+          <div style={headerStyle}>
+            <BarChart2 size={15} color="rgba(255,255,255,0.6)" />
+            <span style={{ fontSize: 13, fontWeight: 700, color: '#fff' }}>Principais Fontes de Receita</span>
+            <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.45)', marginLeft: 'auto', fontFamily: 'monospace' }}>top {topSubgrupos.length} subgrupos · {ano}</span>
+            <InfoPopover insights={<><strong>Principais Fontes de Receita</strong><br /><br />Ranking dos subgrupos que mais contribuíram para a arrecadação total.<br /><br />A barra horizontal representa o percentual em relação ao maior subgrupo. O número à direita mostra a fatia no total geral.<br /><br />⚠️ Dependência excessiva de um único subgrupo (ex: SUS) pode representar risco fiscal caso o repasse seja suspenso ou atrasado.</>} />
           </div>
-          <div className="space-y-3">
+          <div style={{ padding: '14px 20px 16px', display: 'flex', flexDirection: 'column', gap: 12 }}>
             {topSubgrupos.map(([desc, valor], i) => {
               const pct = (valor / maxSg) * 100;
               const share = totalGeral > 0 ? ((valor / totalGeral) * 100).toFixed(1) : '0';
               return (
-                <div key={desc} className="flex items-center gap-3">
-                  <div className="w-5 h-5 rounded-lg flex items-center justify-center text-[10px] font-bold text-white flex-shrink-0"
-                    style={{ background: cores[i] }}>
+                <div key={desc} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <div style={{ width: 22, height: 22, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 800, color: '#fff', flexShrink: 0, background: cores[i] }}>
                     {i + 1}
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="text-[11px] font-medium text-gray-700 truncate pr-2">{desc}</span>
-                      <div className="flex items-center gap-2 flex-shrink-0">
-                        <span className="text-[10px] text-gray-400">{share}%</span>
-                        <span className="text-[11px] font-semibold text-[#0F2A4E]">{fmtFull(valor)}</span>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 5 }}>
+                      <span style={{ fontSize: 11, fontWeight: 500, color: '#374151', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', paddingRight: 8 }}>{desc}</span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
+                        <span style={{ fontSize: 10, color: '#94a3b8', fontVariantNumeric: 'tabular-nums' }}>{share}%</span>
+                        <span style={{ fontSize: 11, fontWeight: 700, color: '#0F2A4E', fontVariantNumeric: 'tabular-nums' }}>R$ {fmtFull(valor)}</span>
                       </div>
                     </div>
-                    <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                      <div
-                        className="h-full rounded-full transition-all duration-700"
-                        style={{ width: `${pct}%`, background: cores[i], opacity: 0.85 }}
-                      />
+                    <div style={{ height: 5, background: '#f1f5f9', borderRadius: 99, overflow: 'hidden' }}>
+                      <div style={{ height: '100%', width: `${pct}%`, background: `linear-gradient(90deg, ${cores[i]}, ${cores[i]}bb)`, borderRadius: 99, transition: 'width 0.7s ease', boxShadow: `0 1px 4px ${cores[i]}44` }} />
                     </div>
                   </div>
                 </div>
@@ -1571,57 +1540,146 @@ function PainelSintetica({ grupos }: { grupos: Grupo[] }) {
         </div>
       </div>
 
-      {/* ── 4. Scatter — Regularidade vs Volume ── */}
-      <div style={cardStyle}>
-        <div style={headerStyle}>
-          <Target size={15} color="rgba(255,255,255,0.6)" />
-          <span style={{ fontSize: 13, fontWeight: 700, color: '#fff' }}>Regularidade vs Volume</span>
-          <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.45)', marginLeft: 'auto', fontFamily: 'monospace' }}>subgrupos por frequência</span>
-          <InfoPopover insights={<><strong>Regularidade vs Volume</strong><br /><br />Cada ponto representa um subgrupo de receita.<br /><br />• <strong>Eixo X</strong>: quantos meses o subgrupo teve receita (1–12)<br />• <strong>Eixo Y</strong>: valor total arrecadado no ano<br /><br />🎯 <strong>Ideal</strong>: canto superior direito — alto volume e alta regularidade<br />⚠️ <strong>Atenção</strong>: alto volume mas poucos meses pode indicar receita pontual e não recorrente<br />💡 Passe o mouse nos pontos para ver o subgrupo.</>} />
-        </div>
-        <div style={{ padding: '12px 8px 12px 0' }}>
-          <ResponsiveContainer width="100%" height={220}>
-            <ScatterChart margin={{ top: 8, right: 24, bottom: 8, left: 8 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-              <XAxis
-                type="number" dataKey="regularidade" name="Meses com receita"
-                domain={[0, 12]} ticks={[1,2,3,4,5,6,7,8,9,10,11,12]}
-                tick={{ fontSize: 9, fill: '#94a3b8' }} axisLine={false} tickLine={false}
-                label={{ value: 'meses com receita', position: 'insideBottom', offset: -4, fontSize: 9, fill: '#94a3b8' }}
-              />
-              <YAxis
-                type="number" dataKey="volume" name="Volume"
-                tickFormatter={fmtK} tick={{ fontSize: 9, fill: '#94a3b8' }} axisLine={false} tickLine={false} width={58}
-              />
-              <ZAxis range={[40, 200]} />
-              <Tooltip
-                cursor={{ strokeDasharray: '3 3' }}
-                content={({ active, payload }) => {
-                  if (!active || !payload?.length) return null;
-                  const d = payload[0].payload;
-                  return (
-                    <div style={{ background: '#0F2A4E', borderRadius: 10, padding: '8px 12px', fontSize: 11, maxWidth: 200 }}>
-                      <p style={{ color: '#C9A84C', fontWeight: 700, margin: 0, lineHeight: 1.3 }}>{d.fullName}</p>
-                      <p style={{ color: '#fff', margin: '4px 0 0' }}>R$ {fmtFull(d.volume)}</p>
-                      <p style={{ color: 'rgba(255,255,255,0.6)', margin: '2px 0 0' }}>{d.regularidade} meses com receita</p>
-                    </div>
-                  );
-                }}
-              />
-              {grupos.map((g, i) => (
-                <Scatter
-                  key={g.cod}
-                  name={g.desc.replace('RECEITAS CORRENTES','Correntes').replace('RECEITAS DE CAPITAL / EXTRA-ORÇ.','Capital').replace('TRANSFERÊNCIAS BANCÁRIAS','Transf. Banc.')}
-                  data={scatterData.filter(d => d.grupo === g.cod)}
-                  fill={GRUPO_AREA_COLORS[i % 3]}
-                  fillOpacity={0.8}
-                />
-              ))}
-              <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 11, color: '#64748b', paddingTop: 4 }} />
-            </ScatterChart>
-          </ResponsiveContainer>
-        </div>
-      </div>
+      {/* ── 4. AreaChart — Evolução Mensal por Grupo ── */}
+      {(() => {
+        // paleta com gradientes por grupo
+        const EVO_STROKES = ['#1e4d95', '#b45309', '#1e3a8a'];
+        const EVO_FILLS   = ['#3b82f6', '#C9A84C', '#60a5fa'];
+        const grupoLabels = grupos.map(g =>
+          g.desc
+            .replace('RECEITAS CORRENTES', 'Correntes')
+            .replace('RECEITAS DE CAPITAL / EXTRA-ORÇ.', 'Capital')
+            .replace('TRANSFERÊNCIAS BANCÁRIAS', 'Transf. Banc.')
+        );
+        const evoData = MESES.map((mes, mi) => {
+          const obj: Record<string, any> = { mes };
+          grupos.forEach((g, gi) => { obj[grupoLabels[gi]] = g.meses[mi]; });
+          return obj;
+        });
+        const totalPorMes = MESES.map((_, mi) => grupos.reduce((s, g) => s + g.meses[mi], 0));
+        const mesesComDados = totalPorMes.filter(v => v > 0);
+        const mediaMensalEvo = mesesComDados.length > 0
+          ? mesesComDados.reduce((a, v) => a + v, 0) / mesesComDados.length
+          : 0;
+        // último mês com pelo menos um grupo com dado
+        const ultimoMesEvoIdx = totalPorMes.map((v, i) => v > 0 ? i : -1).filter(i => i >= 0).pop() ?? -1;
+
+        return (
+          <div style={{ ...cardStyle, gridColumn: '1 / -1' }}>
+            <div style={headerStyle}>
+              <TrendingUp size={15} color="rgba(255,255,255,0.6)" />
+              <span style={{ fontSize: 13, fontWeight: 700, color: '#fff' }}>Evolução Mensal por Grupo</span>
+              <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.45)', marginLeft: 'auto', fontFamily: 'monospace' }}>acumulado mês a mês</span>
+              <InfoPopover insights={<><strong>Evolução Mensal por Grupo</strong><br /><br />Área empilhada mostrando a evolução de cada grupo de receita mês a mês.<br /><br />• <strong>Correntes</strong>: receitas tributárias, SUS, patrimonial etc.<br />• <strong>Capital</strong>: operações de crédito, transferências de capital<br />• <strong>Transf. Banc.</strong>: movimentações financeiras entre contas<br /><br />A linha tracejada indica a média mensal do total.<br />💡 Meses abaixo da média podem indicar atraso de repasse ou sazonalidade.</>} />
+            </div>
+            <div style={{ padding: '16px 8px 12px 0' }}>
+              <ResponsiveContainer width="100%" height={230}>
+                <AreaChart data={evoData} margin={{ top: 10, right: 24, bottom: 0, left: 8 }}>
+                  <defs>
+                    {grupoLabels.map((label, i) => (
+                      <linearGradient key={label} id={`evoGrad${i}`} x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%"   stopColor={EVO_FILLS[i % 3]} stopOpacity={0.75} />
+                        <stop offset="85%"  stopColor={EVO_FILLS[i % 3]} stopOpacity={0.12} />
+                        <stop offset="100%" stopColor={EVO_FILLS[i % 3]} stopOpacity={0.03} />
+                      </linearGradient>
+                    ))}
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+                  <XAxis
+                    dataKey="mes"
+                    tick={{ fontSize: 10, fill: '#94a3b8' }}
+                    axisLine={false} tickLine={false}
+                    interval={0}
+                  />
+                  <YAxis
+                    tickFormatter={fmtK}
+                    tick={{ fontSize: 10, fill: '#94a3b8' }}
+                    axisLine={false} tickLine={false}
+                    width={62}
+                  />
+                  {mediaMensalEvo > 0 && (
+                    <ReferenceLine
+                      y={mediaMensalEvo}
+                      stroke="#94a3b8"
+                      strokeDasharray="4 4"
+                      strokeWidth={1.5}
+                      label={{ value: `média ${fmtK(mediaMensalEvo)}`, position: 'insideTopRight', fontSize: 9, fill: '#94a3b8', dy: -6 }}
+                    />
+                  )}
+                  <Tooltip
+                    content={({ active, payload, label }) => {
+                      if (!active || !payload?.length) return null;
+                      const total = (payload as any[]).reduce((s, p) => s + (p.value ?? 0), 0);
+                      return (
+                        <div style={{ background: '#0F2A4E', borderRadius: 10, padding: '10px 14px', boxShadow: '0 4px 20px rgba(0,0,0,0.3)', minWidth: 180 }}>
+                          <p style={{ color: '#C9A84C', fontWeight: 700, fontSize: 11, margin: '0 0 8px' }}>{label}</p>
+                          {[...(payload as any[])].reverse().map((p, i) => (
+                            <p key={i} style={{ color: '#fff', fontSize: 11, margin: '3px 0', display: 'flex', justifyContent: 'space-between', gap: 16 }}>
+                              <span style={{ color: p.color ?? 'rgba(255,255,255,0.6)', display: 'flex', alignItems: 'center', gap: 5 }}>
+                                <span style={{ width: 6, height: 6, borderRadius: '50%', background: p.color, flexShrink: 0, display: 'inline-block' }} />
+                                {p.name}
+                              </span>
+                              <span style={{ fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>R$ {fmtFull(p.value)}</span>
+                            </p>
+                          ))}
+                          <div style={{ borderTop: '1px solid rgba(255,255,255,0.12)', marginTop: 8, paddingTop: 7 }}>
+                            <p style={{ color: '#C9A84C', fontSize: 11, margin: 0, display: 'flex', justifyContent: 'space-between' }}>
+                              <span>Total</span>
+                              <span style={{ fontWeight: 800, fontVariantNumeric: 'tabular-nums' }}>R$ {fmtFull(total)}</span>
+                            </p>
+                          </div>
+                        </div>
+                      );
+                    }}
+                  />
+                  {grupoLabels.map((label, i) => (
+                    <Area
+                      key={label}
+                      type="monotone"
+                      dataKey={label}
+                      stackId="a"
+                      stroke={EVO_STROKES[i % 3]}
+                      strokeWidth={2}
+                      fill={`url(#evoGrad${i})`}
+                      fillOpacity={1}
+                      isAnimationActive={true}
+                      animationDuration={1000}
+                      animationEasing="ease-out"
+                      animationBegin={i * 150}
+                      dot={false}
+                      activeDot={(props: any) => {
+                        const { cx, cy } = props;
+                        return (
+                          <circle
+                            key={`dot-${cx}-${cy}`}
+                            cx={cx} cy={cy} r={5}
+                            fill="#fff"
+                            stroke={EVO_STROKES[i % 3]}
+                            strokeWidth={2}
+                          />
+                        );
+                      }}
+                    />
+                  ))}
+                </AreaChart>
+              </ResponsiveContainer>
+              {/* Legenda manual */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 20, paddingLeft: 70, marginTop: 6 }}>
+                {grupoLabels.map((label, i) => (
+                  <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <div style={{ width: 10, height: 10, borderRadius: 3, background: EVO_FILLS[i % 3], flexShrink: 0 }} />
+                    <span style={{ fontSize: 10, color: '#64748b' }}>{label}</span>
+                  </div>
+                ))}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginLeft: 4 }}>
+                  <svg width="18" height="4"><line x1="0" y1="2" x2="18" y2="2" stroke="#94a3b8" strokeWidth="1.5" strokeDasharray="4 3" /></svg>
+                  <span style={{ fontSize: 10, color: '#94a3b8' }}>média mensal</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
     </div>
   );
