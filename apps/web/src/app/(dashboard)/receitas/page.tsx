@@ -852,7 +852,10 @@ function PainelAnalitica({ grupos }: { grupos: Grupo[] }) {
       if (val > 0) sgFlat.push({ name: sg.desc, fullName: sg.desc, value: val });
     }
   }
-  const topSg = sgFlat.sort((a, b) => b.value - a.value).slice(0, 8);
+  const topSg = sgFlat.sort((a, b) => b.value - a.value).slice(0, 8).map(s => ({
+    ...s,
+    name: s.name.length > 28 ? s.name.slice(0, 28) + '…' : s.name,
+  }));
   const maxTopSg = topSg[0]?.value ?? 1;
 
   // Composição por grupo (pie)
@@ -933,7 +936,11 @@ function PainelAnalitica({ grupos }: { grupos: Grupo[] }) {
                 <LabelList
                   dataKey="value"
                   position="right"
-                  formatter={(v: number) => fmtK(v)}
+                  formatter={(v: number) => {
+                    if (v >= 1_000_000) return `R$ ${(v / 1_000_000).toFixed(2)}M`;
+                    if (v >= 1_000) return `R$ ${(v / 1_000).toFixed(2)}K`;
+                    return `R$ ${fmtFull(v)}`;
+                  }}
                   style={{ fontSize: 11, fill: '#475569', fontWeight: 600 }}
                 />
               </Bar>
@@ -950,27 +957,17 @@ function PainelAnalitica({ grupos }: { grupos: Grupo[] }) {
           <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.45)', marginLeft: 'auto', fontFamily: 'monospace' }}>participação %</span>
         </div>
         <div style={{ padding: '12px 16px 16px' }}>
-          <ResponsiveContainer width="100%" height={180}>
-            <PieChart>
+          <ResponsiveContainer width="100%" height={160}>
+            <PieChart margin={{ top: 0, right: 0, bottom: 0, left: 0 }}>
               <Pie
                 data={pieData}
                 cx="50%"
                 cy="50%"
-                innerRadius={55}
-                outerRadius={80}
+                innerRadius={48}
+                outerRadius={70}
                 paddingAngle={3}
                 dataKey="value"
-                label={({ cx, cy, midAngle, innerRadius, outerRadius, percent }) => {
-                  const RADIAN = Math.PI / 180;
-                  const radius = innerRadius + (outerRadius - innerRadius) * 1.45;
-                  const x = cx + radius * Math.cos(-midAngle * RADIAN);
-                  const y = cy + radius * Math.sin(-midAngle * RADIAN);
-                  return percent > 0.04 ? (
-                    <text x={x} y={y} fill="#475569" textAnchor="middle" dominantBaseline="central" fontSize={10} fontWeight={600}>
-                      {(percent * 100).toFixed(0)}%
-                    </text>
-                  ) : null;
-                }}
+                label={false}
                 labelLine={false}
               >
                 {pieData.map((entry, index) => (
@@ -981,15 +978,21 @@ function PainelAnalitica({ grupos }: { grupos: Grupo[] }) {
             </PieChart>
           </ResponsiveContainer>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 4 }}>
-            {pieData.map((entry, index) => (
-              <div key={entry.cod} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <div style={{ width: 10, height: 10, borderRadius: 3, background: GRUPO_COLORS[entry.cod] ?? GRUPO_AREA_COLORS[index % 3], flexShrink: 0 }} />
-                  <span style={{ fontSize: 11, color: '#475569' }}>{entry.name}</span>
+            {pieData.map((entry, index) => {
+              const pct = totalPie > 0 ? ((entry.value / totalPie) * 100).toFixed(1) : '0';
+              return (
+                <div key={entry.cod} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <div style={{ width: 10, height: 10, borderRadius: 3, background: GRUPO_COLORS[entry.cod] ?? GRUPO_AREA_COLORS[index % 3], flexShrink: 0 }} />
+                    <span style={{ fontSize: 11, color: '#475569' }}>{entry.name}</span>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ fontSize: 10, color: '#94a3b8' }}>{pct}%</span>
+                    <span style={{ fontSize: 11, fontWeight: 700, color: '#0F2A4E' }}>{fmtK(entry.value)}</span>
+                  </div>
                 </div>
-                <span style={{ fontSize: 11, fontWeight: 700, color: '#0F2A4E' }}>{fmtK(entry.value)}</span>
-              </div>
-            ))}
+              );
+            })}
             <div style={{ borderTop: '1px solid #f1f5f9', paddingTop: 8, marginTop: 2, display: 'flex', justifyContent: 'space-between' }}>
               <span style={{ fontSize: 11, color: '#94a3b8' }}>Total</span>
               <span style={{ fontSize: 12, fontWeight: 700, color: '#C9A84C' }}>{fmtK(totalPie)}</span>
