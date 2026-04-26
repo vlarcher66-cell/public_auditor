@@ -796,120 +796,198 @@ function TabGeralReceita({
     { label: 'Extra-Orçamentária', value: totalExtra, color: '#8b5cf6' },
   ].filter(f => f.value > 0);
 
+  // Tooltip padrão dark reutilizável
+  const DarkTooltip = ({ active, payload, label }: any) => {
+    if (!active || !payload?.length) return null;
+    return (
+      <div style={{ background: '#0F2A4E', borderRadius: 10, padding: '10px 14px', boxShadow: '0 8px 24px rgba(0,0,0,0.35)', border: '1px solid rgba(255,255,255,0.08)', minWidth: 150 }}>
+        {label && <p style={{ color: '#C9A84C', fontWeight: 700, fontSize: 11, margin: '0 0 6px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>{label}</p>}
+        {payload.map((p: any, i: number) => (
+          <div key={i} style={{ display: 'flex', justifyContent: 'space-between', gap: 16, margin: '3px 0' }}>
+            <span style={{ color: 'rgba(255,255,255,0.55)', fontSize: 11 }}>{p.name ?? p.dataKey}</span>
+            <span style={{ color: '#fff', fontWeight: 700, fontSize: 11, fontVariantNumeric: 'tabular-nums' }}>R$ {fmtFull(p.value)}</span>
+          </div>
+        ))}
+      </div>
+    );
+  };
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginTop: 4 }}>
 
       {/* ══ BANNER KPIs ══ */}
       {mesesAtivos > 0 && (
         <motion.div
-          initial={{ opacity: 0, y: -10 }}
+          initial={{ opacity: 0, y: -16 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-          style={{ background: 'linear-gradient(135deg, #0F2A4E 0%, #1e4d95 60%, #2563b0 100%)', borderRadius: 16, padding: '16px 24px', display: 'flex', alignItems: 'center', gap: 24, flexWrap: 'wrap' }}
+          transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
+          style={{
+            background: 'linear-gradient(135deg, #0F2A4E 0%, #1a3a6e 50%, #1e4d95 100%)',
+            borderRadius: 16,
+            padding: '20px 28px',
+            display: 'grid',
+            gridTemplateColumns: '1fr auto 1fr auto 1fr auto 1fr',
+            alignItems: 'center',
+            gap: 0,
+            boxShadow: '0 8px 32px rgba(15,42,78,0.4)',
+            border: '1px solid rgba(255,255,255,0.06)',
+          }}
         >
           {/* Progresso do ano */}
-          <div style={{ flex: 1, minWidth: 200 }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-              <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.6)', fontWeight: 500 }}>Progresso do ano · {ano}</span>
-              <span style={{ fontSize: 12, fontWeight: 700, color: '#C9A84C' }}>{mesesAtivos}/12 meses · {pctAno}%</span>
+          <motion.div
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.5, delay: 0.1 }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+              <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.5)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Progresso {ano}</span>
+              <span style={{ fontSize: 11, fontWeight: 800, color: '#C9A84C' }}>{pctAno}%</span>
             </div>
-            <div style={{ height: 6, background: 'rgba(255,255,255,0.12)', borderRadius: 99, overflow: 'hidden' }}>
+            <div style={{ height: 7, background: 'rgba(255,255,255,0.1)', borderRadius: 99, overflow: 'hidden', marginBottom: 8 }}>
               <motion.div
-                initial={{ width: 0 }}
-                animate={{ width: `${pctAno}%` }}
-                transition={{ duration: 1.2, delay: 0.3, ease: 'easeOut' }}
-                style={{ height: '100%', background: 'linear-gradient(90deg, #C9A84C, #f59e0b)', borderRadius: 99, boxShadow: '0 0 8px rgba(201,168,76,0.6)' }}
+                initial={{ scaleX: 0 }}
+                animate={{ scaleX: 1 }}
+                transition={{ duration: 1.4, delay: 0.4, ease: [0.22, 1, 0.36, 1] }}
+                style={{
+                  height: '100%',
+                  width: `${pctAno}%`,
+                  background: 'linear-gradient(90deg, #C9A84C, #f59e0b)',
+                  borderRadius: 99,
+                  transformOrigin: 'left',
+                  boxShadow: '0 0 12px rgba(201,168,76,0.5)',
+                }}
               />
             </div>
-          </div>
+            <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.4)' }}>{mesesAtivos} de 12 meses</span>
+          </motion.div>
 
-          {/* Separador */}
-          <div style={{ width: 1, height: 36, background: 'rgba(255,255,255,0.15)', flexShrink: 0 }} />
+          <div style={{ width: 1, height: 48, background: 'rgba(255,255,255,0.1)', margin: '0 28px' }} />
 
           {/* Projeção anual */}
-          <div style={{ flexShrink: 0 }}>
-            <p style={{ fontSize: 10, color: 'rgba(255,255,255,0.5)', margin: '0 0 2px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Projeção Anual</p>
-            <p style={{ fontSize: 18, fontWeight: 800, color: '#fff', margin: 0, fontVariantNumeric: 'tabular-nums' }}>
-              R$ <CountUp end={projecaoAnual} duration={1.8} delay={0.4} decimals={2} decimal="," separator="." />
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.45, delay: 0.2 }}
+          >
+            <p style={{ fontSize: 10, color: 'rgba(255,255,255,0.45)', margin: '0 0 4px', textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: 600 }}>Projeção Anual</p>
+            <p style={{ fontSize: 20, fontWeight: 900, color: '#fff', margin: 0, fontVariantNumeric: 'tabular-nums', lineHeight: 1 }}>
+              R$ <CountUp end={projecaoAnual} duration={2} delay={0.5} decimals={2} decimal="," separator="." />
             </p>
-          </div>
+            <p style={{ fontSize: 10, color: 'rgba(255,255,255,0.35)', margin: '4px 0 0' }}>baseado na média mensal</p>
+          </motion.div>
 
-          <div style={{ width: 1, height: 36, background: 'rgba(255,255,255,0.15)', flexShrink: 0 }} />
+          <div style={{ width: 1, height: 48, background: 'rgba(255,255,255,0.1)', margin: '0 28px' }} />
 
           {/* Melhor mês */}
-          {melhorMesVal > 0 && (
-            <div style={{ flexShrink: 0 }}>
-              <p style={{ fontSize: 10, color: 'rgba(255,255,255,0.5)', margin: '0 0 2px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Melhor Mês</p>
-              <p style={{ fontSize: 14, fontWeight: 700, color: '#C9A84C', margin: 0 }}>
-                {MESES[melhorMesIdx]} · <span style={{ color: '#fff', fontVariantNumeric: 'tabular-nums' }}>R$ {fmtFull(melhorMesVal)}</span>
-              </p>
-            </div>
-          )}
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.45, delay: 0.3 }}
+          >
+            <p style={{ fontSize: 10, color: 'rgba(255,255,255,0.45)', margin: '0 0 4px', textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: 600 }}>Melhor Mês</p>
+            {melhorMesVal > 0 ? (
+              <>
+                <p style={{ fontSize: 16, fontWeight: 800, color: '#C9A84C', margin: 0 }}>{MESES[melhorMesIdx]}</p>
+                <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.65)', margin: '3px 0 0', fontVariantNumeric: 'tabular-nums' }}>R$ {fmtFull(melhorMesVal)}</p>
+              </>
+            ) : <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.3)', margin: 0 }}>—</p>}
+          </motion.div>
 
-          <div style={{ width: 1, height: 36, background: 'rgba(255,255,255,0.15)', flexShrink: 0 }} />
+          <div style={{ width: 1, height: 48, background: 'rgba(255,255,255,0.1)', margin: '0 28px' }} />
 
           {/* Média mensal */}
-          <div style={{ flexShrink: 0 }}>
-            <p style={{ fontSize: 10, color: 'rgba(255,255,255,0.5)', margin: '0 0 2px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Média Mensal</p>
-            <p style={{ fontSize: 14, fontWeight: 700, color: '#fff', margin: 0, fontVariantNumeric: 'tabular-nums' }}>R$ {fmtFull(mediaMensal)}</p>
-          </div>
+          <motion.div
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.5, delay: 0.35 }}
+          >
+            <p style={{ fontSize: 10, color: 'rgba(255,255,255,0.45)', margin: '0 0 4px', textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: 600 }}>Média Mensal</p>
+            <p style={{ fontSize: 16, fontWeight: 800, color: '#fff', margin: 0, fontVariantNumeric: 'tabular-nums' }}>
+              R$ <CountUp end={mediaMensal} duration={1.8} delay={0.6} decimals={2} decimal="," separator="." />
+            </p>
+            <p style={{ fontSize: 10, color: 'rgba(255,255,255,0.35)', margin: '4px 0 0' }}>arrecadação mensal média</p>
+          </motion.div>
         </motion.div>
       )}
 
       <div style={{ display: 'grid', gridTemplateColumns: '3fr 2fr', gap: 16, alignItems: 'start' }}>
 
-        {/* ── Evolução Mensal — Recharts BarChart ── */}
-        <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.45, delay: 0.1 }} style={cardStyle}>
+        {/* ── Evolução Mensal — BarChart Recharts ── */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.15, ease: [0.22, 1, 0.36, 1] }}
+          style={cardStyle}
+        >
           <div style={headerStyle}>
             <TrendingUp size={15} color="rgba(255,255,255,0.6)" />
             <span style={{ fontSize: 13, fontWeight: 700, color: '#fff' }}>Evolução Mensal</span>
-            <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.45)', marginLeft: 'auto', fontFamily: 'monospace' }}>{ultimoMesIdx >= 0 ? `Até ${MESES[ultimoMesIdx]}` : ano}</span>
+            <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', marginLeft: 'auto', fontFamily: 'monospace' }}>{ultimoMesIdx >= 0 ? `Até ${MESES[ultimoMesIdx]}/${ano}` : ano}</span>
             <InfoPopover insights={<><strong>Evolução Mensal da Receita</strong><br /><br />Cada barra mostra o total arrecadado no mês. A barra dourada é o último mês com dados.<br /><br />A linha tracejada indica a média mensal — barras acima estão performando bem.<br /><br />📈 A área verde abaixo mostra o crescimento acumulado no ano.</>} />
           </div>
-          <div style={{ padding: '12px 8px 8px 0' }}>
-            <ResponsiveContainer width="100%" height={180}>
-              <BarChart data={barData} margin={{ top: 18, right: 16, bottom: 0, left: 8 }} barCategoryGap="25%">
+          <div style={{ padding: '16px 8px 12px 0' }}>
+            <ResponsiveContainer width="100%" height={190}>
+              <BarChart data={barData} margin={{ top: 20, right: 20, bottom: 0, left: 8 }} barCategoryGap="28%">
                 <defs>
-                  <linearGradient id="barGradBlue" x1="0" y1="0" x2="0" y2="1">
+                  <linearGradient id="gBarBlue" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="0%" stopColor="#3b82f6" stopOpacity={1} />
-                    <stop offset="100%" stopColor="#1d4ed8" stopOpacity={0.85} />
+                    <stop offset="100%" stopColor="#1d4ed8" stopOpacity={0.8} />
                   </linearGradient>
-                  <linearGradient id="barGradGold" x1="0" y1="0" x2="0" y2="1">
+                  <linearGradient id="gBarGold" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="0%" stopColor="#C9A84C" stopOpacity={1} />
-                    <stop offset="100%" stopColor="#b8953d" stopOpacity={0.9} />
+                    <stop offset="100%" stopColor="#a07c30" stopOpacity={0.9} />
                   </linearGradient>
-                  <filter id="barDrop"><feDropShadow dx="0" dy="2" stdDeviation="3" floodColor="#0F2A4E" floodOpacity="0.15" /></filter>
+                  <filter id="fBarShadow" x="-10%" y="-10%" width="120%" height="140%">
+                    <feDropShadow dx="0" dy="3" stdDeviation="4" floodColor="#0F2A4E" floodOpacity="0.18" />
+                  </filter>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
-                <XAxis dataKey="mes" tick={{ fontSize: 9, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
-                <YAxis tickFormatter={fmtK} tick={{ fontSize: 9, fill: '#94a3b8' }} axisLine={false} tickLine={false} width={58} />
+                <XAxis dataKey="mes" tick={{ fontSize: 10, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
+                <YAxis tickFormatter={fmtK} tick={{ fontSize: 9, fill: '#94a3b8' }} axisLine={false} tickLine={false} width={60} />
                 {mediaMensal > 0 && (
-                  <ReferenceLine y={mediaMensal} stroke="#94a3b8" strokeDasharray="4 3" strokeWidth={1.5}
-                    label={{ value: 'média', position: 'insideTopRight', fontSize: 9, fill: '#94a3b8', dy: -6 }} />
+                  <ReferenceLine
+                    y={mediaMensal}
+                    stroke="#94a3b8"
+                    strokeDasharray="5 3"
+                    strokeWidth={1.5}
+                    label={{ value: `média ${fmtK(mediaMensal)}`, position: 'insideTopRight', fontSize: 9, fill: '#94a3b8', dy: -6 }}
+                  />
                 )}
                 <Tooltip
-                  cursor={{ fill: 'rgba(15,42,78,0.04)' }}
+                  cursor={{ fill: 'rgba(15,42,78,0.05)', radius: 6 }}
                   content={({ active, payload }) => {
                     if (!active || !payload?.length) return null;
                     const d = payload[0].payload;
-                    const isAtual = barData.indexOf(d) === ultimoMesIdx;
+                    const idx = barData.indexOf(d);
+                    const isAtual = idx === ultimoMesIdx;
+                    const vsMed = mediaMensal > 0 && d.valor > 0 ? ((d.valor - mediaMensal) / mediaMensal) * 100 : null;
                     return (
-                      <div style={{ background: '#0F2A4E', borderRadius: 10, padding: '8px 12px', boxShadow: '0 4px 16px rgba(0,0,0,0.25)' }}>
-                        <p style={{ color: isAtual ? '#C9A84C' : '#60a5fa', fontWeight: 700, fontSize: 11, margin: '0 0 3px' }}>{d.mes}</p>
-                        <p style={{ color: '#fff', fontSize: 12, fontWeight: 700, margin: 0, fontVariantNumeric: 'tabular-nums' }}>R$ {fmtFull(d.valor)}</p>
-                        {mediaMensal > 0 && d.valor > 0 && (
-                          <p style={{ color: d.valor >= mediaMensal ? '#10b981' : '#f87171', fontSize: 10, margin: '3px 0 0' }}>
-                            {d.valor >= mediaMensal ? '▲' : '▼'} {Math.abs(((d.valor - mediaMensal) / mediaMensal) * 100).toFixed(1)}% vs média
+                      <div style={{ background: '#0F2A4E', borderRadius: 10, padding: '10px 14px', boxShadow: '0 8px 24px rgba(0,0,0,0.35)', border: '1px solid rgba(255,255,255,0.08)' }}>
+                        <p style={{ color: isAtual ? '#C9A84C' : '#60a5fa', fontWeight: 700, fontSize: 11, margin: '0 0 5px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{d.mes}</p>
+                        <p style={{ color: '#fff', fontSize: 14, fontWeight: 800, margin: 0, fontVariantNumeric: 'tabular-nums' }}>R$ {fmtFull(d.valor)}</p>
+                        {vsMed !== null && (
+                          <p style={{ color: vsMed >= 0 ? '#10b981' : '#f87171', fontSize: 10, margin: '5px 0 0', fontWeight: 600 }}>
+                            {vsMed >= 0 ? '▲' : '▼'} {Math.abs(vsMed).toFixed(1)}% vs média mensal
                           </p>
                         )}
+                        {isAtual && <p style={{ color: '#C9A84C', fontSize: 9, margin: '3px 0 0', opacity: 0.8 }}>último mês com dados</p>}
                       </div>
                     );
                   }}
                 />
-                <Bar dataKey="valor" radius={[5, 5, 0, 0]} isAnimationActive animationDuration={800} animationEasing="ease-out" style={{ filter: 'url(#barDrop)' }}>
+                <Bar
+                  dataKey="valor"
+                  name="Receita"
+                  radius={[6, 6, 0, 0]}
+                  isAnimationActive
+                  animationDuration={900}
+                  animationEasing="ease-out"
+                  style={{ filter: 'url(#fBarShadow)' }}
+                >
                   {barData.map((entry, i) => (
-                    <Cell key={i}
-                      fill={i === ultimoMesIdx ? 'url(#barGradGold)' : entry.valor > 0 ? 'url(#barGradBlue)' : '#f1f5f9'}
+                    <Cell
+                      key={i}
+                      fill={i === ultimoMesIdx ? 'url(#gBarGold)' : entry.valor > 0 ? 'url(#gBarBlue)' : '#f1f5f9'}
                     />
                   ))}
                 </Bar>
@@ -918,38 +996,62 @@ function TabGeralReceita({
 
             {/* Acumulado sparkline */}
             {mesesAtivos >= 1 && acumulado[ultimoMesIdx >= 0 ? ultimoMesIdx : 0] > 0 && (
-              <div style={{ padding: '10px 16px 4px', borderTop: '1px solid #f1f5f9', marginTop: 4 }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
-                  <span style={{ fontSize: 10, fontWeight: 600, color: '#64748b' }}>Acumulado no ano</span>
-                  <span style={{ fontSize: 11, fontWeight: 700, color: '#10b981', fontVariantNumeric: 'tabular-nums' }}>R$ {fmtFull(acumulado[ultimoMesIdx >= 0 ? ultimoMesIdx : 0])}</span>
+              <div style={{ padding: '10px 18px 6px', borderTop: '1px solid #f1f5f9', marginTop: 4 }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 7 }}>
+                  <span style={{ fontSize: 10, fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Acumulado no ano</span>
+                  <motion.span
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ delay: 0.8 }}
+                    style={{ fontSize: 12, fontWeight: 800, color: '#10b981', fontVariantNumeric: 'tabular-nums' }}
+                  >
+                    R$ {fmtFull(acumulado[ultimoMesIdx >= 0 ? ultimoMesIdx : 0])}
+                  </motion.span>
                 </div>
-                <svg width="100%" height="48" viewBox="0 0 440 48" preserveAspectRatio="none" style={{ overflow: 'visible' }}>
+                <svg width="100%" height="50" viewBox="0 0 440 50" preserveAspectRatio="none" style={{ overflow: 'visible' }}>
                   <defs>
-                    <linearGradient id="acumGrad" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="#10b981" stopOpacity="0.25" />
+                    <linearGradient id="gAcum" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#10b981" stopOpacity="0.3" />
                       <stop offset="100%" stopColor="#10b981" stopOpacity="0.02" />
                     </linearGradient>
                   </defs>
                   {(() => {
-                    const W = 440; const H = 48; const pad = 8;
-                    const pts = acumulado.map((v, i) => ({ x: pad + (i/11)*(W-pad*2), y: v > 0 ? (H-pad) - (v/maxAcum)*(H-pad*2) : H-pad, hasData: mensal[i] > 0 }));
-                    const active = pts.slice(0, Math.max(ultimoMesIdx+1, 1));
-                    const pathD = [`M ${active[0].x} ${H-pad}`, ...active.map(p=>`L ${p.x} ${p.y}`), `L ${active[active.length-1].x} ${H-pad}`, 'Z'].join(' ');
-                    const lineD = active.map((p,i) => `${i===0?'M':'L'} ${p.x} ${p.y}`).join(' ');
-                    return <>
-                      <path d={pathD} fill="url(#acumGrad)" />
-                      <path d={lineD} fill="none" stroke="#10b981" strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
-                      {active.map((p,i) => p.hasData && <circle key={i} cx={p.x} cy={p.y} r={i===ultimoMesIdx?4:2} fill={i===ultimoMesIdx?'#C9A84C':'#10b981'} />)}
-                    </>;
+                    const W = 440; const H = 50; const pad = 8;
+                    const pts = acumulado.map((v, i) => ({
+                      x: pad + (i / 11) * (W - pad * 2),
+                      y: v > 0 ? (H - pad) - (v / maxAcum) * (H - pad * 2) : H - pad,
+                      hasData: mensal[i] > 0,
+                    }));
+                    const active = pts.slice(0, Math.max(ultimoMesIdx + 1, 1));
+                    const pathD = [`M ${active[0].x} ${H - pad}`, ...active.map(p => `L ${p.x} ${p.y}`), `L ${active[active.length - 1].x} ${H - pad}`, 'Z'].join(' ');
+                    const lineD = active.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ');
+                    return (
+                      <>
+                        <path d={pathD} fill="url(#gAcum)" />
+                        <path d={lineD} fill="none" stroke="#10b981" strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round" />
+                        {active.map((p, i) => p.hasData && (
+                          <circle key={i} cx={p.x} cy={p.y}
+                            r={i === ultimoMesIdx ? 5 : 2.5}
+                            fill={i === ultimoMesIdx ? '#C9A84C' : '#10b981'}
+                            stroke={i === ultimoMesIdx ? '#fff' : 'none'}
+                            strokeWidth={i === ultimoMesIdx ? 2 : 0}
+                          />
+                        ))}
+                      </>
+                    );
                   })()}
                 </svg>
               </div>
             )}
 
-            <div style={{ display: 'flex', gap: 16, padding: '8px 16px 4px', borderTop: '1px solid #f1f5f9' }}>
-              {[{ color: '#3b82f6', label: 'Meses anteriores' }, { color: '#C9A84C', label: 'Último mês' }, { color: '#10b981', label: 'Acumulado' }].map(({ color, label }) => (
-                <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                  <div style={{ width: 9, height: 9, borderRadius: 3, background: color }} />
+            <div style={{ display: 'flex', gap: 18, padding: '8px 18px 6px', borderTop: '1px solid #f1f5f9' }}>
+              {[
+                { color: '#3b82f6', label: 'Meses anteriores' },
+                { color: '#C9A84C', label: 'Último mês' },
+                { color: '#10b981', label: 'Acumulado' },
+              ].map(({ color, label }) => (
+                <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <div style={{ width: 10, height: 10, borderRadius: 3, background: color, flexShrink: 0 }} />
                   <span style={{ fontSize: 10, color: '#94a3b8' }}>{label}</span>
                 </div>
               ))}
@@ -958,72 +1060,117 @@ function TabGeralReceita({
         </motion.div>
 
         {/* ── Composição da Receita — Donut + Legenda ── */}
-        <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.45, delay: 0.2 }} style={cardStyle}>
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.25, ease: [0.22, 1, 0.36, 1] }}
+          style={cardStyle}
+        >
           <div style={headerStyle}>
             <PieChartIcon size={15} color="rgba(255,255,255,0.6)" />
             <span style={{ fontSize: 13, fontWeight: 700, color: '#fff' }}>Composição da Receita</span>
-            <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.45)', marginLeft: 'auto', fontFamily: 'monospace' }}>por fonte</span>
+            <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', marginLeft: 'auto', fontFamily: 'monospace' }}>por fonte</span>
             <InfoPopover insights={<><strong>Composição da Receita</strong><br /><br />Divide o total arrecadado em três categorias:<br /><br />• <strong>Orçamentária</strong>: receitas previstas no orçamento (LOA)<br />• <strong>Transf. Bancárias</strong>: movimentações financeiras entre contas<br />• <strong>Extra-Orçamentária</strong>: retenções e depósitos fora do orçamento<br /><br />💡 Receita Extra-Orçamentária não é renda livre — são recursos de terceiros retidos temporariamente.</>} />
           </div>
-          <div style={{ padding: '14px 16px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
-              {/* Donut */}
-              <div style={{ position: 'relative', flexShrink: 0 }}>
-                <ResponsiveContainer width={120} height={120}>
+          <div style={{ padding: '16px 18px' }}>
+            {/* Donut centralizado */}
+            <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 16 }}>
+              <div style={{ position: 'relative' }}>
+                <ResponsiveContainer width={150} height={150}>
                   <PieChart>
                     <defs>
                       {fontes.map((f, i) => (
-                        <linearGradient key={i} id={`compGrad${i}`} x1="0" y1="0" x2="1" y2="1">
+                        <linearGradient key={i} id={`gComp${i}`} x1="0" y1="0" x2="1" y2="1">
                           <stop offset="0%" stopColor={f.color} stopOpacity={1} />
-                          <stop offset="100%" stopColor={f.color} stopOpacity={0.65} />
+                          <stop offset="100%" stopColor={f.color} stopOpacity={0.6} />
                         </linearGradient>
                       ))}
+                      <filter id="fDonutShadow">
+                        <feDropShadow dx="0" dy="3" stdDeviation="5" floodColor="#0F2A4E" floodOpacity="0.2" />
+                      </filter>
                     </defs>
-                    <Pie data={fontes} dataKey="value" cx="50%" cy="50%" innerRadius={38} outerRadius={56} paddingAngle={3} isAnimationActive animationDuration={1000}>
-                      {fontes.map((f, i) => <Cell key={i} fill={`url(#compGrad${i})`} stroke="none" />)}
+                    <Pie
+                      data={fontes}
+                      dataKey="value"
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={46}
+                      outerRadius={68}
+                      paddingAngle={3}
+                      isAnimationActive
+                      animationDuration={1100}
+                      animationEasing="ease-out"
+                      style={{ filter: 'url(#fDonutShadow)' }}
+                    >
+                      {fontes.map((f, i) => <Cell key={i} fill={`url(#gComp${i})`} stroke="none" />)}
                     </Pie>
-                    <Tooltip content={({ active, payload }) => {
-                      if (!active || !payload?.length) return null;
-                      const d = payload[0].payload;
-                      const p = totalGeral > 0 ? (d.value / totalGeral * 100).toFixed(1) : '0';
-                      return <div style={{ background: '#0F2A4E', borderRadius: 8, padding: '6px 10px', fontSize: 11 }}><p style={{ color: '#C9A84C', fontWeight: 700, margin: 0 }}>{d.label}</p><p style={{ color: '#fff', margin: '2px 0 0' }}>{p}% · R$ {fmtFull(d.value)}</p></div>;
-                    }} />
+                    <Tooltip
+                      content={({ active, payload }) => {
+                        if (!active || !payload?.length) return null;
+                        const d = payload[0].payload;
+                        const p = totalGeral > 0 ? (d.value / totalGeral * 100).toFixed(1) : '0';
+                        return (
+                          <div style={{ background: '#0F2A4E', borderRadius: 10, padding: '10px 14px', boxShadow: '0 8px 24px rgba(0,0,0,0.35)', border: '1px solid rgba(255,255,255,0.08)' }}>
+                            <p style={{ color: '#C9A84C', fontWeight: 700, fontSize: 11, margin: '0 0 4px' }}>{d.label}</p>
+                            <p style={{ color: '#fff', fontWeight: 800, fontSize: 13, margin: 0, fontVariantNumeric: 'tabular-nums' }}>R$ {fmtFull(d.value)}</p>
+                            <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: 10, margin: '3px 0 0' }}>{p}% do total</p>
+                          </div>
+                        );
+                      }}
+                    />
                   </PieChart>
                 </ResponsiveContainer>
                 <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%,-50%)', textAlign: 'center', pointerEvents: 'none' }}>
-                  <div style={{ fontSize: 8, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: 0.5 }}>total</div>
-                  <div style={{ fontSize: 12, fontWeight: 800, color: '#0F2A4E' }}>{fmtK(totalGeral)}</div>
+                  <div style={{ fontSize: 9, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>total</div>
+                  <div style={{ fontSize: 13, fontWeight: 900, color: '#0F2A4E', lineHeight: 1.2 }}>{fmtK(totalGeral)}</div>
                 </div>
               </div>
-              {/* Legenda */}
-              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 10 }}>
-                {fontes.map((f, idx) => {
-                  const pct = totalGeral > 0 ? (f.value / totalGeral) * 100 : 0;
-                  return (
-                    <motion.div key={f.label} initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.35, delay: 0.3 + idx * 0.1 }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                          <div style={{ width: 7, height: 7, borderRadius: '50%', background: f.color, flexShrink: 0 }} />
-                          <span style={{ fontSize: 11, color: '#475569' }}>{f.label}</span>
-                        </div>
-                        <span style={{ fontSize: 11, fontWeight: 700, color: f.color, fontVariantNumeric: 'tabular-nums' }}>{pct.toFixed(1)}%</span>
-                      </div>
-                      <div style={{ height: 5, background: '#f1f5f9', borderRadius: 99, overflow: 'hidden' }}>
-                        <motion.div initial={{ width: 0 }} animate={{ width: `${pct}%` }}
-                          transition={{ duration: 0.9, delay: 0.4 + idx * 0.12, ease: 'easeOut' }}
-                          style={{ height: '100%', background: `linear-gradient(90deg,${f.color},${f.color}bb)`, borderRadius: 99, boxShadow: `0 1px 4px ${f.color}44` }} />
-                      </div>
-                    </motion.div>
-                  );
-                })}
-              </div>
             </div>
-            <div style={{ paddingTop: 12, borderTop: '1px solid #f1f5f9', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
+            {/* Legenda com barras animadas */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              {fontes.map((f, idx) => {
+                const pct = totalGeral > 0 ? (f.value / totalGeral) * 100 : 0;
+                return (
+                  <motion.div
+                    key={f.label}
+                    initial={{ opacity: 0, x: -12 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ duration: 0.4, delay: 0.35 + idx * 0.1, ease: [0.22, 1, 0.36, 1] }}
+                    whileHover={{ x: 2 }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 5 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+                        <div style={{ width: 8, height: 8, borderRadius: '50%', background: f.color, flexShrink: 0, boxShadow: `0 0 6px ${f.color}66` }} />
+                        <span style={{ fontSize: 12, color: '#374151', fontWeight: 500 }}>{f.label}</span>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                        <span style={{ fontSize: 11, color: '#64748b', fontVariantNumeric: 'tabular-nums' }}>R$ {fmtFull(f.value)}</span>
+                        <span style={{ fontSize: 11, fontWeight: 800, color: f.color, minWidth: 36, textAlign: 'right' }}>{pct.toFixed(1)}%</span>
+                      </div>
+                    </div>
+                    <div style={{ height: 5, background: '#f1f5f9', borderRadius: 99, overflow: 'hidden' }}>
+                      <motion.div
+                        initial={{ width: 0 }}
+                        animate={{ width: `${pct}%` }}
+                        transition={{ duration: 1.1, delay: 0.5 + idx * 0.12, ease: [0.22, 1, 0.36, 1] }}
+                        style={{
+                          height: '100%',
+                          background: `linear-gradient(90deg, ${f.color}, ${f.color}99)`,
+                          borderRadius: 99,
+                          boxShadow: `0 1px 5px ${f.color}40`,
+                        }}
+                      />
+                    </div>
+                  </motion.div>
+                );
+              })}
+            </div>
+            <div style={{ marginTop: 14, paddingTop: 12, borderTop: '1px solid #f1f5f9', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div>
-                <p style={{ fontSize: 10, color: '#94a3b8', margin: 0 }}>Total consolidado</p>
-                <p style={{ fontSize: 15, fontWeight: 800, color: '#0F2A4E', margin: '3px 0 0', fontVariantNumeric: 'tabular-nums' }}>R$ {fmtFull(totalGeral)}</p>
+                <p style={{ fontSize: 10, color: '#94a3b8', margin: 0, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Total consolidado</p>
+                <p style={{ fontSize: 16, fontWeight: 900, color: '#0F2A4E', margin: '3px 0 0', fontVariantNumeric: 'tabular-nums' }}>R$ {fmtFull(totalGeral)}</p>
               </div>
-              <span style={{ fontSize: 10, color: '#94a3b8' }}>{summary?.total_registros ?? 0} registros</span>
+              <span style={{ fontSize: 10, color: '#94a3b8', background: '#f8fafc', padding: '3px 10px', borderRadius: 99, border: '1px solid #e2e8f0' }}>{summary?.total_registros ?? 0} registros</span>
             </div>
           </div>
         </motion.div>
@@ -1032,52 +1179,63 @@ function TabGeralReceita({
       {/* ── Top Subgrupos ── */}
       {topSubgrupos.length > 0 && (
         <motion.div
-          initial={{ opacity: 0, y: 16 }}
+          initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.45, delay: 0.25 }}
+          transition={{ duration: 0.5, delay: 0.3, ease: [0.22, 1, 0.36, 1] }}
           style={cardStyle}
         >
           <div style={headerStyle}>
             <BarChart2 size={15} color="rgba(255,255,255,0.6)" />
             <span style={{ fontSize: 13, fontWeight: 700, color: '#fff' }}>Principais Fontes de Receita</span>
-            <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.45)', marginLeft: 'auto', fontFamily: 'monospace' }}>top {topSubgrupos.length} subgrupos · {ano}</span>
+            <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', marginLeft: 'auto', fontFamily: 'monospace' }}>top {topSubgrupos.length} subgrupos · {ano}</span>
             <InfoPopover insights={<><strong>Principais Fontes de Receita</strong><br /><br />Ranking dos subgrupos que mais contribuíram para a arrecadação total.<br /><br />A barra horizontal representa o percentual em relação ao maior subgrupo. O número à direita mostra a fatia no total geral.<br /><br />⚠️ Dependência excessiva de um único subgrupo (ex: SUS) pode representar risco fiscal caso o repasse seja suspenso ou atrasado.</>} />
           </div>
-          <div style={{ padding: '14px 20px 16px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <div style={{ padding: '16px 22px 18px', display: 'flex', flexDirection: 'column', gap: 14 }}>
             {topSubgrupos.map(([desc, valor], i) => {
               const pct = (valor / maxSg) * 100;
               const share = totalGeral > 0 ? ((valor / totalGeral) * 100).toFixed(1) : '0';
               return (
                 <motion.div
                   key={desc}
-                  initial={{ opacity: 0, x: -16 }}
+                  initial={{ opacity: 0, x: -20 }}
                   animate={{ opacity: 1, x: 0 }}
-                  transition={{ duration: 0.4, delay: 0.3 + i * 0.07 }}
-                  whileHover={{ x: 3 }}
-                  style={{ display: 'flex', alignItems: 'center', gap: 12 }}
+                  transition={{ duration: 0.45, delay: 0.35 + i * 0.07, ease: [0.22, 1, 0.36, 1] }}
+                  whileHover={{ x: 4 }}
+                  style={{ display: 'flex', alignItems: 'center', gap: 14, cursor: 'default' }}
                 >
                   <motion.div
-                    initial={{ scale: 0 }}
-                    animate={{ scale: 1 }}
-                    transition={{ type: 'spring', stiffness: 300, damping: 18, delay: 0.3 + i * 0.07 }}
-                    style={{ width: 24, height: 24, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 800, color: '#fff', flexShrink: 0, background: cores[i], boxShadow: `0 2px 8px ${cores[i]}55` }}
+                    initial={{ scale: 0, rotate: -15 }}
+                    animate={{ scale: 1, rotate: 0 }}
+                    transition={{ type: 'spring', stiffness: 320, damping: 20, delay: 0.4 + i * 0.07 }}
+                    style={{
+                      width: 28, height: 28, borderRadius: 9,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      fontSize: 11, fontWeight: 900, color: '#fff', flexShrink: 0,
+                      background: cores[i],
+                      boxShadow: `0 4px 12px ${cores[i]}55`,
+                    }}
                   >
                     {i + 1}
                   </motion.div>
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 5 }}>
-                      <span style={{ fontSize: 11, fontWeight: 500, color: '#374151', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', paddingRight: 8 }}>{desc}</span>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
-                        <span style={{ fontSize: 10, color: '#94a3b8', fontVariantNumeric: 'tabular-nums' }}>{share}%</span>
-                        <span style={{ fontSize: 11, fontWeight: 700, color: '#0F2A4E', fontVariantNumeric: 'tabular-nums' }}>R$ {fmtFull(valor)}</span>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+                      <span style={{ fontSize: 12, fontWeight: 500, color: '#1e293b', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', paddingRight: 10 }}>{desc}</span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0 }}>
+                        <span style={{ fontSize: 10, color: '#94a3b8', fontVariantNumeric: 'tabular-nums', background: '#f8fafc', padding: '2px 7px', borderRadius: 99, border: '1px solid #e2e8f0' }}>{share}%</span>
+                        <span style={{ fontSize: 12, fontWeight: 800, color: '#0F2A4E', fontVariantNumeric: 'tabular-nums' }}>R$ {fmtFull(valor)}</span>
                       </div>
                     </div>
-                    <div style={{ height: 6, background: '#f1f5f9', borderRadius: 99, overflow: 'hidden' }}>
+                    <div style={{ height: 7, background: '#f1f5f9', borderRadius: 99, overflow: 'hidden' }}>
                       <motion.div
                         initial={{ width: 0 }}
                         animate={{ width: `${pct}%` }}
-                        transition={{ duration: 0.8, delay: 0.35 + i * 0.07, ease: 'easeOut' }}
-                        style={{ height: '100%', background: `linear-gradient(90deg, ${cores[i]}, ${cores[i]}bb)`, borderRadius: 99, boxShadow: `0 1px 4px ${cores[i]}44` }}
+                        transition={{ duration: 1.1, delay: 0.45 + i * 0.07, ease: [0.22, 1, 0.36, 1] }}
+                        style={{
+                          height: '100%',
+                          background: `linear-gradient(90deg, ${cores[i]}, ${cores[i]}cc)`,
+                          borderRadius: 99,
+                          boxShadow: `0 1px 6px ${cores[i]}44`,
+                        }}
                       />
                     </div>
                   </div>
@@ -1088,141 +1246,164 @@ function TabGeralReceita({
         </motion.div>
       )}
 
-      {/* ── Segunda linha de gráficos ── */}
+      {/* ── Linha inferior: 3 cards ── */}
       {mesesAtivos > 0 && (
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 16 }}>
 
           {/* ── Variação Mês a Mês ── */}
           <motion.div
-            initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4, delay: 0.3 }}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.45, delay: 0.35, ease: [0.22, 1, 0.36, 1] }}
             style={cardStyle}
           >
             <div style={headerStyle}>
               <TrendingUp size={15} color="rgba(255,255,255,0.6)" />
               <span style={{ fontSize: 13, fontWeight: 700, color: '#fff' }}>Variação Mês a Mês</span>
-              <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.45)', marginLeft: 'auto', fontFamily: 'monospace' }}>Δ vs mês anterior</span>
-              <InfoPopover insights={<><strong>Variação Mês a Mês</strong><br /><br />Mostra quanto a receita subiu ou caiu em relação ao mês anterior.<br /><br />🟢 <strong>Verde</strong>: crescimento<br />🔴 <strong>Vermelho</strong>: queda<br /><br />💡 Variações grandes podem indicar repasses concentrados ou atrasos na importação.</>} />
+              <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', marginLeft: 'auto', fontFamily: 'monospace' }}>Δ vs anterior</span>
+              <InfoPopover insights={<><strong>Variação Mês a Mês</strong><br /><br />Mostra quanto a receita subiu ou caiu em relação ao mês anterior.<br /><br />🟢 <strong>Verde</strong>: crescimento · 🔴 <strong>Vermelho</strong>: queda<br /><br />💡 Variações grandes podem indicar repasses concentrados ou atrasos.</>} />
             </div>
-            <div style={{ padding: '14px 16px 10px' }}>
-              {(() => {
-                const variacoes = mensal.map((v, i) => {
-                  if (i === 0 || mensal[i - 1] === 0) return null;
-                  const delta = v - mensal[i - 1];
-                  const pct = mensal[i - 1] > 0 ? (delta / mensal[i - 1]) * 100 : 0;
-                  return { mes: MESES[i], delta, pct, positivo: delta >= 0 };
-                }).filter(Boolean) as { mes: string; delta: number; pct: number; positivo: boolean }[];
-
-                if (variacoes.length === 0) return <p style={{ fontSize: 11, color: '#94a3b8', padding: '20px 0', textAlign: 'center' }}>Dados insuficientes</p>;
-
-                const maxAbs = Math.max(...variacoes.map(v => Math.abs(v.delta)), 1);
-                return (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                    {variacoes.map((v, i) => (
-                      <motion.div key={v.mes}
-                        initial={{ opacity: 0, x: -12 }} animate={{ opacity: 1, x: 0 }}
-                        transition={{ duration: 0.35, delay: 0.4 + i * 0.08 }}
-                        style={{ display: 'flex', alignItems: 'center', gap: 10 }}
-                      >
-                        <span style={{ fontSize: 10, color: '#64748b', width: 28, flexShrink: 0 }}>{v.mes}</span>
-                        <div style={{ flex: 1, height: 20, display: 'flex', alignItems: 'center', position: 'relative' }}>
-                          <div style={{ position: 'absolute', left: '50%', top: 0, bottom: 0, width: 1, background: '#e2e8f0' }} />
-                          <div style={{
-                            position: 'absolute',
-                            height: 12,
-                            width: `${(Math.abs(v.delta) / maxAbs) * 48}%`,
-                            borderRadius: v.positivo ? '0 6px 6px 0' : '6px 0 0 6px',
-                            background: v.positivo ? 'linear-gradient(90deg,#10b981,#34d399)' : 'linear-gradient(90deg,#f87171,#ef4444)',
-                            left: v.positivo ? '50%' : undefined,
-                            right: v.positivo ? undefined : '50%',
-                            boxShadow: v.positivo ? '0 1px 4px rgba(16,185,129,0.3)' : '0 1px 4px rgba(239,68,68,0.3)',
-                          }} />
-                        </div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
-                          <span style={{ fontSize: 10, fontWeight: 700, color: v.positivo ? '#10b981' : '#ef4444' }}>
+            <div style={{ padding: '16px 18px 12px' }}>
+              {variacoes.length === 0
+                ? <p style={{ fontSize: 11, color: '#94a3b8', padding: '24px 0', textAlign: 'center' }}>Dados insuficientes</p>
+                : (() => {
+                  const maxAbs = Math.max(...variacoes.map(v => Math.abs(v.delta)), 1);
+                  return (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
+                      {variacoes.map((v, i) => (
+                        <motion.div
+                          key={v.mes}
+                          initial={{ opacity: 0, x: -14 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          transition={{ duration: 0.38, delay: 0.42 + i * 0.07, ease: [0.22, 1, 0.36, 1] }}
+                          whileHover={{ x: 3 }}
+                          style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'default' }}
+                        >
+                          <span style={{ fontSize: 10, color: '#64748b', width: 28, flexShrink: 0, fontWeight: 500 }}>{v.mes}</span>
+                          <div style={{ flex: 1, height: 22, display: 'flex', alignItems: 'center', position: 'relative' }}>
+                            <div style={{ position: 'absolute', left: '50%', top: 0, bottom: 0, width: 1, background: '#e2e8f0' }} />
+                            <motion.div
+                              initial={{ width: 0 }}
+                              animate={{ width: `${(Math.abs(v.delta) / maxAbs) * 48}%` }}
+                              transition={{ duration: 0.9, delay: 0.5 + i * 0.07, ease: [0.22, 1, 0.36, 1] }}
+                              style={{
+                                position: 'absolute',
+                                height: 14,
+                                borderRadius: v.positivo ? '0 7px 7px 0' : '7px 0 0 7px',
+                                background: v.positivo
+                                  ? 'linear-gradient(90deg, #10b981, #34d399)'
+                                  : 'linear-gradient(270deg, #f87171, #ef4444)',
+                                left: v.positivo ? '50%' : undefined,
+                                right: v.positivo ? undefined : '50%',
+                                boxShadow: v.positivo ? '0 2px 8px rgba(16,185,129,0.35)' : '0 2px 8px rgba(239,68,68,0.35)',
+                              }}
+                            />
+                          </div>
+                          <span style={{ fontSize: 10, fontWeight: 800, color: v.positivo ? '#10b981' : '#ef4444', flexShrink: 0, minWidth: 54, textAlign: 'right' }}>
                             {v.positivo ? '▲' : '▼'} {Math.abs(v.pct).toFixed(1)}%
                           </span>
-                        </div>
-                      </motion.div>
-                    ))}
-                  </div>
-                );
-              })()}
+                        </motion.div>
+                      ))}
+                    </div>
+                  );
+                })()
+              }
             </div>
           </motion.div>
 
-          {/* ── Donut Composição ── */}
+          {/* ── Participação por Fonte — Donut compacto ── */}
           <motion.div
-            initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4, delay: 0.38 }}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.45, delay: 0.42, ease: [0.22, 1, 0.36, 1] }}
             style={cardStyle}
           >
             <div style={headerStyle}>
               <PieChartIcon size={15} color="rgba(255,255,255,0.6)" />
               <span style={{ fontSize: 13, fontWeight: 700, color: '#fff' }}>Participação por Fonte</span>
-              <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.45)', marginLeft: 'auto', fontFamily: 'monospace' }}>% do total</span>
+              <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', marginLeft: 'auto', fontFamily: 'monospace' }}>% do total</span>
               <InfoPopover insights={<><strong>Participação por Fonte</strong><br /><br />Proporção visual de cada fonte no total arrecadado.<br /><br />💡 Municípios saudáveis têm a maior parte em Orçamentária (receitas próprias + transferências constitucionais).</>} />
             </div>
-            <div style={{ padding: '14px 16px', display: 'flex', alignItems: 'center', gap: 12 }}>
+            <div style={{ padding: '16px 18px', display: 'flex', alignItems: 'center', gap: 14 }}>
               {(() => {
-                const fontes = [
+                const fontesPart = [
                   { label: 'Orçamentária', value: totalOrc, color: '#3b82f6' },
                   { label: 'Transf. Banc.', value: totalTransf, color: '#f59e0b' },
                   { label: 'Extra-Orc.', value: totalExtra, color: '#8b5cf6' },
                 ].filter(f => f.value > 0);
-                const total = fontes.reduce((s, f) => s + f.value, 0);
+                const totalPart = fontesPart.reduce((s, f) => s + f.value, 0);
                 return (
                   <>
                     <div style={{ position: 'relative', flexShrink: 0, width: 110, height: 110 }}>
                       <ResponsiveContainer width={110} height={110}>
                         <PieChart>
                           <defs>
-                            {fontes.map((f, i) => (
-                              <linearGradient key={i} id={`dnutGrad${i}`} x1="0" y1="0" x2="1" y2="1">
+                            {fontesPart.map((f, i) => (
+                              <linearGradient key={i} id={`gPart${i}`} x1="0" y1="0" x2="1" y2="1">
                                 <stop offset="0%" stopColor={f.color} stopOpacity={1} />
-                                <stop offset="100%" stopColor={f.color} stopOpacity={0.7} />
+                                <stop offset="100%" stopColor={f.color} stopOpacity={0.65} />
                               </linearGradient>
                             ))}
                           </defs>
-                          <Pie data={fontes} dataKey="value" cx="50%" cy="50%" innerRadius={34} outerRadius={50} paddingAngle={3} isAnimationActive animationDuration={900}>
-                            {fontes.map((f, i) => <Cell key={i} fill={`url(#dnutGrad${i})`} stroke="none" />)}
+                          <Pie
+                            data={fontesPart}
+                            dataKey="value"
+                            cx="50%" cy="50%"
+                            innerRadius={34} outerRadius={50}
+                            paddingAngle={3}
+                            isAnimationActive
+                            animationDuration={1000}
+                            animationEasing="ease-out"
+                          >
+                            {fontesPart.map((f, i) => <Cell key={i} fill={`url(#gPart${i})`} stroke="none" />)}
                           </Pie>
-                          <Tooltip content={({ active, payload }) => {
-                            if (!active || !payload?.length) return null;
-                            const d = payload[0].payload;
-                            const p = total > 0 ? (d.value / total * 100).toFixed(1) : '0';
-                            return (
-                              <div style={{ background: '#0F2A4E', borderRadius: 8, padding: '6px 10px', fontSize: 11 }}>
-                                <p style={{ color: '#C9A84C', fontWeight: 700, margin: 0 }}>{d.label}</p>
-                                <p style={{ color: '#fff', margin: '2px 0 0' }}>{p}%</p>
-                              </div>
-                            );
-                          }} />
+                          <Tooltip
+                            content={({ active, payload }) => {
+                              if (!active || !payload?.length) return null;
+                              const d = payload[0].payload;
+                              const p = totalPart > 0 ? (d.value / totalPart * 100).toFixed(1) : '0';
+                              return (
+                                <div style={{ background: '#0F2A4E', borderRadius: 10, padding: '10px 14px', boxShadow: '0 8px 24px rgba(0,0,0,0.35)', border: '1px solid rgba(255,255,255,0.08)' }}>
+                                  <p style={{ color: '#C9A84C', fontWeight: 700, fontSize: 11, margin: '0 0 4px' }}>{d.label}</p>
+                                  <p style={{ color: '#fff', fontWeight: 800, fontSize: 12, margin: 0, fontVariantNumeric: 'tabular-nums' }}>R$ {fmtFull(d.value)}</p>
+                                  <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: 10, margin: '3px 0 0' }}>{p}% do total</p>
+                                </div>
+                              );
+                            }}
+                          />
                         </PieChart>
                       </ResponsiveContainer>
                       <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%,-50%)', textAlign: 'center', pointerEvents: 'none' }}>
                         <div style={{ fontSize: 8, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: 0.5 }}>total</div>
-                        <div style={{ fontSize: 11, fontWeight: 800, color: '#0F2A4E' }}>{fmtK(total)}</div>
+                        <div style={{ fontSize: 11, fontWeight: 900, color: '#0F2A4E' }}>{fmtK(totalPart)}</div>
                       </div>
                     </div>
-                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 10 }}>
-                      {fontes.map((f, i) => {
-                        const pct = total > 0 ? (f.value / total * 100) : 0;
+                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 11 }}>
+                      {fontesPart.map((f, i) => {
+                        const pct = totalPart > 0 ? (f.value / totalPart * 100) : 0;
                         return (
-                          <div key={f.label}>
+                          <motion.div
+                            key={f.label}
+                            initial={{ opacity: 0, x: -8 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            transition={{ duration: 0.38, delay: 0.5 + i * 0.1, ease: [0.22, 1, 0.36, 1] }}
+                          >
                             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
                               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                                <div style={{ width: 7, height: 7, borderRadius: '50%', background: f.color }} />
-                                <span style={{ fontSize: 10, color: '#475569' }}>{f.label}</span>
+                                <div style={{ width: 7, height: 7, borderRadius: '50%', background: f.color, flexShrink: 0, boxShadow: `0 0 5px ${f.color}66` }} />
+                                <span style={{ fontSize: 11, color: '#374151', fontWeight: 500 }}>{f.label}</span>
                               </div>
-                              <span style={{ fontSize: 10, fontWeight: 700, color: f.color }}>{pct.toFixed(1)}%</span>
+                              <span style={{ fontSize: 11, fontWeight: 800, color: f.color }}>{pct.toFixed(1)}%</span>
                             </div>
-                            <div style={{ height: 4, background: '#f1f5f9', borderRadius: 99, overflow: 'hidden' }}>
-                              <motion.div initial={{ width: 0 }} animate={{ width: `${pct}%` }}
-                                transition={{ duration: 0.8, delay: 0.5 + i * 0.1, ease: 'easeOut' }}
-                                style={{ height: '100%', background: f.color, borderRadius: 99 }} />
+                            <div style={{ height: 5, background: '#f1f5f9', borderRadius: 99, overflow: 'hidden' }}>
+                              <motion.div
+                                initial={{ width: 0 }}
+                                animate={{ width: `${pct}%` }}
+                                transition={{ duration: 1, delay: 0.58 + i * 0.1, ease: [0.22, 1, 0.36, 1] }}
+                                style={{ height: '100%', background: `linear-gradient(90deg, ${f.color}, ${f.color}99)`, borderRadius: 99, boxShadow: `0 1px 4px ${f.color}33` }}
+                              />
                             </div>
-                          </div>
+                          </motion.div>
                         );
                       })}
                     </div>
@@ -1232,56 +1413,69 @@ function TabGeralReceita({
             </div>
           </motion.div>
 
-          {/* ── Ritmo Diário Médio ── */}
+          {/* ── Média Diária por Mês ── */}
           <motion.div
-            initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4, delay: 0.46 }}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.45, delay: 0.5, ease: [0.22, 1, 0.36, 1] }}
             style={cardStyle}
           >
             <div style={headerStyle}>
               <Calendar size={15} color="rgba(255,255,255,0.6)" />
               <span style={{ fontSize: 13, fontWeight: 700, color: '#fff' }}>Média Diária por Mês</span>
-              <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.45)', marginLeft: 'auto', fontFamily: 'monospace' }}>R$/dia</span>
-              <InfoPopover insights={<><strong>Média Diária por Mês</strong><br /><br />Divide o total arrecadado de cada mês pelo número de dias úteis do mês, normalizando a comparação.<br /><br />💡 Março tem 31 dias e Fevereiro tem 28 — sem normalizar, Março sempre parece melhor mesmo com ritmo igual.</>} />
+              <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', marginLeft: 'auto', fontFamily: 'monospace' }}>R$/dia</span>
+              <InfoPopover insights={<><strong>Média Diária por Mês</strong><br /><br />Divide o total arrecadado de cada mês pelo número de dias do mês, normalizando a comparação.<br /><br />💡 Março (31 dias) vs Fevereiro (28 dias) — sem normalizar, Março sempre parece melhor.</>} />
             </div>
-            <div style={{ padding: '14px 16px 10px' }}>
-              {(() => {
-                const diasPorMes = [31,28,31,30,31,30,31,31,30,31,30,31];
-                const diario = mensal.map((v, i) => ({ mes: MESES[i], valor: v > 0 ? v / diasPorMes[i] : 0 })).filter(d => d.valor > 0);
-                if (diario.length === 0) return <p style={{ fontSize: 11, color: '#94a3b8', padding: '20px 0', textAlign: 'center' }}>Sem dados</p>;
-                const maxD = Math.max(...diario.map(d => d.valor), 1);
-                const melhorD = diario.reduce((a, b) => b.valor > a.valor ? b : a, diario[0]);
-                return (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
-                    {diario.map((d, i) => {
-                      const pct = (d.valor / maxD) * 100;
-                      const isMelhor = d.mes === melhorD.mes;
-                      return (
-                        <motion.div key={d.mes}
-                          initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }}
-                          transition={{ duration: 0.35, delay: 0.45 + i * 0.08 }}
-                          style={{ display: 'flex', alignItems: 'center', gap: 8 }}
-                        >
-                          <span style={{ fontSize: 10, color: isMelhor ? '#C9A84C' : '#64748b', fontWeight: isMelhor ? 700 : 400, width: 28, flexShrink: 0 }}>{d.mes}</span>
-                          <div style={{ flex: 1, height: 8, background: '#f1f5f9', borderRadius: 99, overflow: 'hidden' }}>
-                            <motion.div initial={{ width: 0 }} animate={{ width: `${pct}%` }}
-                              transition={{ duration: 0.7, delay: 0.5 + i * 0.08, ease: 'easeOut' }}
-                              style={{ height: '100%', background: isMelhor ? 'linear-gradient(90deg,#C9A84C,#f59e0b)' : 'linear-gradient(90deg,#3b82f6,#60a5fa)', borderRadius: 99 }}
-                            />
-                          </div>
-                          <span style={{ fontSize: 10, fontWeight: 600, color: isMelhor ? '#C9A84C' : '#0F2A4E', fontVariantNumeric: 'tabular-nums', width: 68, textAlign: 'right', flexShrink: 0 }}>
-                            {fmtK(d.valor)}/dia
-                          </span>
-                        </motion.div>
-                      );
-                    })}
-                    <div style={{ marginTop: 4, paddingTop: 8, borderTop: '1px solid #f1f5f9', display: 'flex', justifyContent: 'space-between' }}>
-                      <span style={{ fontSize: 10, color: '#94a3b8' }}>Melhor ritmo</span>
-                      <span style={{ fontSize: 10, fontWeight: 700, color: '#C9A84C' }}>{melhorD.mes} · {fmtK(melhorD.valor)}/dia</span>
+            <div style={{ padding: '16px 18px 12px' }}>
+              {diario.length === 0
+                ? <p style={{ fontSize: 11, color: '#94a3b8', padding: '24px 0', textAlign: 'center' }}>Sem dados</p>
+                : (() => {
+                  const maxD = Math.max(...diario.map(d => d.valor), 1);
+                  const melhorD = diario.reduce((a, b) => b.valor > a.valor ? b : a, diario[0]);
+                  return (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                      {diario.map((d, i) => {
+                        const pct = (d.valor / maxD) * 100;
+                        const isMelhor = d.mes === melhorD.mes;
+                        return (
+                          <motion.div
+                            key={d.mes}
+                            initial={{ opacity: 0, x: -12 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            transition={{ duration: 0.38, delay: 0.52 + i * 0.07, ease: [0.22, 1, 0.36, 1] }}
+                            whileHover={{ x: 3 }}
+                            style={{ display: 'flex', alignItems: 'center', gap: 9, cursor: 'default' }}
+                          >
+                            <span style={{ fontSize: 10, color: isMelhor ? '#C9A84C' : '#64748b', fontWeight: isMelhor ? 800 : 500, width: 28, flexShrink: 0 }}>{d.mes}</span>
+                            <div style={{ flex: 1, height: 9, background: '#f1f5f9', borderRadius: 99, overflow: 'hidden' }}>
+                              <motion.div
+                                initial={{ width: 0 }}
+                                animate={{ width: `${pct}%` }}
+                                transition={{ duration: 1, delay: 0.6 + i * 0.07, ease: [0.22, 1, 0.36, 1] }}
+                                style={{
+                                  height: '100%',
+                                  background: isMelhor
+                                    ? 'linear-gradient(90deg, #C9A84C, #f59e0b)'
+                                    : 'linear-gradient(90deg, #3b82f6, #60a5fa)',
+                                  borderRadius: 99,
+                                  boxShadow: isMelhor ? '0 2px 8px rgba(201,168,76,0.4)' : '0 2px 6px rgba(59,130,246,0.25)',
+                                }}
+                              />
+                            </div>
+                            <span style={{ fontSize: 10, fontWeight: isMelhor ? 800 : 600, color: isMelhor ? '#C9A84C' : '#0F2A4E', fontVariantNumeric: 'tabular-nums', width: 72, textAlign: 'right', flexShrink: 0 }}>
+                              {fmtK(d.valor)}/dia
+                            </span>
+                          </motion.div>
+                        );
+                      })}
+                      <div style={{ marginTop: 6, paddingTop: 10, borderTop: '1px solid #f1f5f9', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <span style={{ fontSize: 10, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Melhor ritmo</span>
+                        <span style={{ fontSize: 11, fontWeight: 800, color: '#C9A84C' }}>{melhorD.mes} · {fmtK(melhorD.valor)}/dia</span>
+                      </div>
                     </div>
-                  </div>
-                );
-              })()}
+                  );
+                })()
+              }
             </div>
           </motion.div>
 
