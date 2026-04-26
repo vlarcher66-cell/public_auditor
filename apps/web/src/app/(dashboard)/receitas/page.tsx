@@ -898,28 +898,42 @@ function PainelAnalitica({ grupos }: { grupos: Grupo[] }) {
     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 16, marginBottom: 20 }}
       className="grid-cols-1 md:grid-cols-2">
 
-      {/* ── Top SubGrupos ── */}
-      <div style={cardStyle}>
+      {/* ── Top SubGrupos BarChart — largura total ── */}
+      <div style={{ ...cardStyle, gridColumn: '1 / -1' }}>
         <div style={headerStyle}>
           <BarChart2 size={15} color="rgba(255,255,255,0.6)" />
           <span style={{ fontSize: 13, fontWeight: 700, color: '#fff' }}>Top Subgrupos</span>
           <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.45)', marginLeft: 'auto', fontFamily: 'monospace' }}>por valor arrecadado</span>
         </div>
-        <div style={{ padding: '14px 20px', display: 'flex', flexDirection: 'column', gap: 10 }}>
-          {topSg.map((item, i) => {
-            const pct = (item.value / maxTopSg) * 100;
-            return (
-              <div key={i}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 4 }}>
-                  <span style={{ fontSize: 11, color: '#1e293b', fontWeight: 500, lineHeight: 1.3 }}>{item.name}</span>
-                  <span style={{ fontSize: 11, fontWeight: 700, color: '#0F2A4E', whiteSpace: 'nowrap', marginLeft: 12, flexShrink: 0 }}>{fmtK(item.value)}</span>
-                </div>
-                <div style={{ height: 6, background: '#f1f5f9', borderRadius: 99, overflow: 'hidden' }}>
-                  <div style={{ height: '100%', width: `${pct}%`, borderRadius: 99, background: 'linear-gradient(90deg, #1e4d95, #3b82f6)', transition: 'width 0.6s ease' }} />
-                </div>
-              </div>
-            );
-          })}
+        <div style={{ padding: '16px 8px 16px 0' }}>
+          <ResponsiveContainer width="100%" height={280}>
+            <BarChart data={topSg} layout="vertical" margin={{ top: 0, right: 80, bottom: 0, left: 16 }}>
+              <defs>
+                <linearGradient id="barGrad" x1="0" y1="0" x2="1" y2="0">
+                  <stop offset="0%" stopColor="#1e4d95" />
+                  <stop offset="100%" stopColor="#3b82f6" />
+                </linearGradient>
+              </defs>
+              <XAxis type="number" hide />
+              <YAxis
+                type="category"
+                dataKey="name"
+                width={320}
+                tick={{ fontSize: 11, fill: '#475569' }}
+                axisLine={false}
+                tickLine={false}
+              />
+              <Tooltip content={<CustomBarTooltip />} cursor={{ fill: 'rgba(59,130,246,0.06)' }} />
+              <Bar dataKey="value" fill="url(#barGrad)" radius={[0, 6, 6, 0]} maxBarSize={18} isAnimationActive>
+                <LabelList
+                  dataKey="value"
+                  position="right"
+                  formatter={(v: number) => fmtK(v)}
+                  style={{ fontSize: 11, fill: '#475569', fontWeight: 600 }}
+                />
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
         </div>
       </div>
 
