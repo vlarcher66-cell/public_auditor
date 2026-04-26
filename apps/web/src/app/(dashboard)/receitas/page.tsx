@@ -18,6 +18,8 @@ import {
   PieChart, Pie, Cell, Sector, AreaChart, Area, CartesianGrid, Legend, LabelList,
   RadialBarChart, RadialBar, Treemap, ScatterChart, Scatter, ZAxis, ReferenceLine,
 } from 'recharts';
+import { motion } from 'framer-motion';
+import CountUp from 'react-countup';
 
 // ─── Formatação ───────────────────────────────────────────────────────────────
 
@@ -378,22 +380,91 @@ function SummaryCards({ summary, loading, ano, totalTransf = 0 }: { summary: Sum
   const totalOrc   = summary ? Number(summary.valor_orc)   : 0;
   const totalExtra = summary ? Number(summary.valor_extra) : 0;
   const totalGeral = totalOrc + totalExtra + totalTransf;
+
+  const cards = [
+    { label: 'Previsto Anual',   rawValue: 0,           sub: 'Orçamento LOA ' + ano,                        color: '#3b82f6', icon: <Target size={20} />,      isNum: false },
+    { label: 'Total Arrecadado', rawValue: totalGeral,   sub: 'Orc. + Extra + Transf.',                      color: '#10b981', icon: <TrendingUp size={20} />,  isNum: totalGeral > 0 },
+    { label: 'Orçamentária',     rawValue: totalOrc,     sub: `${summary?.total_registros ?? 0} registros`,  color: '#0F2A4E', icon: <BarChart2 size={20} />,   isNum: totalOrc > 0 },
+    { label: 'Transf. Bancária', rawValue: totalTransf,  sub: 'Transferências financeiras',                  color: '#C9A84C', icon: <AlertCircle size={20} />, isNum: totalTransf > 0 },
+  ];
+
   return (
-    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-      {[
-        { label: 'Previsto Anual',          value: '—',                                              sub: 'Orçamento LOA ' + ano,               icon: <Target      size={19} className="text-blue-600"    />, bg: 'bg-blue-50',    bgStyle: undefined },
-        { label: 'Total Arrecadado',        value: totalGeral > 0 ? 'R$ '+fmtFull(totalGeral) : '—', sub: 'Orc. + Extra + Transf.',             icon: <TrendingUp  size={19} className="text-emerald-600" />, bg: 'bg-emerald-50', bgStyle: undefined },
-        { label: 'Orçamentária',            value: totalOrc   > 0 ? 'R$ '+fmtFull(totalOrc)   : '—', sub: `${summary?.total_registros ?? 0} registros`, icon: <BarChart2   size={19} className="text-[#0F2A4E]"  />, bg: '',              bgStyle: { background: 'rgba(15,42,78,0.08)' } },
-        { label: 'Transf. Bancária',        value: totalTransf > 0 ? 'R$ '+fmtFull(totalTransf) : '—', sub: 'Transferências financeiras',       icon: <AlertCircle size={19} className="text-amber-600"   />, bg: 'bg-amber-50',   bgStyle: undefined },
-      ].map((card, i) => (
-        <div key={i} className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 flex items-start gap-3 hover:shadow-md transition-shadow">
-          <div className={`w-11 h-11 ${card.bg} rounded-xl flex items-center justify-center flex-shrink-0`} style={card.bgStyle}>{card.icon}</div>
-          <div className="min-w-0">
-            <p className="text-xs font-medium text-gray-400 mb-0.5">{card.label}</p>
-            <p className="text-xl font-bold text-[#0F2A4E] leading-tight">{loading ? '...' : card.value}</p>
-            <p className="text-[11px] text-gray-400 mt-0.5">{card.sub}</p>
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16 }}>
+      {cards.map((card, i) => (
+        <motion.div
+          key={i}
+          initial={{ opacity: 0, y: 22 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.42, delay: i * 0.08, ease: [0.22, 1, 0.36, 1] }}
+          whileHover={{ y: -4, boxShadow: `0 10px 28px rgba(15,42,78,0.13)` }}
+          style={{
+            background: '#fff',
+            borderRadius: 16,
+            border: '1px solid #e2e8f0',
+            borderLeft: `4px solid ${card.color}`,
+            padding: '16px 18px',
+            display: 'flex',
+            alignItems: 'flex-start',
+            gap: 14,
+            position: 'relative',
+            overflow: 'hidden',
+            cursor: 'default',
+          }}
+        >
+          {/* Brilho de fundo no hover */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            whileHover={{ opacity: 1 }}
+            transition={{ duration: 0.3 }}
+            style={{
+              position: 'absolute', inset: 0, pointerEvents: 'none',
+              background: `radial-gradient(circle at top right, ${card.color}18, transparent 65%)`,
+            }}
+          />
+
+          {/* Ícone */}
+          <motion.div
+            whileHover={{ rotate: 8, scale: 1.12 }}
+            transition={{ type: 'spring', stiffness: 300, damping: 15 }}
+            style={{
+              width: 44, height: 44, borderRadius: 12, flexShrink: 0,
+              background: `${card.color}18`,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              color: card.color,
+            }}
+          >
+            {card.icon}
+          </motion.div>
+
+          {/* Texto */}
+          <div style={{ minWidth: 0, flex: 1 }}>
+            <p style={{ fontSize: 11, color: '#64748b', fontWeight: 500, margin: '0 0 4px' }}>{card.label}</p>
+
+            {loading ? (
+              <motion.div
+                animate={{ opacity: [0.4, 0.75, 0.4] }}
+                transition={{ duration: 1.4, repeat: Infinity, ease: 'easeInOut' }}
+                style={{ height: 22, width: '70%', background: '#e2e8f0', borderRadius: 6 }}
+              />
+            ) : card.isNum ? (
+              <p style={{ fontSize: 20, fontWeight: 800, color: '#0F2A4E', lineHeight: 1, margin: 0, fontVariantNumeric: 'tabular-nums' }}>
+                <CountUp
+                  end={card.rawValue}
+                  duration={1.6}
+                  delay={i * 0.1}
+                  decimals={2}
+                  decimal=","
+                  separator="."
+                  prefix="R$ "
+                />
+              </p>
+            ) : (
+              <p style={{ fontSize: 20, fontWeight: 800, color: '#0F2A4E', lineHeight: 1, margin: 0 }}>—</p>
+            )}
+
+            <p style={{ fontSize: 10, color: '#94a3b8', marginTop: 5 }}>{card.sub}</p>
           </div>
-        </div>
+        </motion.div>
       ))}
     </div>
   );
