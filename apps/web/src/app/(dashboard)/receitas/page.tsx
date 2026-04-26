@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
+import ReactDOM from 'react-dom';
 import { useSession } from 'next-auth/react';
 import {
   Target, TrendingUp, BarChart2, AlertCircle,
@@ -61,6 +62,104 @@ interface Summary {
 interface Conta   { cod: string; desc: string; fonte: string; meses: number[] }
 interface SubGrupo { cod: string; desc: string; meses: number[]; contas: Conta[] }
 interface Grupo    { cod: string; desc: string; meses: number[]; subgrupos: SubGrupo[] }
+
+// ─── InfoPopover ──────────────────────────────────────────────────────────────
+
+function InfoPopover({ insights }: { insights: React.ReactNode }) {
+  const [aberto, setAberto] = React.useState(false);
+  const [fixado, setFixado] = React.useState(false);
+  const [pos, setPos] = React.useState<{ top: number; left: number } | null>(null);
+  const btnRef = React.useRef<HTMLButtonElement>(null);
+  const popoverRef = React.useRef<HTMLDivElement>(null);
+  const timerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  function calcularPos() {
+    if (!btnRef.current || !popoverRef.current) return;
+    const btn = btnRef.current.getBoundingClientRect();
+    const popW = popoverRef.current.offsetWidth || 300;
+    const popH = popoverRef.current.offsetHeight || 200;
+    const margin = 8;
+    let left = btn.right - popW;
+    if (left < margin) left = margin;
+    if (left + popW > window.innerWidth - margin) left = window.innerWidth - popW - margin;
+    let top = btn.bottom + 6;
+    if (top + popH > window.innerHeight - margin) top = btn.top - popH - 6;
+    if (top < margin) top = margin;
+    setPos({ top, left });
+  }
+
+  React.useEffect(() => {
+    if (!aberto) { setPos(null); return; }
+    const frame = requestAnimationFrame(calcularPos);
+    function onScroll() { calcularPos(); }
+    window.addEventListener('scroll', onScroll, true);
+    return () => { cancelAnimationFrame(frame); window.removeEventListener('scroll', onScroll, true); };
+  }, [aberto]);
+
+  React.useEffect(() => {
+    if (!fixado) return;
+    function handler(e: MouseEvent) {
+      const target = e.target as Node;
+      if (!btnRef.current?.contains(target) && !popoverRef.current?.contains(target)) {
+        setAberto(false); setFixado(false);
+      }
+    }
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [fixado]);
+
+  function handleMouseEnter() {
+    if (timerRef.current) clearTimeout(timerRef.current);
+    if (!fixado) setAberto(true);
+  }
+  function handleMouseLeave() {
+    if (fixado) return;
+    timerRef.current = setTimeout(() => setAberto(false), 150);
+  }
+
+  const popover = ReactDOM.createPortal(
+    <div
+      ref={popoverRef}
+      onMouseEnter={() => { if (timerRef.current) clearTimeout(timerRef.current); }}
+      onMouseLeave={() => { if (!fixado) timerRef.current = setTimeout(() => setAberto(false), 150); }}
+      style={{
+        position: 'fixed', top: pos?.top ?? -9999, left: pos?.left ?? -9999,
+        visibility: (aberto && pos) ? 'visible' : 'hidden',
+        pointerEvents: (aberto && pos) ? 'auto' : 'none',
+        zIndex: 9999, width: '300px', background: '#fff',
+        borderRadius: '12px', boxShadow: '0 8px 32px rgba(15,42,78,0.18)',
+        border: '1px solid #e2e8f0', overflow: 'hidden',
+      }}
+    >
+      <div style={{ background: 'linear-gradient(135deg, #0F2A4E, #1e4d95)', padding: '10px 14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <span style={{ fontSize: '11px', fontWeight: 700, color: '#fff' }}>Como analisar</span>
+        <button onClick={() => { setAberto(false); setFixado(false); }}
+          style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.6)', cursor: 'pointer', fontSize: '14px', lineHeight: 1, padding: '0 2px' }}>×</button>
+      </div>
+      <div style={{ padding: '12px 14px', fontSize: '11px', color: '#334155', lineHeight: 1.6 }}>{insights}</div>
+    </div>,
+    document.body
+  );
+
+  return (
+    <div style={{ position: 'relative' }} onMouseEnter={handleMouseEnter} onMouseLeave={handleMouseLeave}>
+      <button
+        ref={btnRef}
+        onClick={() => { setFixado(f => !f); setAberto(a => !a); }}
+        title="Como analisar"
+        style={{
+          width: '22px', height: '22px', borderRadius: '50%',
+          background: aberto ? '#C9A84C' : 'rgba(255,255,255,0.15)',
+          border: '1.5px solid rgba(255,255,255,0.35)',
+          color: '#fff', fontSize: '11px', fontWeight: 700,
+          cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+          transition: 'background 0.2s', flexShrink: 0,
+        }}
+      >?</button>
+      {popover}
+    </div>
+  );
+}
 
 const MESES = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
 
@@ -321,9 +420,12 @@ function TabelaDRE({
           <BarChart2 size={16} color="rgba(255,255,255,0.6)" />
           <span style={{ fontWeight: 700, fontSize: '13px', color: '#fff' }}>{titulo} — {ano}</span>
         </div>
-        <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.45)', fontFamily: 'monospace' }}>
-          {grupos.reduce((acc, g) => acc + g.subgrupos.reduce((a, sg) => a + sg.contas.length, 0), 0)} rubricas
-        </span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.45)', fontFamily: 'monospace' }}>
+            {grupos.reduce((acc, g) => acc + g.subgrupos.reduce((a, sg) => a + sg.contas.length, 0), 0)} rubricas
+          </span>
+          <InfoPopover insights={<><strong>Receita Analítica — DRE Mensal</strong><br /><br />Demonstra a execução da receita arrecadada mês a mês, organizada em três níveis:<br /><br />• <strong>Grupo</strong>: Receitas Correntes, de Capital ou Transferências Bancárias<br />• <strong>Subgrupo</strong>: classificação por natureza (Tributária, SUS, Patrimonial…)<br />• <strong>Rubrica</strong>: código e fonte de recurso individuais<br /><br />💡 Clique nas linhas para expandir ou recolher. A coluna <strong>Média</strong> considera apenas os meses com receita registrada.</>} />
+        </div>
       </div>
       <div style={{ overflowX: 'auto' }}>
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '11px', tableLayout: 'fixed' }}>
@@ -458,9 +560,12 @@ function TabelaSintetica({ grupos, titulo, ano }: { grupos: Grupo[]; titulo: str
           <BarChart2 size={16} color="rgba(255,255,255,0.6)" />
           <span style={{ fontWeight: 700, fontSize: '13px', color: '#fff' }}>{titulo} — {ano}</span>
         </div>
-        <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.45)', fontFamily: 'monospace' }}>
-          {grupos.reduce((acc, g) => acc + g.subgrupos.length, 0)} subgrupos
-        </span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.45)', fontFamily: 'monospace' }}>
+            {grupos.reduce((acc, g) => acc + g.subgrupos.length, 0)} subgrupos
+          </span>
+          <InfoPopover insights={<><strong>Receita Sintética</strong><br /><br />Visão resumida da receita agrupada por natureza, sem detalhar rubricas individuais.<br /><br />• <strong>Grupo</strong>: Receitas Correntes, de Capital ou Transferências Bancárias<br />• <strong>Subgrupo</strong>: classificação por natureza (Tributária, SUS, Patrimonial…)<br /><br />💡 Use esta visão para uma leitura rápida do desempenho por categoria. Para ver cada rubrica individualmente, acesse a aba <strong>Receita Analítica</strong>.</>} />
+        </div>
       </div>
       <div style={{ overflowX: 'auto' }}>
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '11px', tableLayout: 'fixed' }}>
@@ -593,9 +698,14 @@ function TabGeralReceita({
               <h3 className="text-sm font-bold text-[#0F2A4E]">Evolução Mensal</h3>
               <p className="text-[11px] text-gray-400 mt-0.5">Receita arrecadada por mês — {ano}</p>
             </div>
-            <div className="flex items-center gap-1.5 text-[11px] text-gray-400">
-              <Calendar size={12} />
-              {ultimoMesIdx >= 0 ? `Até ${MESES[ultimoMesIdx]}` : ano}
+            <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1.5 text-[11px] text-gray-400">
+                <Calendar size={12} />
+                {ultimoMesIdx >= 0 ? `Até ${MESES[ultimoMesIdx]}` : ano}
+              </div>
+              <div style={{ background: '#0F2A4E', borderRadius: 6, padding: '2px 4px' }}>
+                <InfoPopover insights={<><strong>Evolução Mensal da Receita</strong><br /><br />Barras mostram o total arrecadado em cada mês. A barra dourada indica o último mês com dados.<br /><br />📈 A linha verde mostra o crescimento acumulado no ano — ideal para projetar o total anual.<br /><br />💡 Meses com barra muito baixa podem indicar atraso no repasse ou na importação dos dados.</>} />
+              </div>
             </div>
           </div>
 
@@ -711,9 +821,14 @@ function TabGeralReceita({
 
         {/* ── Composição da Receita ── */}
         <div className="lg:col-span-2 bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
-          <div className="mb-4">
-            <h3 className="text-sm font-bold text-[#0F2A4E]">Composição da Receita</h3>
-            <p className="text-[11px] text-gray-400 mt-0.5">Participação de cada fonte</p>
+          <div className="flex items-start justify-between mb-4">
+            <div>
+              <h3 className="text-sm font-bold text-[#0F2A4E]">Composição da Receita</h3>
+              <p className="text-[11px] text-gray-400 mt-0.5">Participação de cada fonte</p>
+            </div>
+            <div style={{ background: '#0F2A4E', borderRadius: 6, padding: '2px 4px' }}>
+              <InfoPopover insights={<><strong>Composição da Receita</strong><br /><br />Divide o total arrecadado em três categorias:<br /><br />• <strong>Orçamentária</strong>: receitas previstas no orçamento (LOA)<br />• <strong>Transf. Bancárias</strong>: movimentações financeiras entre contas do município<br />• <strong>Extra-Orçamentária</strong>: retenções, depósitos judiciais e valores fora do orçamento<br /><br />💡 A receita Extra-Orçamentária não representa renda livre — são recursos de terceiros retidos temporariamente.</>} />
+            </div>
           </div>
 
           <div className="space-y-1.5">
@@ -758,7 +873,12 @@ function TabGeralReceita({
               <h3 className="text-sm font-bold text-[#0F2A4E]">Principais Fontes de Receita</h3>
               <p className="text-[11px] text-gray-400 mt-0.5">Top {topSubgrupos.length} subgrupos por valor arrecadado</p>
             </div>
-            <span className="text-[11px] text-gray-400">{ano}</span>
+            <div className="flex items-center gap-2">
+              <span className="text-[11px] text-gray-400">{ano}</span>
+              <div style={{ background: '#0F2A4E', borderRadius: 6, padding: '2px 4px' }}>
+                <InfoPopover insights={<><strong>Principais Fontes de Receita</strong><br /><br />Ranking dos subgrupos que mais contribuíram para a arrecadação total.<br /><br />A barra horizontal representa o percentual em relação ao maior subgrupo. O número à direita mostra a fatia no total geral.<br /><br />⚠️ Dependência excessiva de um único subgrupo (ex: SUS) pode representar risco fiscal caso o repasse seja suspenso ou atrasado.</>} />
+              </div>
+            </div>
           </div>
           <div className="space-y-3">
             {topSubgrupos.map(([desc, valor], i) => {
@@ -928,6 +1048,7 @@ function PainelAnalitica({ grupos }: { grupos: Grupo[] }) {
           <BarChart2 size={15} color="rgba(255,255,255,0.6)" />
           <span style={{ fontSize: 13, fontWeight: 700, color: '#fff' }}>Top Subgrupos</span>
           <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.45)', marginLeft: 'auto', fontFamily: 'monospace' }}>por valor arrecadado</span>
+          <InfoPopover insights={<><strong>Top Subgrupos por Valor</strong><br /><br />Ranking dos 8 subgrupos com maior receita arrecadada no ano.<br /><br />💡 O tamanho da barra é proporcional ao valor — subgrupos maiores dominam a arrecadação.<br /><br />⚠️ Subgrupos SUS representam repasses federais vinculados — não podem ser usados livremente pelo município.</>} />
         </div>
         <div style={{ padding: '16px 8px 16px 0' }}>
           <ResponsiveContainer width="100%" height={280}>
@@ -972,6 +1093,7 @@ function PainelAnalitica({ grupos }: { grupos: Grupo[] }) {
           <PieChartIcon size={15} color="rgba(255,255,255,0.6)" />
           <span style={{ fontSize: 13, fontWeight: 700, color: '#fff' }}>Composição por Grupo</span>
           <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.45)', marginLeft: 'auto', fontFamily: 'monospace' }}>participação %</span>
+          <InfoPopover insights={<><strong>Composição por Grupo</strong><br /><br />Mostra a fatia de cada grande grupo no total da receita arrecadada:<br /><br />• <strong>Correntes</strong>: receitas tributárias, transferências SUS, patrimonial etc.<br />• <strong>Capital</strong>: operações de crédito e transferências de capital<br />• <strong>Transf. Bancárias</strong>: movimentações financeiras entre contas<br /><br />💡 Um município saudável tem a maior parte da receita em Correntes. Alta participação de Capital pode indicar endividamento ou investimentos pontuais.</>} />
         </div>
         <div style={{ padding: '16px 20px', display: 'flex', gap: 20, alignItems: 'center' }}>
           {/* Donut */}
@@ -1049,6 +1171,7 @@ function PainelAnalitica({ grupos }: { grupos: Grupo[] }) {
           <Activity size={15} color="rgba(255,255,255,0.6)" />
           <span style={{ fontSize: 13, fontWeight: 700, color: '#fff' }}>Evolução por Grupo — Mês a Mês</span>
           <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.45)', marginLeft: 'auto', fontFamily: 'monospace' }}>receita mensal por categoria</span>
+          <InfoPopover insights={<><strong>Evolução Mensal por Grupo</strong><br /><br />Compara a trajetória mensal de cada grupo de receita ao longo do ano.<br /><br />📈 Picos em determinados meses costumam refletir sazonalidade de repasses (ex: SUS paga por competência trimestral).<br /><br />💡 Meses com valor zero ainda não tiveram receita registrada ou importada.<br /><br />⚠️ Quedas bruscas podem indicar atraso de repasse federal ou falha na importação dos dados.</>} />
         </div>
         <div style={{ padding: '12px 8px 12px 0' }}>
           <ResponsiveContainer width="100%" height={220}>
