@@ -1065,6 +1065,206 @@ function TabGeralReceita({
         </motion.div>
       )}
 
+      {/* ── Segunda linha de gráficos ── */}
+      {mesesAtivos > 0 && (
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 16 }}>
+
+          {/* ── Variação Mês a Mês ── */}
+          <motion.div
+            initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, delay: 0.3 }}
+            style={cardStyle}
+          >
+            <div style={headerStyle}>
+              <TrendingUp size={15} color="rgba(255,255,255,0.6)" />
+              <span style={{ fontSize: 13, fontWeight: 700, color: '#fff' }}>Variação Mês a Mês</span>
+              <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.45)', marginLeft: 'auto', fontFamily: 'monospace' }}>Δ vs mês anterior</span>
+              <InfoPopover insights={<><strong>Variação Mês a Mês</strong><br /><br />Mostra quanto a receita subiu ou caiu em relação ao mês anterior.<br /><br />🟢 <strong>Verde</strong>: crescimento<br />🔴 <strong>Vermelho</strong>: queda<br /><br />💡 Variações grandes podem indicar repasses concentrados ou atrasos na importação.</>} />
+            </div>
+            <div style={{ padding: '14px 16px 10px' }}>
+              {(() => {
+                const variacoes = mensal.map((v, i) => {
+                  if (i === 0 || mensal[i - 1] === 0) return null;
+                  const delta = v - mensal[i - 1];
+                  const pct = mensal[i - 1] > 0 ? (delta / mensal[i - 1]) * 100 : 0;
+                  return { mes: MESES[i], delta, pct, positivo: delta >= 0 };
+                }).filter(Boolean) as { mes: string; delta: number; pct: number; positivo: boolean }[];
+
+                if (variacoes.length === 0) return <p style={{ fontSize: 11, color: '#94a3b8', padding: '20px 0', textAlign: 'center' }}>Dados insuficientes</p>;
+
+                const maxAbs = Math.max(...variacoes.map(v => Math.abs(v.delta)), 1);
+                return (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    {variacoes.map((v, i) => (
+                      <motion.div key={v.mes}
+                        initial={{ opacity: 0, x: -12 }} animate={{ opacity: 1, x: 0 }}
+                        transition={{ duration: 0.35, delay: 0.4 + i * 0.08 }}
+                        style={{ display: 'flex', alignItems: 'center', gap: 10 }}
+                      >
+                        <span style={{ fontSize: 10, color: '#64748b', width: 28, flexShrink: 0 }}>{v.mes}</span>
+                        <div style={{ flex: 1, height: 20, display: 'flex', alignItems: 'center', position: 'relative' }}>
+                          <div style={{ position: 'absolute', left: '50%', top: 0, bottom: 0, width: 1, background: '#e2e8f0' }} />
+                          <div style={{
+                            position: 'absolute',
+                            height: 12,
+                            width: `${(Math.abs(v.delta) / maxAbs) * 48}%`,
+                            borderRadius: v.positivo ? '0 6px 6px 0' : '6px 0 0 6px',
+                            background: v.positivo ? 'linear-gradient(90deg,#10b981,#34d399)' : 'linear-gradient(90deg,#f87171,#ef4444)',
+                            left: v.positivo ? '50%' : undefined,
+                            right: v.positivo ? undefined : '50%',
+                            boxShadow: v.positivo ? '0 1px 4px rgba(16,185,129,0.3)' : '0 1px 4px rgba(239,68,68,0.3)',
+                          }} />
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
+                          <span style={{ fontSize: 10, fontWeight: 700, color: v.positivo ? '#10b981' : '#ef4444' }}>
+                            {v.positivo ? '▲' : '▼'} {Math.abs(v.pct).toFixed(1)}%
+                          </span>
+                        </div>
+                      </motion.div>
+                    ))}
+                  </div>
+                );
+              })()}
+            </div>
+          </motion.div>
+
+          {/* ── Donut Composição ── */}
+          <motion.div
+            initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, delay: 0.38 }}
+            style={cardStyle}
+          >
+            <div style={headerStyle}>
+              <PieChartIcon size={15} color="rgba(255,255,255,0.6)" />
+              <span style={{ fontSize: 13, fontWeight: 700, color: '#fff' }}>Participação por Fonte</span>
+              <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.45)', marginLeft: 'auto', fontFamily: 'monospace' }}>% do total</span>
+              <InfoPopover insights={<><strong>Participação por Fonte</strong><br /><br />Proporção visual de cada fonte no total arrecadado.<br /><br />💡 Municípios saudáveis têm a maior parte em Orçamentária (receitas próprias + transferências constitucionais).</>} />
+            </div>
+            <div style={{ padding: '14px 16px', display: 'flex', alignItems: 'center', gap: 12 }}>
+              {(() => {
+                const fontes = [
+                  { label: 'Orçamentária', value: totalOrc, color: '#3b82f6' },
+                  { label: 'Transf. Banc.', value: totalTransf, color: '#f59e0b' },
+                  { label: 'Extra-Orc.', value: totalExtra, color: '#8b5cf6' },
+                ].filter(f => f.value > 0);
+                const total = fontes.reduce((s, f) => s + f.value, 0);
+                return (
+                  <>
+                    <div style={{ position: 'relative', flexShrink: 0, width: 110, height: 110 }}>
+                      <ResponsiveContainer width={110} height={110}>
+                        <PieChart>
+                          <defs>
+                            {fontes.map((f, i) => (
+                              <linearGradient key={i} id={`dnutGrad${i}`} x1="0" y1="0" x2="1" y2="1">
+                                <stop offset="0%" stopColor={f.color} stopOpacity={1} />
+                                <stop offset="100%" stopColor={f.color} stopOpacity={0.7} />
+                              </linearGradient>
+                            ))}
+                          </defs>
+                          <Pie data={fontes} dataKey="value" cx="50%" cy="50%" innerRadius={34} outerRadius={50} paddingAngle={3} isAnimationActive animationDuration={900}>
+                            {fontes.map((f, i) => <Cell key={i} fill={`url(#dnutGrad${i})`} stroke="none" />)}
+                          </Pie>
+                          <Tooltip content={({ active, payload }) => {
+                            if (!active || !payload?.length) return null;
+                            const d = payload[0].payload;
+                            const p = total > 0 ? (d.value / total * 100).toFixed(1) : '0';
+                            return (
+                              <div style={{ background: '#0F2A4E', borderRadius: 8, padding: '6px 10px', fontSize: 11 }}>
+                                <p style={{ color: '#C9A84C', fontWeight: 700, margin: 0 }}>{d.label}</p>
+                                <p style={{ color: '#fff', margin: '2px 0 0' }}>{p}%</p>
+                              </div>
+                            );
+                          }} />
+                        </PieChart>
+                      </ResponsiveContainer>
+                      <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%,-50%)', textAlign: 'center', pointerEvents: 'none' }}>
+                        <div style={{ fontSize: 8, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: 0.5 }}>total</div>
+                        <div style={{ fontSize: 11, fontWeight: 800, color: '#0F2A4E' }}>{fmtK(total)}</div>
+                      </div>
+                    </div>
+                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 10 }}>
+                      {fontes.map((f, i) => {
+                        const pct = total > 0 ? (f.value / total * 100) : 0;
+                        return (
+                          <div key={f.label}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                <div style={{ width: 7, height: 7, borderRadius: '50%', background: f.color }} />
+                                <span style={{ fontSize: 10, color: '#475569' }}>{f.label}</span>
+                              </div>
+                              <span style={{ fontSize: 10, fontWeight: 700, color: f.color }}>{pct.toFixed(1)}%</span>
+                            </div>
+                            <div style={{ height: 4, background: '#f1f5f9', borderRadius: 99, overflow: 'hidden' }}>
+                              <motion.div initial={{ width: 0 }} animate={{ width: `${pct}%` }}
+                                transition={{ duration: 0.8, delay: 0.5 + i * 0.1, ease: 'easeOut' }}
+                                style={{ height: '100%', background: f.color, borderRadius: 99 }} />
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </>
+                );
+              })()}
+            </div>
+          </motion.div>
+
+          {/* ── Ritmo Diário Médio ── */}
+          <motion.div
+            initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, delay: 0.46 }}
+            style={cardStyle}
+          >
+            <div style={headerStyle}>
+              <Calendar size={15} color="rgba(255,255,255,0.6)" />
+              <span style={{ fontSize: 13, fontWeight: 700, color: '#fff' }}>Média Diária por Mês</span>
+              <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.45)', marginLeft: 'auto', fontFamily: 'monospace' }}>R$/dia</span>
+              <InfoPopover insights={<><strong>Média Diária por Mês</strong><br /><br />Divide o total arrecadado de cada mês pelo número de dias úteis do mês, normalizando a comparação.<br /><br />💡 Março tem 31 dias e Fevereiro tem 28 — sem normalizar, Março sempre parece melhor mesmo com ritmo igual.</>} />
+            </div>
+            <div style={{ padding: '14px 16px 10px' }}>
+              {(() => {
+                const diasPorMes = [31,28,31,30,31,30,31,31,30,31,30,31];
+                const diario = mensal.map((v, i) => ({ mes: MESES[i], valor: v > 0 ? v / diasPorMes[i] : 0 })).filter(d => d.valor > 0);
+                if (diario.length === 0) return <p style={{ fontSize: 11, color: '#94a3b8', padding: '20px 0', textAlign: 'center' }}>Sem dados</p>;
+                const maxD = Math.max(...diario.map(d => d.valor), 1);
+                const melhorD = diario.reduce((a, b) => b.valor > a.valor ? b : a, diario[0]);
+                return (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
+                    {diario.map((d, i) => {
+                      const pct = (d.valor / maxD) * 100;
+                      const isMelhor = d.mes === melhorD.mes;
+                      return (
+                        <motion.div key={d.mes}
+                          initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }}
+                          transition={{ duration: 0.35, delay: 0.45 + i * 0.08 }}
+                          style={{ display: 'flex', alignItems: 'center', gap: 8 }}
+                        >
+                          <span style={{ fontSize: 10, color: isMelhor ? '#C9A84C' : '#64748b', fontWeight: isMelhor ? 700 : 400, width: 28, flexShrink: 0 }}>{d.mes}</span>
+                          <div style={{ flex: 1, height: 8, background: '#f1f5f9', borderRadius: 99, overflow: 'hidden' }}>
+                            <motion.div initial={{ width: 0 }} animate={{ width: `${pct}%` }}
+                              transition={{ duration: 0.7, delay: 0.5 + i * 0.08, ease: 'easeOut' }}
+                              style={{ height: '100%', background: isMelhor ? 'linear-gradient(90deg,#C9A84C,#f59e0b)' : 'linear-gradient(90deg,#3b82f6,#60a5fa)', borderRadius: 99 }}
+                            />
+                          </div>
+                          <span style={{ fontSize: 10, fontWeight: 600, color: isMelhor ? '#C9A84C' : '#0F2A4E', fontVariantNumeric: 'tabular-nums', width: 68, textAlign: 'right', flexShrink: 0 }}>
+                            {fmtK(d.valor)}/dia
+                          </span>
+                        </motion.div>
+                      );
+                    })}
+                    <div style={{ marginTop: 4, paddingTop: 8, borderTop: '1px solid #f1f5f9', display: 'flex', justifyContent: 'space-between' }}>
+                      <span style={{ fontSize: 10, color: '#94a3b8' }}>Melhor ritmo</span>
+                      <span style={{ fontSize: 10, fontWeight: 700, color: '#C9A84C' }}>{melhorD.mes} · {fmtK(melhorD.valor)}/dia</span>
+                    </div>
+                  </div>
+                );
+              })()}
+            </div>
+          </motion.div>
+
+        </div>
+      )}
+
     </div>
   );
 }
