@@ -761,16 +761,45 @@ function TabGeralReceita({
   const cardStyle: React.CSSProperties = { background: '#fff', borderRadius: 16, border: '1px solid #e2e8f0', overflow: 'hidden' };
   const headerStyle: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: 8, padding: '12px 20px', background: 'linear-gradient(135deg, #0F2A4E, #1e4d95)' };
 
-  // Projeção anual baseada na média dos meses com dados
   const projecaoAnual = mediaMensal * 12;
   const pctAno = Math.round((mesesAtivos / 12) * 100);
   const melhorMesIdx = mensal.indexOf(Math.max(...mensal));
   const melhorMesVal = mensal[melhorMesIdx] ?? 0;
+  const diasPorMes = [31,28,31,30,31,30,31,31,30,31,30,31];
+
+  // Dados para BarChart Recharts
+  const barData = MESES.map((mes, i) => ({
+    mes,
+    valor: mensal[i],
+    fill: i === ultimoMesIdx ? '#C9A84C' : mensal[i] > 0 ? '#3b82f6' : '#e2e8f0',
+  }));
+
+  // Variação mês a mês
+  const variacoes = MESES.map((mes, i) => {
+    if (i === 0 || mensal[i-1] === 0 || mensal[i] === 0) return null;
+    const delta = mensal[i] - mensal[i-1];
+    const pct = (delta / mensal[i-1]) * 100;
+    return { mes, delta, pct, positivo: delta >= 0 };
+  }).filter(Boolean) as { mes: string; delta: number; pct: number; positivo: boolean }[];
+
+  // Média diária
+  const diario = MESES.map((mes, i) => ({
+    mes, valor: mensal[i] > 0 ? mensal[i] / diasPorMes[i] : 0,
+  })).filter(d => d.valor > 0);
+  const maxDiario = Math.max(...diario.map(d => d.valor), 1);
+  const melhorDiario = diario.length > 0 ? diario.reduce((a,b) => b.valor > a.valor ? b : a) : null;
+
+  // Fontes para donut
+  const fontes = [
+    { label: 'Orçamentária', value: totalOrc, color: '#3b82f6' },
+    { label: 'Transf. Bancárias', value: totalTransf, color: '#f59e0b' },
+    { label: 'Extra-Orçamentária', value: totalExtra, color: '#8b5cf6' },
+  ].filter(f => f.value > 0);
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginTop: 4 }}>
 
-      {/* ── Banner de Progresso do Ano ── */}
+      {/* ══ BANNER KPIs ══ */}
       {mesesAtivos > 0 && (
         <motion.div
           initial={{ opacity: 0, y: -10 }}
@@ -829,113 +858,98 @@ function TabGeralReceita({
 
       <div style={{ display: 'grid', gridTemplateColumns: '3fr 2fr', gap: 16, alignItems: 'start' }}>
 
-        {/* ── Evolução Mensal ── */}
-        <motion.div
-          initial={{ opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.45, delay: 0.1 }}
-          style={cardStyle}
-        >
+        {/* ── Evolução Mensal — Recharts BarChart ── */}
+        <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.45, delay: 0.1 }} style={cardStyle}>
           <div style={headerStyle}>
             <TrendingUp size={15} color="rgba(255,255,255,0.6)" />
             <span style={{ fontSize: 13, fontWeight: 700, color: '#fff' }}>Evolução Mensal</span>
-            <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.45)', marginLeft: 'auto', fontFamily: 'monospace' }}>
-              {ultimoMesIdx >= 0 ? `Até ${MESES[ultimoMesIdx]}` : ano}
-            </span>
-            <InfoPopover insights={<><strong>Evolução Mensal da Receita</strong><br /><br />Barras mostram o total arrecadado em cada mês. A barra dourada indica o último mês com dados.<br /><br />📈 A linha verde mostra o crescimento acumulado no ano — ideal para projetar o total anual.<br /><br />💡 Meses com barra muito baixa podem indicar atraso no repasse ou na importação dos dados.</>} />
+            <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.45)', marginLeft: 'auto', fontFamily: 'monospace' }}>{ultimoMesIdx >= 0 ? `Até ${MESES[ultimoMesIdx]}` : ano}</span>
+            <InfoPopover insights={<><strong>Evolução Mensal da Receita</strong><br /><br />Cada barra mostra o total arrecadado no mês. A barra dourada é o último mês com dados.<br /><br />A linha tracejada indica a média mensal — barras acima estão performando bem.<br /><br />📈 A área verde abaixo mostra o crescimento acumulado no ano.</>} />
           </div>
-          <div style={{ padding: '16px 20px 12px' }}>
-            {/* Barras animadas */}
-            <div style={{ display: 'flex', alignItems: 'flex-end', gap: 6, height: 136 }}>
-              {mensal.map((v, i) => {
-                const pct = maxMensal > 0 ? (v / maxMensal) * 100 : 0;
-                const isAtual = i === ultimoMesIdx;
-                const isMelhor = i === melhorMesIdx && v > 0;
-                return (
-                  <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, position: 'relative' }} className="group">
-                    {v > 0 && (
-                      <div style={{ position: 'absolute', bottom: '100%', marginBottom: 6, left: '50%', transform: 'translateX(-50%)', background: '#0F2A4E', color: '#fff', fontSize: 10, borderRadius: 8, padding: '4px 8px', whiteSpace: 'nowrap', pointerEvents: 'none', zIndex: 10, boxShadow: '0 4px 12px rgba(0,0,0,0.2)', opacity: 0 }} className="group-hover:opacity-100 transition-opacity">
-                        R$ {fmtFull(v)}
+          <div style={{ padding: '12px 8px 8px 0' }}>
+            <ResponsiveContainer width="100%" height={180}>
+              <BarChart data={barData} margin={{ top: 18, right: 16, bottom: 0, left: 8 }} barCategoryGap="25%">
+                <defs>
+                  <linearGradient id="barGradBlue" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#3b82f6" stopOpacity={1} />
+                    <stop offset="100%" stopColor="#1d4ed8" stopOpacity={0.85} />
+                  </linearGradient>
+                  <linearGradient id="barGradGold" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#C9A84C" stopOpacity={1} />
+                    <stop offset="100%" stopColor="#b8953d" stopOpacity={0.9} />
+                  </linearGradient>
+                  <filter id="barDrop"><feDropShadow dx="0" dy="2" stdDeviation="3" floodColor="#0F2A4E" floodOpacity="0.15" /></filter>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+                <XAxis dataKey="mes" tick={{ fontSize: 9, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
+                <YAxis tickFormatter={fmtK} tick={{ fontSize: 9, fill: '#94a3b8' }} axisLine={false} tickLine={false} width={58} />
+                {mediaMensal > 0 && (
+                  <ReferenceLine y={mediaMensal} stroke="#94a3b8" strokeDasharray="4 3" strokeWidth={1.5}
+                    label={{ value: 'média', position: 'insideTopRight', fontSize: 9, fill: '#94a3b8', dy: -6 }} />
+                )}
+                <Tooltip
+                  cursor={{ fill: 'rgba(15,42,78,0.04)' }}
+                  content={({ active, payload }) => {
+                    if (!active || !payload?.length) return null;
+                    const d = payload[0].payload;
+                    const isAtual = barData.indexOf(d) === ultimoMesIdx;
+                    return (
+                      <div style={{ background: '#0F2A4E', borderRadius: 10, padding: '8px 12px', boxShadow: '0 4px 16px rgba(0,0,0,0.25)' }}>
+                        <p style={{ color: isAtual ? '#C9A84C' : '#60a5fa', fontWeight: 700, fontSize: 11, margin: '0 0 3px' }}>{d.mes}</p>
+                        <p style={{ color: '#fff', fontSize: 12, fontWeight: 700, margin: 0, fontVariantNumeric: 'tabular-nums' }}>R$ {fmtFull(d.valor)}</p>
+                        {mediaMensal > 0 && d.valor > 0 && (
+                          <p style={{ color: d.valor >= mediaMensal ? '#10b981' : '#f87171', fontSize: 10, margin: '3px 0 0' }}>
+                            {d.valor >= mediaMensal ? '▲' : '▼'} {Math.abs(((d.valor - mediaMensal) / mediaMensal) * 100).toFixed(1)}% vs média
+                          </p>
+                        )}
                       </div>
-                    )}
-                    {isMelhor && (
-                      <div style={{ position: 'absolute', top: -18, left: '50%', transform: 'translateX(-50%)', fontSize: 9, color: '#C9A84C', fontWeight: 700, whiteSpace: 'nowrap' }}>★ maior</div>
-                    )}
-                    <div style={{ width: '100%', height: 112, display: 'flex', alignItems: 'flex-end' }}>
-                      <motion.div
-                        initial={{ height: 0 }}
-                        animate={{ height: pct > 0 ? `${Math.max(pct, 4)}%` : '3px' }}
-                        transition={{ duration: 0.6, delay: i * 0.05, ease: [0.22, 1, 0.36, 1] }}
-                        style={{
-                          width: '100%',
-                          background: isAtual ? 'linear-gradient(180deg, #C9A84C, #e8c84a)' : v > 0 ? 'linear-gradient(180deg, #3b82f6, #1d4ed8)' : '#f1f5f9',
-                          borderRadius: '4px 4px 0 0',
-                          opacity: v > 0 ? 1 : 0.4,
-                          boxShadow: isAtual ? '0 -2px 10px rgba(201,168,76,0.5)' : v > 0 ? '0 -2px 8px rgba(59,130,246,0.3)' : 'none',
-                        }}
-                      />
-                    </div>
-                    <span style={{ fontSize: 9, fontWeight: isAtual ? 700 : 400, color: isAtual ? '#C9A84C' : '#94a3b8' }}>{MESES[i]}</span>
-                  </div>
-                );
-              })}
-            </div>
+                    );
+                  }}
+                />
+                <Bar dataKey="valor" radius={[5, 5, 0, 0]} isAnimationActive animationDuration={800} animationEasing="ease-out" style={{ filter: 'url(#barDrop)' }}>
+                  {barData.map((entry, i) => (
+                    <Cell key={i}
+                      fill={i === ultimoMesIdx ? 'url(#barGradGold)' : entry.valor > 0 ? 'url(#barGradBlue)' : '#f1f5f9'}
+                    />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
 
-            {/* Crescimento Acumulado */}
+            {/* Acumulado sparkline */}
             {mesesAtivos >= 1 && acumulado[ultimoMesIdx >= 0 ? ultimoMesIdx : 0] > 0 && (
-              <div style={{ marginTop: 14, paddingTop: 14, borderTop: '1px solid #f1f5f9' }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-                  <span style={{ fontSize: 11, fontWeight: 600, color: '#475569' }}>Crescimento Acumulado</span>
-                  <span style={{ fontSize: 11, fontWeight: 700, color: '#10b981' }}>R$ {fmtFull(acumulado[ultimoMesIdx >= 0 ? ultimoMesIdx : 0])}</span>
+              <div style={{ padding: '10px 16px 4px', borderTop: '1px solid #f1f5f9', marginTop: 4 }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+                  <span style={{ fontSize: 10, fontWeight: 600, color: '#64748b' }}>Acumulado no ano</span>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: '#10b981', fontVariantNumeric: 'tabular-nums' }}>R$ {fmtFull(acumulado[ultimoMesIdx >= 0 ? ultimoMesIdx : 0])}</span>
                 </div>
-                <svg width="100%" height="64" viewBox="0 0 440 64" preserveAspectRatio="none" style={{ overflow: 'visible' }}>
+                <svg width="100%" height="48" viewBox="0 0 440 48" preserveAspectRatio="none" style={{ overflow: 'visible' }}>
                   <defs>
-                    <linearGradient id="lineGradGeral" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="#10b981" stopOpacity="0.28" />
+                    <linearGradient id="acumGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#10b981" stopOpacity="0.25" />
                       <stop offset="100%" stopColor="#10b981" stopOpacity="0.02" />
                     </linearGradient>
                   </defs>
                   {(() => {
-                    const W = 440; const H = 64; const pad = 10;
-                    const pts = acumulado.map((v, i) => ({
-                      x: pad + (i / 11) * (W - pad * 2),
-                      y: v > 0 ? (H - pad) - (v / maxAcum) * (H - pad * 2) : H - pad,
-                      v, hasData: mensal[i] > 0,
-                    }));
-                    const activePts = pts.slice(0, Math.max(ultimoMesIdx + 1, 1));
-                    const pathD = [`M ${activePts[0].x} ${H - pad}`, ...activePts.map(p => `L ${p.x} ${p.y}`), `L ${activePts[activePts.length - 1].x} ${H - pad}`, 'Z'].join(' ');
-                    const lineD = activePts.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ');
-                    return (
-                      <>
-                        <path d={pathD} fill="url(#lineGradGeral)" />
-                        <path d={lineD} fill="none" stroke="#10b981" strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round" />
-                        {activePts.map((p, i) => p.hasData && (
-                          <g key={i}>
-                            <circle cx={p.x} cy={p.y} r={i === ultimoMesIdx ? 5 : 3} fill={i === ultimoMesIdx ? '#C9A84C' : '#10b981'} />
-                            {i === ultimoMesIdx && <circle cx={p.x} cy={p.y} r={9} fill="none" stroke="#C9A84C" strokeWidth="1.5" strokeOpacity="0.35" />}
-                          </g>
-                        ))}
-                      </>
-                    );
+                    const W = 440; const H = 48; const pad = 8;
+                    const pts = acumulado.map((v, i) => ({ x: pad + (i/11)*(W-pad*2), y: v > 0 ? (H-pad) - (v/maxAcum)*(H-pad*2) : H-pad, hasData: mensal[i] > 0 }));
+                    const active = pts.slice(0, Math.max(ultimoMesIdx+1, 1));
+                    const pathD = [`M ${active[0].x} ${H-pad}`, ...active.map(p=>`L ${p.x} ${p.y}`), `L ${active[active.length-1].x} ${H-pad}`, 'Z'].join(' ');
+                    const lineD = active.map((p,i) => `${i===0?'M':'L'} ${p.x} ${p.y}`).join(' ');
+                    return <>
+                      <path d={pathD} fill="url(#acumGrad)" />
+                      <path d={lineD} fill="none" stroke="#10b981" strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
+                      {active.map((p,i) => p.hasData && <circle key={i} cx={p.x} cy={p.y} r={i===ultimoMesIdx?4:2} fill={i===ultimoMesIdx?'#C9A84C':'#10b981'} />)}
+                    </>;
                   })()}
                 </svg>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 4 }}>
-                  {MESES.map((m, i) => (
-                    <span key={i} style={{ fontSize: 9, color: i === ultimoMesIdx ? '#C9A84C' : '#cbd5e1', fontWeight: i === ultimoMesIdx ? 700 : 400 }}>{m}</span>
-                  ))}
-                </div>
               </div>
             )}
 
-            {/* Legenda */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginTop: 12, paddingTop: 12, borderTop: '1px solid #f1f5f9' }}>
-              {[
-                { color: '#3b82f6', label: 'Meses anteriores' },
-                { color: '#C9A84C', label: 'Último mês' },
-                { color: '#10b981', label: 'Acumulado' },
-              ].map(({ color, label }) => (
-                <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <div style={{ width: 10, height: 10, borderRadius: 3, background: color, flexShrink: 0 }} />
+            <div style={{ display: 'flex', gap: 16, padding: '8px 16px 4px', borderTop: '1px solid #f1f5f9' }}>
+              {[{ color: '#3b82f6', label: 'Meses anteriores' }, { color: '#C9A84C', label: 'Último mês' }, { color: '#10b981', label: 'Acumulado' }].map(({ color, label }) => (
+                <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                  <div style={{ width: 9, height: 9, borderRadius: 3, background: color }} />
                   <span style={{ fontSize: 10, color: '#94a3b8' }}>{label}</span>
                 </div>
               ))}
@@ -943,64 +957,73 @@ function TabGeralReceita({
           </div>
         </motion.div>
 
-        {/* ── Composição da Receita ── */}
-        <motion.div
-          initial={{ opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.45, delay: 0.2 }}
-          style={cardStyle}
-        >
+        {/* ── Composição da Receita — Donut + Legenda ── */}
+        <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.45, delay: 0.2 }} style={cardStyle}>
           <div style={headerStyle}>
             <PieChartIcon size={15} color="rgba(255,255,255,0.6)" />
             <span style={{ fontSize: 13, fontWeight: 700, color: '#fff' }}>Composição da Receita</span>
             <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.45)', marginLeft: 'auto', fontFamily: 'monospace' }}>por fonte</span>
-            <InfoPopover insights={<><strong>Composição da Receita</strong><br /><br />Divide o total arrecadado em três categorias:<br /><br />• <strong>Orçamentária</strong>: receitas previstas no orçamento (LOA)<br />• <strong>Transf. Bancárias</strong>: movimentações financeiras entre contas do município<br />• <strong>Extra-Orçamentária</strong>: retenções, depósitos judiciais e valores fora do orçamento<br /><br />💡 A receita Extra-Orçamentária não representa renda livre — são recursos de terceiros retidos temporariamente.</>} />
+            <InfoPopover insights={<><strong>Composição da Receita</strong><br /><br />Divide o total arrecadado em três categorias:<br /><br />• <strong>Orçamentária</strong>: receitas previstas no orçamento (LOA)<br />• <strong>Transf. Bancárias</strong>: movimentações financeiras entre contas<br />• <strong>Extra-Orçamentária</strong>: retenções e depósitos fora do orçamento<br /><br />💡 Receita Extra-Orçamentária não é renda livre — são recursos de terceiros retidos temporariamente.</>} />
           </div>
-          <div style={{ padding: '16px 20px' }}>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-              {[
-                { label: 'Orçamentária', value: totalOrc, color: '#3b82f6' },
-                { label: 'Transf. Bancárias', value: totalTransf, color: '#f59e0b' },
-                { label: 'Extra-Orçamentária', value: totalExtra, color: '#8b5cf6' },
-              ].map((item, idx) => {
-                const pct = totalGeral > 0 ? (item.value / totalGeral) * 100 : 0;
-                return (
-                  <motion.div
-                    key={item.label}
-                    initial={{ opacity: 0, x: -10 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ duration: 0.4, delay: 0.3 + idx * 0.1 }}
-                  >
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <div style={{ width: 8, height: 8, borderRadius: '50%', background: item.color, flexShrink: 0 }} />
-                        <span style={{ fontSize: 12, color: '#475569' }}>{item.label}</span>
+          <div style={{ padding: '14px 16px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
+              {/* Donut */}
+              <div style={{ position: 'relative', flexShrink: 0 }}>
+                <ResponsiveContainer width={120} height={120}>
+                  <PieChart>
+                    <defs>
+                      {fontes.map((f, i) => (
+                        <linearGradient key={i} id={`compGrad${i}`} x1="0" y1="0" x2="1" y2="1">
+                          <stop offset="0%" stopColor={f.color} stopOpacity={1} />
+                          <stop offset="100%" stopColor={f.color} stopOpacity={0.65} />
+                        </linearGradient>
+                      ))}
+                    </defs>
+                    <Pie data={fontes} dataKey="value" cx="50%" cy="50%" innerRadius={38} outerRadius={56} paddingAngle={3} isAnimationActive animationDuration={1000}>
+                      {fontes.map((f, i) => <Cell key={i} fill={`url(#compGrad${i})`} stroke="none" />)}
+                    </Pie>
+                    <Tooltip content={({ active, payload }) => {
+                      if (!active || !payload?.length) return null;
+                      const d = payload[0].payload;
+                      const p = totalGeral > 0 ? (d.value / totalGeral * 100).toFixed(1) : '0';
+                      return <div style={{ background: '#0F2A4E', borderRadius: 8, padding: '6px 10px', fontSize: 11 }}><p style={{ color: '#C9A84C', fontWeight: 700, margin: 0 }}>{d.label}</p><p style={{ color: '#fff', margin: '2px 0 0' }}>{p}% · R$ {fmtFull(d.value)}</p></div>;
+                    }} />
+                  </PieChart>
+                </ResponsiveContainer>
+                <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%,-50%)', textAlign: 'center', pointerEvents: 'none' }}>
+                  <div style={{ fontSize: 8, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: 0.5 }}>total</div>
+                  <div style={{ fontSize: 12, fontWeight: 800, color: '#0F2A4E' }}>{fmtK(totalGeral)}</div>
+                </div>
+              </div>
+              {/* Legenda */}
+              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 10 }}>
+                {fontes.map((f, idx) => {
+                  const pct = totalGeral > 0 ? (f.value / totalGeral) * 100 : 0;
+                  return (
+                    <motion.div key={f.label} initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.35, delay: 0.3 + idx * 0.1 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <div style={{ width: 7, height: 7, borderRadius: '50%', background: f.color, flexShrink: 0 }} />
+                          <span style={{ fontSize: 11, color: '#475569' }}>{f.label}</span>
+                        </div>
+                        <span style={{ fontSize: 11, fontWeight: 700, color: f.color, fontVariantNumeric: 'tabular-nums' }}>{pct.toFixed(1)}%</span>
                       </div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                        <span style={{ fontSize: 11, color: '#94a3b8', fontVariantNumeric: 'tabular-nums' }}>R$ {fmtFull(item.value)}</span>
-                        <span style={{ fontSize: 12, fontWeight: 700, color: item.color, minWidth: 38, textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{pct.toFixed(1)}%</span>
+                      <div style={{ height: 5, background: '#f1f5f9', borderRadius: 99, overflow: 'hidden' }}>
+                        <motion.div initial={{ width: 0 }} animate={{ width: `${pct}%` }}
+                          transition={{ duration: 0.9, delay: 0.4 + idx * 0.12, ease: 'easeOut' }}
+                          style={{ height: '100%', background: `linear-gradient(90deg,${f.color},${f.color}bb)`, borderRadius: 99, boxShadow: `0 1px 4px ${f.color}44` }} />
                       </div>
-                    </div>
-                    <div style={{ height: 7, background: '#f1f5f9', borderRadius: 99, overflow: 'hidden' }}>
-                      <motion.div
-                        initial={{ width: 0 }}
-                        animate={{ width: `${pct}%` }}
-                        transition={{ duration: 0.9, delay: 0.4 + idx * 0.12, ease: 'easeOut' }}
-                        style={{
-                          height: '100%',
-                          background: `linear-gradient(90deg, ${item.color}, ${item.color}cc)`,
-                          borderRadius: 99,
-                          boxShadow: `0 1px 6px ${item.color}55`,
-                        }}
-                      />
-                    </div>
-                  </motion.div>
-                );
-              })}
+                    </motion.div>
+                  );
+                })}
+              </div>
             </div>
-            <div style={{ marginTop: 20, paddingTop: 14, borderTop: '1px solid #f1f5f9' }}>
-              <p style={{ fontSize: 10, color: '#94a3b8', margin: 0 }}>Total consolidado</p>
-              <p style={{ fontSize: 16, fontWeight: 800, color: '#0F2A4E', margin: '4px 0 0', fontVariantNumeric: 'tabular-nums' }}>R$ {fmtFull(totalGeral)}</p>
+            <div style={{ paddingTop: 12, borderTop: '1px solid #f1f5f9', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
+              <div>
+                <p style={{ fontSize: 10, color: '#94a3b8', margin: 0 }}>Total consolidado</p>
+                <p style={{ fontSize: 15, fontWeight: 800, color: '#0F2A4E', margin: '3px 0 0', fontVariantNumeric: 'tabular-nums' }}>R$ {fmtFull(totalGeral)}</p>
+              </div>
+              <span style={{ fontSize: 10, color: '#94a3b8' }}>{summary?.total_registros ?? 0} registros</span>
             </div>
           </div>
         </motion.div>
