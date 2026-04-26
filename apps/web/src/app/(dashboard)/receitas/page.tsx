@@ -15,7 +15,7 @@ import { apiRequest } from '@/lib/api';
 import Link from 'next/link';
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
-  PieChart, Pie, Cell, AreaChart, Area, CartesianGrid, Legend, LabelList,
+  PieChart, Pie, Cell, Sector, AreaChart, Area, CartesianGrid, Legend, LabelList,
   RadialBarChart, RadialBar, Treemap, ScatterChart, Scatter, ZAxis,
 } from 'recharts';
 
@@ -1367,103 +1367,159 @@ function PainelSintetica({ grupos }: { grupos: Grupo[] }) {
         </div>
       </div>
 
-      {/* ── 2. Waffle Chart — Composição da Receita ── */}
+      {/* ── 2. Distribuição por Subgrupo — Donut + Legenda ── */}
       <div style={cardStyle}>
-        <style>{`
-          @keyframes waffleIn {
-            from { opacity: 0; transform: scale(0.2); }
-            to   { opacity: 1; transform: scale(1); }
-          }
-        `}</style>
         <div style={headerStyle}>
-          <BarChart2 size={15} color="rgba(255,255,255,0.6)" />
-          <span style={{ fontSize: 13, fontWeight: 700, color: '#fff' }}>Composição da Receita</span>
-          <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.45)', marginLeft: 'auto', fontFamily: 'monospace' }}>cada ■ = 1% do total</span>
-          <InfoPopover insights={<><strong>Waffle Chart — Composição</strong><br /><br />Grid 10×10 onde cada quadradinho representa 1% da receita total arrecadada no ano.<br /><br />As cores indicam o grupo:<br />🟦 <strong>Azul escuro</strong> = Receitas Correntes<br />🟡 <strong>Dourado</strong> = Receitas de Capital<br />🔵 <strong>Azul médio</strong> = Transferências Bancárias<br /><br />💡 Passe o mouse nos quadradinhos para ver o grupo e o valor correspondente.</>} />
+          <PieChartIcon size={15} color="rgba(255,255,255,0.6)" />
+          <span style={{ fontSize: 13, fontWeight: 700, color: '#fff' }}>Distribuição por Subgrupo</span>
+          <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.45)', marginLeft: 'auto', fontFamily: 'monospace' }}>top 8 por arrecadação</span>
+          <InfoPopover insights={<><strong>Distribuição por Subgrupo</strong><br /><br />Exibe os 8 subgrupos de receita com maior arrecadação no ano, mostrando a participação relativa de cada um no total.<br /><br />• <strong>Donut</strong>: proporção visual de cada subgrupo<br />• <strong>Mini-barras</strong>: comparação proporcional entre os subgrupos<br /><br />💡 Passe o mouse sobre os itens para destacar a fatia correspondente no gráfico e ver o valor exato.</>} />
         </div>
         {(() => {
-          const totalGeral = grupos.reduce((s, g) => s + soma(g.meses), 0);
-          const WAFFLE_COLORS: Record<string, string> = {
-            '1': '#1e4d95', '2': '#C9A84C', 'TB': '#3b82f6',
+          const SG_PALETTE: Record<string, string[]> = {
+            '1': ['#0F2A4E','#1e4d95','#2563b0','#3b82f6','#60a5fa'],
+            '2': ['#92400e','#C9A84C','#f59e0b'],
+            'TB': ['#1e3a8a','#1e4d95','#3b82f6','#60a5fa'],
           };
-          // Monta array de 100 células com o grupo de cada uma
-          const cells: { grupo: string; color: string; groupDesc: string; groupValue: number }[] = [];
-          let remaining = 100;
-          const gruposOrdenados = [...grupos].sort((a, b) => soma(b.meses) - soma(a.meses));
-          gruposOrdenados.forEach((g, gi) => {
-            const pct = totalGeral > 0 ? (soma(g.meses) / totalGeral) * 100 : 0;
-            const count = gi === gruposOrdenados.length - 1 ? remaining : Math.round(pct);
-            remaining -= count;
-            for (let i = 0; i < count; i++) {
-              cells.push({
-                grupo: g.cod,
-                color: WAFFLE_COLORS[g.cod] ?? '#3b82f6',
-                groupDesc: g.desc.replace('RECEITAS CORRENTES','Correntes').replace('RECEITAS DE CAPITAL / EXTRA-ORÇ.','Capital').replace('TRANSFERÊNCIAS BANCÁRIAS','Transf. Bancárias'),
-                groupValue: soma(g.meses),
-              });
-            }
-          });
-          // Preenche até 100 se necessário
-          while (cells.length < 100) cells.push({ grupo: '', color: '#f1f5f9', groupDesc: '', groupValue: 0 });
+          const top8 = treemapData.slice(0, 8);
+          const totalTop8 = top8.reduce((s, d) => s + d.size, 0);
+          const maxVal = top8.length > 0 ? Math.max(...top8.map(d => d.size)) : 1;
 
-          const [hoveredIdx, setHoveredIdx] = React.useState<number | null>(null);
-          const hovered = hoveredIdx !== null ? cells[hoveredIdx] : null;
+          const getColor = (grupo: string, idx: number) => {
+            const palette = SG_PALETTE[grupo] ?? SG_PALETTE['1'];
+            return palette[idx % palette.length];
+          };
+
+          const sgColors = top8.map((d, i) => getColor(d.grupo, i));
+
+          const [activeIndex, setActiveIndex] = React.useState<number | null>(null);
 
           return (
-            <div style={{ padding: '16px 20px 14px' }}>
-              {/* Grid */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(10, 1fr)', gap: 3, marginBottom: 16 }}>
-                {cells.map((cell, i) => (
-                  <div
-                    key={i}
-                    onMouseEnter={() => setHoveredIdx(i)}
-                    onMouseLeave={() => setHoveredIdx(null)}
-                    title={cell.groupDesc ? `${cell.groupDesc}\nR$ ${fmtFull(cell.groupValue)} (${Math.round((cell.groupValue / totalGeral) * 100)}%)` : ''}
-                    style={{
-                      aspectRatio: '1',
-                      borderRadius: 3,
-                      background: hoveredIdx !== null && cells[hoveredIdx].grupo === cell.grupo && cell.grupo
-                        ? cell.color
-                        : cell.grupo ? cell.color : '#f1f5f9',
-                      opacity: hoveredIdx !== null && cells[hoveredIdx].grupo !== cell.grupo && cell.grupo ? 0.35 : 1,
-                      transform: hoveredIdx !== null && cells[hoveredIdx].grupo === cell.grupo ? 'scale(1.15)' : 'scale(1)',
-                      boxShadow: hoveredIdx !== null && cells[hoveredIdx].grupo === cell.grupo
-                        ? `0 2px 6px ${cell.color}66`
-                        : 'none',
-                      transition: 'opacity 0.2s, transform 0.2s, box-shadow 0.2s',
-                      animation: `waffleIn 0.35s ease both`,
-                      animationDelay: `${i * 10}ms`,
-                      cursor: 'default',
-                    }}
-                  />
-                ))}
+            <div style={{ padding: '14px 16px 14px', display: 'flex', gap: 8, alignItems: 'center', minHeight: 200 }}>
+              {/* Donut */}
+              <div style={{ width: '42%', flexShrink: 0, position: 'relative' }}>
+                <ResponsiveContainer width="100%" height={190}>
+                  <PieChart>
+                    <defs>
+                      {top8.map((d, i) => (
+                        <linearGradient key={i} id={`sgGrad${i}`} x1="0" y1="0" x2="1" y2="1">
+                          <stop offset="0%" stopColor={sgColors[i]} stopOpacity={1} />
+                          <stop offset="100%" stopColor={sgColors[i]} stopOpacity={0.65} />
+                        </linearGradient>
+                      ))}
+                      <filter id="sgShadow" x="-20%" y="-20%" width="140%" height="140%">
+                        <feDropShadow dx="0" dy="2" stdDeviation="3" floodColor="#0F2A4E" floodOpacity="0.18" />
+                      </filter>
+                    </defs>
+                    <Pie
+                      data={top8}
+                      dataKey="size"
+                      nameKey="fullName"
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={55}
+                      outerRadius={82}
+                      paddingAngle={2}
+                      isAnimationActive={true}
+                      animationBegin={100}
+                      animationDuration={900}
+                      activeIndex={activeIndex ?? undefined}
+                      activeShape={(props: any) => {
+                        const { cx, cy, innerRadius, outerRadius, startAngle, endAngle, fill } = props;
+                        return (
+                          <Sector
+                            cx={cx}
+                            cy={cy}
+                            innerRadius={innerRadius - 3}
+                            outerRadius={outerRadius + 6}
+                            startAngle={startAngle}
+                            endAngle={endAngle}
+                            fill={fill}
+                            style={{ filter: 'url(#sgShadow)' }}
+                          />
+                        );
+                      }}
+                    >
+                      {top8.map((d, i) => (
+                        <Cell
+                          key={i}
+                          fill={`url(#sgGrad${i})`}
+                          stroke="none"
+                          style={{ cursor: 'pointer', transition: 'opacity 0.2s' }}
+                          opacity={activeIndex !== null && activeIndex !== i ? 0.45 : 1}
+                          onMouseEnter={() => setActiveIndex(i)}
+                          onMouseLeave={() => setActiveIndex(null)}
+                        />
+                      ))}
+                    </Pie>
+                    <Tooltip
+                      content={({ active, payload }) => {
+                        if (!active || !payload?.length) return null;
+                        const d = payload[0].payload;
+                        const pct = totalTop8 > 0 ? (d.size / totalTop8 * 100).toFixed(1) : '0';
+                        return (
+                          <div style={{ background: '#0F2A4E', borderRadius: 8, padding: '8px 12px', boxShadow: '0 4px 16px rgba(0,0,0,0.25)' }}>
+                            <p style={{ margin: 0, fontSize: 11, color: 'rgba(255,255,255,0.7)', marginBottom: 2 }}>{d.fullName}</p>
+                            <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: '#fff' }}>R$ {fmtFull(d.size)}</p>
+                            <p style={{ margin: 0, fontSize: 10, color: '#C9A84C' }}>{pct}% do top 8</p>
+                          </div>
+                        );
+                      }}
+                    />
+                  </PieChart>
+                </ResponsiveContainer>
+                {/* Texto central */}
+                <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', textAlign: 'center', pointerEvents: 'none' }}>
+                  <div style={{ fontSize: 9, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: 0.5 }}>Total</div>
+                  <div style={{ fontSize: 13, fontWeight: 800, color: '#0F2A4E', lineHeight: 1.2 }}>R$ {fmtK(totalTop8)}</div>
+                </div>
               </div>
 
               {/* Legenda */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                {gruposOrdenados.filter(g => soma(g.meses) > 0).map((g, i) => {
-                  const val = soma(g.meses);
-                  const pct = totalGeral > 0 ? (val / totalGeral) * 100 : 0;
-                  const color = WAFFLE_COLORS[g.cod] ?? '#3b82f6';
-                  const label = g.desc.replace('RECEITAS CORRENTES','Correntes').replace('RECEITAS DE CAPITAL / EXTRA-ORÇ.','Capital').replace('TRANSFERÊNCIAS BANCÁRIAS','Transf. Bancárias');
-                  const isHov = hovered?.grupo === g.cod;
+              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 9, overflow: 'hidden' }}>
+                {top8.map((d, i) => {
+                  const color = sgColors[i];
+                  const barW = maxVal > 0 ? (d.size / maxVal) * 100 : 0;
+                  const isActive = activeIndex === i;
+                  const isDimmed = activeIndex !== null && !isActive;
+                  const truncName = d.fullName.length > 22 ? d.fullName.slice(0, 21) + '…' : d.fullName;
                   return (
-                    <div key={g.cod} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', opacity: hovered && !isHov ? 0.4 : 1, transition: 'opacity 0.2s' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <div style={{ width: 12, height: 12, borderRadius: 3, background: color, flexShrink: 0, boxShadow: isHov ? `0 0 0 2px ${color}44` : 'none', transition: 'box-shadow 0.2s' }} />
-                        <span style={{ fontSize: 11, color: isHov ? '#0F2A4E' : '#475569', fontWeight: isHov ? 600 : 400, transition: 'color 0.2s' }}>{label}</span>
+                    <div
+                      key={i}
+                      onMouseEnter={() => setActiveIndex(i)}
+                      onMouseLeave={() => setActiveIndex(null)}
+                      style={{ opacity: isDimmed ? 0.5 : 1, transition: 'opacity 0.2s', cursor: 'default' }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 3 }}>
+                        <div style={{
+                          width: 8, height: 8, borderRadius: '50%', background: color, flexShrink: 0,
+                          boxShadow: isActive ? `0 0 0 2px ${color}55` : 'none',
+                          transition: 'box-shadow 0.2s',
+                        }} />
+                        <span style={{
+                          fontSize: 11, color: isActive ? '#0F2A4E' : '#475569',
+                          fontWeight: isActive ? 600 : 400, flex: 1,
+                          overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis',
+                          transition: 'color 0.2s',
+                        }} title={d.fullName}>{truncName}</span>
+                        <span style={{
+                          fontSize: 11, fontWeight: 700,
+                          color: isActive ? color : '#0F2A4E',
+                          fontVariantNumeric: 'tabular-nums', flexShrink: 0,
+                          transition: 'color 0.2s',
+                        }}>R$ {fmtFull(d.size)}</span>
                       </div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                        <span style={{ fontSize: 10, color: '#94a3b8', fontVariantNumeric: 'tabular-nums' }}>{pct.toFixed(1)}%</span>
-                        <span style={{ fontSize: 11, fontWeight: 700, color: isHov ? color : '#0F2A4E', fontVariantNumeric: 'tabular-nums', transition: 'color 0.2s' }}>R$ {fmtFull(val)}</span>
+                      <div style={{ height: 3, background: '#f1f5f9', borderRadius: 99, overflow: 'hidden', marginLeft: 14 }}>
+                        <div style={{
+                          height: '100%', width: `${barW}%`,
+                          background: `linear-gradient(90deg, ${color}, ${color}99)`,
+                          borderRadius: 99,
+                          transition: 'width 0.6s ease',
+                        }} />
                       </div>
                     </div>
                   );
                 })}
-                <div style={{ borderTop: '1px solid #f1f5f9', paddingTop: 8, display: 'flex', justifyContent: 'space-between' }}>
-                  <span style={{ fontSize: 11, color: '#94a3b8' }}>Total geral</span>
-                  <span style={{ fontSize: 12, fontWeight: 700, color: '#C9A84C' }}>R$ {fmtFull(totalGeral)}</span>
-                </div>
               </div>
             </div>
           );
