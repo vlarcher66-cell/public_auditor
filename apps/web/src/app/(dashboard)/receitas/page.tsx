@@ -879,15 +879,15 @@ function PainelAnalitica({ grupos }: { grupos: Grupo[] }) {
 
   const cardStyle: React.CSSProperties = {
     background: '#fff',
-    borderRadius: 18,
+    borderRadius: 16,
     border: '1px solid #e2e8f0',
     boxShadow: '0 1px 4px rgba(0,0,0,0.06)',
     overflow: 'hidden',
   };
 
   const headerStyle: React.CSSProperties = {
-    padding: '14px 18px',
-    borderBottom: '1px solid #f1f5f9',
+    padding: '12px 20px',
+    background: 'linear-gradient(135deg, #0F2A4E, #1e4d95)',
     display: 'flex',
     alignItems: 'center',
     gap: 8,
@@ -900,9 +900,9 @@ function PainelAnalitica({ grupos }: { grupos: Grupo[] }) {
       {/* ── Top SubGrupos BarChart ── */}
       <div style={cardStyle}>
         <div style={headerStyle}>
-          <BarChart2 size={15} color="#0F2A4E" />
-          <span style={{ fontSize: 13, fontWeight: 700, color: '#0F2A4E' }}>Top Subgrupos</span>
-          <span style={{ fontSize: 11, color: '#94a3b8', marginLeft: 'auto' }}>por valor arrecadado</span>
+          <BarChart2 size={15} color="rgba(255,255,255,0.6)" />
+          <span style={{ fontSize: 13, fontWeight: 700, color: '#fff' }}>Top Subgrupos</span>
+          <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.45)', marginLeft: 'auto', fontFamily: 'monospace' }}>por valor arrecadado</span>
         </div>
         <div style={{ padding: '12px 8px 12px 0' }}>
           <ResponsiveContainer width="100%" height={280}>
@@ -938,9 +938,9 @@ function PainelAnalitica({ grupos }: { grupos: Grupo[] }) {
       {/* ── Composição por Grupo PieChart ── */}
       <div style={cardStyle}>
         <div style={headerStyle}>
-          <PieChartIcon size={15} color="#0F2A4E" />
-          <span style={{ fontSize: 13, fontWeight: 700, color: '#0F2A4E' }}>Composição por Grupo</span>
-          <span style={{ fontSize: 11, color: '#94a3b8', marginLeft: 'auto' }}>participação %</span>
+          <PieChartIcon size={15} color="rgba(255,255,255,0.6)" />
+          <span style={{ fontSize: 13, fontWeight: 700, color: '#fff' }}>Composição por Grupo</span>
+          <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.45)', marginLeft: 'auto', fontFamily: 'monospace' }}>participação %</span>
         </div>
         <div style={{ padding: '12px 16px 16px' }}>
           <ResponsiveContainer width="100%" height={180}>
@@ -994,9 +994,9 @@ function PainelAnalitica({ grupos }: { grupos: Grupo[] }) {
       {/* ── Evolução Mensal AreaChart — col-span-2 ── */}
       <div style={{ ...cardStyle, gridColumn: '1 / -1' }}>
         <div style={headerStyle}>
-          <Activity size={15} color="#0F2A4E" />
-          <span style={{ fontSize: 13, fontWeight: 700, color: '#0F2A4E' }}>Evolução por Grupo — Mês a Mês</span>
-          <span style={{ fontSize: 11, color: '#94a3b8', marginLeft: 'auto' }}>receita mensal por categoria</span>
+          <Activity size={15} color="rgba(255,255,255,0.6)" />
+          <span style={{ fontSize: 13, fontWeight: 700, color: '#fff' }}>Evolução por Grupo — Mês a Mês</span>
+          <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.45)', marginLeft: 'auto', fontFamily: 'monospace' }}>receita mensal por categoria</span>
         </div>
         <div style={{ padding: '12px 8px 12px 0' }}>
           <ResponsiveContainer width="100%" height={220}>
