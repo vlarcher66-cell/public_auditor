@@ -1367,36 +1367,101 @@ function PainelSintetica({ grupos }: { grupos: Grupo[] }) {
         </div>
       </div>
 
-      {/* ── 2. Treemap — Peso por SubGrupo ── */}
+      {/* ── 2. Lollipop Chart — Ranking de Subgrupos ── */}
       <div style={cardStyle}>
         <div style={headerStyle}>
           <BarChart2 size={15} color="rgba(255,255,255,0.6)" />
-          <span style={{ fontSize: 13, fontWeight: 700, color: '#fff' }}>Peso por Subgrupo</span>
-          <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.45)', marginLeft: 'auto', fontFamily: 'monospace' }}>top 12 — área ∝ valor</span>
-          <InfoPopover insights={<><strong>Treemap — Peso por Subgrupo</strong><br /><br />Cada retângulo representa um subgrupo. A área é proporcional ao valor arrecadado — quanto maior o bloco, maior a contribuição.<br /><br />Tons mais escuros = Receitas Correntes · Tons dourados = Capital · Tons azuis = Transferências Bancárias<br /><br />💡 Use este gráfico para identificar rapidamente quais subgrupos dominam a receita sem precisar ler a tabela.</>} />
+          <span style={{ fontSize: 13, fontWeight: 700, color: '#fff' }}>Ranking de Subgrupos</span>
+          <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.45)', marginLeft: 'auto', fontFamily: 'monospace' }}>top 10 por valor</span>
+          <InfoPopover insights={<><strong>Ranking de Subgrupos</strong><br /><br />Cada linha representa um subgrupo ordenado pelo valor arrecadado no ano.<br /><br />A extensão da linha é proporcional ao valor — quanto mais longa, maior a arrecadação.<br /><br />🔵 Azul escuro = Receitas Correntes · 🟡 Dourado = Capital · 🔵 Azul = Transf. Bancárias<br /><br />💡 Passe o mouse em qualquer linha para ver o nome completo e o valor exato.</>} />
         </div>
-        <div style={{ padding: '8px' }}>
-          <ResponsiveContainer width="100%" height={252}>
-            <Treemap
-              data={treemapWithColor}
-              dataKey="size"
-              aspectRatio={4 / 3}
-              isAnimationActive
-            >
-              <Tooltip
-                content={({ active, payload }) => {
-                  if (!active || !payload?.length) return null;
-                  const d = payload[0].payload;
-                  return (
-                    <div style={{ background: '#0F2A4E', borderRadius: 10, padding: '8px 12px', fontSize: 11 }}>
-                      <p style={{ color: '#C9A84C', fontWeight: 700, margin: 0 }}>{d.fullName ?? d.name}</p>
-                      <p style={{ color: '#fff', margin: '2px 0 0' }}>R$ {fmtFull(d.size ?? d.value)}</p>
-                    </div>
-                  );
-                }}
-              />
-            </Treemap>
-          </ResponsiveContainer>
+        <div style={{ padding: '16px 20px 12px' }}>
+          {treemapData.slice(0, 10).map((item, i) => {
+            const color = GRUPO_COLORS[item.grupo] ?? '#3b82f6';
+            const maxVal = treemapData[0]?.size ?? 1;
+            const pct = (item.size / maxVal) * 100;
+            const [hovered, setHovered] = React.useState(false);
+            const [mounted, setMounted] = React.useState(false);
+            React.useEffect(() => {
+              const t = setTimeout(() => setMounted(true), i * 60);
+              return () => clearTimeout(t);
+            }, []);
+            return (
+              <div
+                key={i}
+                onMouseEnter={() => setHovered(true)}
+                onMouseLeave={() => setHovered(false)}
+                style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: i < 9 ? 10 : 0, cursor: 'default', position: 'relative' }}
+              >
+                {/* Rank badge */}
+                <div style={{
+                  width: 18, height: 18, borderRadius: '50%', flexShrink: 0,
+                  background: i === 0 ? '#C9A84C' : i === 1 ? '#94a3b8' : i === 2 ? '#b45309' : '#f1f5f9',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: 9, fontWeight: 800,
+                  color: i < 3 ? '#fff' : '#94a3b8',
+                }}>
+                  {i + 1}
+                </div>
+
+                {/* Nome */}
+                <div style={{
+                  width: 170, flexShrink: 0, fontSize: 11,
+                  color: hovered ? '#0F2A4E' : '#475569',
+                  fontWeight: hovered ? 600 : 400,
+                  overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis',
+                  transition: 'color 0.15s, font-weight 0.15s',
+                  textAlign: 'right',
+                }} title={item.fullName}>
+                  {item.name}
+                </div>
+
+                {/* Trilho + linha + círculo */}
+                <div style={{ flex: 1, position: 'relative', height: 20, display: 'flex', alignItems: 'center' }}>
+                  {/* Trilho de fundo */}
+                  <div style={{ position: 'absolute', left: 0, right: 0, height: 1.5, background: '#f1f5f9', borderRadius: 99 }} />
+                  {/* Linha animada */}
+                  <div style={{
+                    position: 'absolute', left: 0, height: 2,
+                    width: mounted ? `calc(${pct}% - 8px)` : '0%',
+                    background: hovered
+                      ? `linear-gradient(90deg, ${color}55, ${color})`
+                      : `linear-gradient(90deg, ${color}33, ${color}88)`,
+                    borderRadius: 99,
+                    transition: mounted ? `width 0.7s cubic-bezier(0.34,1.56,0.64,1) ${i * 0.05}s, background 0.2s` : 'none',
+                  }} />
+                  {/* Círculo */}
+                  <div style={{
+                    position: 'absolute',
+                    left: mounted ? `calc(${pct}% - 16px)` : '0%',
+                    width: hovered ? 16 : 12,
+                    height: hovered ? 16 : 12,
+                    borderRadius: '50%',
+                    background: color,
+                    border: `2.5px solid #fff`,
+                    boxShadow: hovered ? `0 0 0 3px ${color}33, 0 2px 8px ${color}66` : `0 1px 4px ${color}44`,
+                    transition: mounted
+                      ? `left 0.7s cubic-bezier(0.34,1.56,0.64,1) ${i * 0.05}s, width 0.2s, height 0.2s, box-shadow 0.2s`
+                      : 'none',
+                    transform: 'translateY(-50%)',
+                    top: '50%',
+                    zIndex: 2,
+                  }} />
+                </div>
+
+                {/* Valor */}
+                <div style={{
+                  width: 110, flexShrink: 0, textAlign: 'right',
+                  fontSize: 11, fontWeight: 700,
+                  color: hovered ? color : '#1e293b',
+                  transition: 'color 0.15s',
+                  whiteSpace: 'nowrap',
+                }}>
+                  R$ {fmtFull(item.size)}
+                </div>
+              </div>
+            );
+          })}
         </div>
       </div>
 
