@@ -923,8 +923,8 @@ function PainelAnalitica({ grupos }: { grupos: Grupo[] }) {
     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 16, marginBottom: 20 }}
       className="grid-cols-1 md:grid-cols-2">
 
-      {/* ── Top SubGrupos BarChart — largura total ── */}
-      <div style={{ ...cardStyle, gridColumn: '1 / -1' }}>
+      {/* ── Top SubGrupos BarChart ── */}
+      <div style={cardStyle}>
         <div style={headerStyle}>
           <BarChart2 size={15} color="rgba(255,255,255,0.6)" />
           <span style={{ fontSize: 13, fontWeight: 700, color: '#fff' }}>Top Subgrupos</span>
