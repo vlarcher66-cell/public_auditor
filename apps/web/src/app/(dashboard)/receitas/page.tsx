@@ -6,11 +6,16 @@ import {
   Target, TrendingUp, BarChart2, AlertCircle,
   ChevronRight, Upload, Loader2, Download, InboxIcon,
   LayoutDashboard, Table2, Banknote, Activity, Calendar,
+  PieChart as PieChartIcon,
 } from 'lucide-react';
 import { useMunicipioEntidade } from '@/contexts/MunicipioEntidadeContext';
 import TopBar from '@/components/dashboard/TopBar';
 import { apiRequest } from '@/lib/api';
 import Link from 'next/link';
+import {
+  BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
+  PieChart, Pie, Cell, AreaChart, Area, CartesianGrid, Legend,
+} from 'recharts';
 
 // ─── Formatação ───────────────────────────────────────────────────────────────
 
@@ -791,6 +796,250 @@ function TabGeralReceita({
   );
 }
 
+// ─── Painel Analítica ─────────────────────────────────────────────────────────
+
+const GRUPO_COLORS: Record<string, string> = {
+  '1':  '#0F2A4E',
+  '2':  '#C9A84C',
+  'TB': '#3b82f6',
+};
+
+const GRUPO_AREA_COLORS = ['#0F2A4E', '#C9A84C', '#3b82f6'];
+
+function CustomBarTooltip({ active, payload }: any) {
+  if (!active || !payload?.length) return null;
+  return (
+    <div style={{ background: '#0F2A4E', borderRadius: 10, padding: '8px 14px', boxShadow: '0 4px 20px rgba(0,0,0,0.2)' }}>
+      <p style={{ color: '#fff', fontSize: 11, fontWeight: 700, margin: 0 }}>R$ {fmtFull(payload[0].value)}</p>
+      <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: 10, margin: '2px 0 0' }}>{payload[0].payload.fullName}</p>
+    </div>
+  );
+}
+
+function CustomAreaTooltip({ active, payload, label }: any) {
+  if (!active || !payload?.length) return null;
+  return (
+    <div style={{ background: '#0F2A4E', borderRadius: 12, padding: '10px 16px', boxShadow: '0 4px 20px rgba(0,0,0,0.25)', minWidth: 160 }}>
+      <p style={{ color: '#C9A84C', fontSize: 11, fontWeight: 700, margin: '0 0 6px' }}>{label}</p>
+      {payload.map((p: any) => (
+        <p key={p.dataKey} style={{ color: '#fff', fontSize: 11, margin: '2px 0', display: 'flex', justifyContent: 'space-between', gap: 12 }}>
+          <span style={{ color: 'rgba(255,255,255,0.6)' }}>{p.name}</span>
+          <span style={{ fontWeight: 700 }}>{fmtK(p.value)}</span>
+        </p>
+      ))}
+    </div>
+  );
+}
+
+function CustomPieTooltip({ active, payload }: any) {
+  if (!active || !payload?.length) return null;
+  return (
+    <div style={{ background: '#0F2A4E', borderRadius: 10, padding: '8px 14px', boxShadow: '0 4px 20px rgba(0,0,0,0.2)' }}>
+      <p style={{ color: '#C9A84C', fontSize: 11, fontWeight: 700, margin: 0 }}>{payload[0].name}</p>
+      <p style={{ color: '#fff', fontSize: 11, margin: '2px 0 0' }}>R$ {fmtFull(payload[0].value)}</p>
+    </div>
+  );
+}
+
+function PainelAnalitica({ grupos }: { grupos: Grupo[] }) {
+  if (grupos.length === 0) return null;
+
+  // Top 8 subgrupos por valor
+  const sgFlat: { name: string; fullName: string; value: number }[] = [];
+  for (const g of grupos) {
+    for (const sg of g.subgrupos) {
+      const val = soma(sg.meses);
+      if (val > 0) sgFlat.push({ name: sg.desc.length > 22 ? sg.desc.slice(0, 22) + '…' : sg.desc, fullName: sg.desc, value: val });
+    }
+  }
+  const topSg = sgFlat.sort((a, b) => b.value - a.value).slice(0, 8);
+
+  // Composição por grupo (pie)
+  const pieData = grupos.map(g => ({
+    name: g.desc.replace('RECEITAS CORRENTES', 'Correntes').replace('RECEITAS DE CAPITAL / EXTRA-ORÇ.', 'Capital').replace('TRANSFERÊNCIAS BANCÁRIAS', 'Transf. Banc.'),
+    value: soma(g.meses),
+    cod: g.cod,
+  })).filter(d => d.value > 0);
+
+  const totalPie = pieData.reduce((s, d) => s + d.value, 0);
+
+  // Evolução mensal por grupo (area chart)
+  const areaData = MESES.map((mes, i) => {
+    const entry: Record<string, any> = { mes };
+    for (const g of grupos) {
+      const label = g.desc.replace('RECEITAS CORRENTES', 'Correntes').replace('RECEITAS DE CAPITAL / EXTRA-ORÇ.', 'Capital').replace('TRANSFERÊNCIAS BANCÁRIAS', 'Transf. Banc.');
+      entry[label] = g.meses[i];
+    }
+    return entry;
+  });
+
+  const grupoLabels = grupos.map(g =>
+    g.desc.replace('RECEITAS CORRENTES', 'Correntes').replace('RECEITAS DE CAPITAL / EXTRA-ORÇ.', 'Capital').replace('TRANSFERÊNCIAS BANCÁRIAS', 'Transf. Banc.')
+  );
+
+  const cardStyle: React.CSSProperties = {
+    background: '#fff',
+    borderRadius: 18,
+    border: '1px solid #e2e8f0',
+    boxShadow: '0 1px 4px rgba(0,0,0,0.06)',
+    overflow: 'hidden',
+  };
+
+  const headerStyle: React.CSSProperties = {
+    padding: '14px 18px',
+    borderBottom: '1px solid #f1f5f9',
+    display: 'flex',
+    alignItems: 'center',
+    gap: 8,
+  };
+
+  return (
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 16, marginBottom: 20 }}
+      className="grid-cols-1 md:grid-cols-2">
+
+      {/* ── Top SubGrupos BarChart ── */}
+      <div style={cardStyle}>
+        <div style={headerStyle}>
+          <BarChart2 size={15} color="#0F2A4E" />
+          <span style={{ fontSize: 13, fontWeight: 700, color: '#0F2A4E' }}>Top Subgrupos</span>
+          <span style={{ fontSize: 11, color: '#94a3b8', marginLeft: 'auto' }}>por valor arrecadado</span>
+        </div>
+        <div style={{ padding: '12px 8px 12px 0' }}>
+          <ResponsiveContainer width="100%" height={280}>
+            <BarChart data={topSg} layout="vertical" margin={{ top: 0, right: 20, bottom: 0, left: 8 }}>
+              <defs>
+                <linearGradient id="barGrad" x1="0" y1="0" x2="1" y2="0">
+                  <stop offset="0%" stopColor="#1e4d95" />
+                  <stop offset="100%" stopColor="#3b82f6" />
+                </linearGradient>
+              </defs>
+              <XAxis
+                type="number"
+                tickFormatter={fmtK}
+                tick={{ fontSize: 9, fill: '#94a3b8' }}
+                axisLine={false}
+                tickLine={false}
+              />
+              <YAxis
+                type="category"
+                dataKey="name"
+                width={130}
+                tick={{ fontSize: 10, fill: '#475569' }}
+                axisLine={false}
+                tickLine={false}
+              />
+              <Tooltip content={<CustomBarTooltip />} cursor={{ fill: 'rgba(59,130,246,0.06)' }} />
+              <Bar dataKey="value" fill="url(#barGrad)" radius={[0, 6, 6, 0]} maxBarSize={18} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
+
+      {/* ── Composição por Grupo PieChart ── */}
+      <div style={cardStyle}>
+        <div style={headerStyle}>
+          <PieChartIcon size={15} color="#0F2A4E" />
+          <span style={{ fontSize: 13, fontWeight: 700, color: '#0F2A4E' }}>Composição por Grupo</span>
+          <span style={{ fontSize: 11, color: '#94a3b8', marginLeft: 'auto' }}>participação %</span>
+        </div>
+        <div style={{ padding: '12px 16px 16px' }}>
+          <ResponsiveContainer width="100%" height={180}>
+            <PieChart>
+              <Pie
+                data={pieData}
+                cx="50%"
+                cy="50%"
+                innerRadius={55}
+                outerRadius={80}
+                paddingAngle={3}
+                dataKey="value"
+                label={({ cx, cy, midAngle, innerRadius, outerRadius, percent }) => {
+                  const RADIAN = Math.PI / 180;
+                  const radius = innerRadius + (outerRadius - innerRadius) * 1.45;
+                  const x = cx + radius * Math.cos(-midAngle * RADIAN);
+                  const y = cy + radius * Math.sin(-midAngle * RADIAN);
+                  return percent > 0.04 ? (
+                    <text x={x} y={y} fill="#475569" textAnchor="middle" dominantBaseline="central" fontSize={10} fontWeight={600}>
+                      {(percent * 100).toFixed(0)}%
+                    </text>
+                  ) : null;
+                }}
+                labelLine={false}
+              >
+                {pieData.map((entry, index) => (
+                  <Cell key={entry.cod} fill={GRUPO_COLORS[entry.cod] ?? GRUPO_AREA_COLORS[index % 3]} />
+                ))}
+              </Pie>
+              <Tooltip content={<CustomPieTooltip />} />
+            </PieChart>
+          </ResponsiveContainer>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 4 }}>
+            {pieData.map((entry, index) => (
+              <div key={entry.cod} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <div style={{ width: 10, height: 10, borderRadius: 3, background: GRUPO_COLORS[entry.cod] ?? GRUPO_AREA_COLORS[index % 3], flexShrink: 0 }} />
+                  <span style={{ fontSize: 11, color: '#475569' }}>{entry.name}</span>
+                </div>
+                <span style={{ fontSize: 11, fontWeight: 700, color: '#0F2A4E' }}>{fmtK(entry.value)}</span>
+              </div>
+            ))}
+            <div style={{ borderTop: '1px solid #f1f5f9', paddingTop: 8, marginTop: 2, display: 'flex', justifyContent: 'space-between' }}>
+              <span style={{ fontSize: 11, color: '#94a3b8' }}>Total</span>
+              <span style={{ fontSize: 12, fontWeight: 700, color: '#C9A84C' }}>{fmtK(totalPie)}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Evolução Mensal AreaChart — col-span-2 ── */}
+      <div style={{ ...cardStyle, gridColumn: '1 / -1' }}>
+        <div style={headerStyle}>
+          <Activity size={15} color="#0F2A4E" />
+          <span style={{ fontSize: 13, fontWeight: 700, color: '#0F2A4E' }}>Evolução por Grupo — Mês a Mês</span>
+          <span style={{ fontSize: 11, color: '#94a3b8', marginLeft: 'auto' }}>receita mensal por categoria</span>
+        </div>
+        <div style={{ padding: '12px 8px 12px 0' }}>
+          <ResponsiveContainer width="100%" height={220}>
+            <AreaChart data={areaData} margin={{ top: 8, right: 24, bottom: 0, left: 8 }}>
+              <defs>
+                {grupoLabels.map((label, i) => (
+                  <linearGradient key={label} id={`areaGrad${i}`} x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor={GRUPO_AREA_COLORS[i % 3]} stopOpacity={0.18} />
+                    <stop offset="95%" stopColor={GRUPO_AREA_COLORS[i % 3]} stopOpacity={0.02} />
+                  </linearGradient>
+                ))}
+              </defs>
+              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+              <XAxis dataKey="mes" tick={{ fontSize: 10, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
+              <YAxis tickFormatter={fmtK} tick={{ fontSize: 9, fill: '#94a3b8' }} axisLine={false} tickLine={false} width={58} />
+              <Tooltip content={<CustomAreaTooltip />} />
+              <Legend
+                iconType="circle"
+                iconSize={8}
+                wrapperStyle={{ fontSize: 11, color: '#64748b', paddingTop: 12 }}
+              />
+              {grupoLabels.map((label, i) => (
+                <Area
+                  key={label}
+                  type="monotone"
+                  dataKey={label}
+                  name={label}
+                  stroke={GRUPO_AREA_COLORS[i % 3]}
+                  strokeWidth={2.5}
+                  fill={`url(#areaGrad${i})`}
+                  dot={{ r: 3, fill: GRUPO_AREA_COLORS[i % 3], strokeWidth: 0 }}
+                  activeDot={{ r: 5, strokeWidth: 0 }}
+                />
+              ))}
+            </AreaChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
+
+    </div>
+  );
+}
+
 // ─── Página Principal ─────────────────────────────────────────────────────────
 
 export default function ReceitasPage() {
@@ -917,7 +1166,10 @@ export default function ReceitasPage() {
                 />
               )}
               {activeTab === 'analitica' && (
-                <TabelaDRE grupos={analiticaGrupos} titulo="Receita Analítica" ano={ano} showFonte />
+                <>
+                  <PainelAnalitica grupos={analiticaGrupos} />
+                  <TabelaDRE grupos={analiticaGrupos} titulo="Receita Analítica" ano={ano} showFonte />
+                </>
               )}
               {activeTab === 'sintetica' && (
                 <TabelaSintetica grupos={[...orcGrupos, ...transfGrupos]} titulo="Receita Sintética — Orçamentária" ano={ano} />
