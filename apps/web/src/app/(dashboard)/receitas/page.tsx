@@ -1367,102 +1367,107 @@ function PainelSintetica({ grupos }: { grupos: Grupo[] }) {
         </div>
       </div>
 
-      {/* ── 2. Lollipop Chart — Ranking de Subgrupos ── */}
+      {/* ── 2. Waffle Chart — Composição da Receita ── */}
       <div style={cardStyle}>
+        <style>{`
+          @keyframes waffleIn {
+            from { opacity: 0; transform: scale(0.2); }
+            to   { opacity: 1; transform: scale(1); }
+          }
+        `}</style>
         <div style={headerStyle}>
           <BarChart2 size={15} color="rgba(255,255,255,0.6)" />
-          <span style={{ fontSize: 13, fontWeight: 700, color: '#fff' }}>Ranking de Subgrupos</span>
-          <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.45)', marginLeft: 'auto', fontFamily: 'monospace' }}>top 10 por valor</span>
-          <InfoPopover insights={<><strong>Ranking de Subgrupos</strong><br /><br />Cada linha representa um subgrupo ordenado pelo valor arrecadado no ano.<br /><br />A extensão da linha é proporcional ao valor — quanto mais longa, maior a arrecadação.<br /><br />🔵 Azul escuro = Receitas Correntes · 🟡 Dourado = Capital · 🔵 Azul = Transf. Bancárias<br /><br />💡 Passe o mouse em qualquer linha para ver o nome completo e o valor exato.</>} />
+          <span style={{ fontSize: 13, fontWeight: 700, color: '#fff' }}>Composição da Receita</span>
+          <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.45)', marginLeft: 'auto', fontFamily: 'monospace' }}>cada ■ = 1% do total</span>
+          <InfoPopover insights={<><strong>Waffle Chart — Composição</strong><br /><br />Grid 10×10 onde cada quadradinho representa 1% da receita total arrecadada no ano.<br /><br />As cores indicam o grupo:<br />🟦 <strong>Azul escuro</strong> = Receitas Correntes<br />🟡 <strong>Dourado</strong> = Receitas de Capital<br />🔵 <strong>Azul médio</strong> = Transferências Bancárias<br /><br />💡 Passe o mouse nos quadradinhos para ver o grupo e o valor correspondente.</>} />
         </div>
-        <div style={{ padding: '16px 20px 12px' }}>
-          {treemapData.slice(0, 10).map((item, i) => {
-            const color = GRUPO_COLORS[item.grupo] ?? '#3b82f6';
-            const maxVal = treemapData[0]?.size ?? 1;
-            const pct = (item.size / maxVal) * 100;
-            const [hovered, setHovered] = React.useState(false);
-            const [mounted, setMounted] = React.useState(false);
-            React.useEffect(() => {
-              const t = setTimeout(() => setMounted(true), i * 60);
-              return () => clearTimeout(t);
-            }, []);
-            return (
-              <div
-                key={i}
-                onMouseEnter={() => setHovered(true)}
-                onMouseLeave={() => setHovered(false)}
-                style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: i < 9 ? 10 : 0, cursor: 'default', position: 'relative' }}
-              >
-                {/* Rank badge */}
-                <div style={{
-                  width: 18, height: 18, borderRadius: '50%', flexShrink: 0,
-                  background: i === 0 ? '#C9A84C' : i === 1 ? '#94a3b8' : i === 2 ? '#b45309' : '#f1f5f9',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: 9, fontWeight: 800,
-                  color: i < 3 ? '#fff' : '#94a3b8',
-                }}>
-                  {i + 1}
-                </div>
+        {(() => {
+          const totalGeral = grupos.reduce((s, g) => s + soma(g.meses), 0);
+          const WAFFLE_COLORS: Record<string, string> = {
+            '1': '#1e4d95', '2': '#C9A84C', 'TB': '#3b82f6',
+          };
+          // Monta array de 100 células com o grupo de cada uma
+          const cells: { grupo: string; color: string; groupDesc: string; groupValue: number }[] = [];
+          let remaining = 100;
+          const gruposOrdenados = [...grupos].sort((a, b) => soma(b.meses) - soma(a.meses));
+          gruposOrdenados.forEach((g, gi) => {
+            const pct = totalGeral > 0 ? (soma(g.meses) / totalGeral) * 100 : 0;
+            const count = gi === gruposOrdenados.length - 1 ? remaining : Math.round(pct);
+            remaining -= count;
+            for (let i = 0; i < count; i++) {
+              cells.push({
+                grupo: g.cod,
+                color: WAFFLE_COLORS[g.cod] ?? '#3b82f6',
+                groupDesc: g.desc.replace('RECEITAS CORRENTES','Correntes').replace('RECEITAS DE CAPITAL / EXTRA-ORÇ.','Capital').replace('TRANSFERÊNCIAS BANCÁRIAS','Transf. Bancárias'),
+                groupValue: soma(g.meses),
+              });
+            }
+          });
+          // Preenche até 100 se necessário
+          while (cells.length < 100) cells.push({ grupo: '', color: '#f1f5f9', groupDesc: '', groupValue: 0 });
 
-                {/* Nome */}
-                <div style={{
-                  width: 170, flexShrink: 0, fontSize: 11,
-                  color: hovered ? '#0F2A4E' : '#475569',
-                  fontWeight: hovered ? 600 : 400,
-                  overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis',
-                  transition: 'color 0.15s, font-weight 0.15s',
-                  textAlign: 'right',
-                }} title={item.fullName}>
-                  {item.name}
-                </div>
+          const [hoveredIdx, setHoveredIdx] = React.useState<number | null>(null);
+          const hovered = hoveredIdx !== null ? cells[hoveredIdx] : null;
 
-                {/* Trilho + linha + círculo */}
-                <div style={{ flex: 1, position: 'relative', height: 20, display: 'flex', alignItems: 'center' }}>
-                  {/* Trilho de fundo */}
-                  <div style={{ position: 'absolute', left: 0, right: 0, height: 1.5, background: '#f1f5f9', borderRadius: 99 }} />
-                  {/* Linha animada */}
-                  <div style={{
-                    position: 'absolute', left: 0, height: 2,
-                    width: mounted ? `calc(${pct}% - 8px)` : '0%',
-                    background: hovered
-                      ? `linear-gradient(90deg, ${color}55, ${color})`
-                      : `linear-gradient(90deg, ${color}33, ${color}88)`,
-                    borderRadius: 99,
-                    transition: mounted ? `width 0.7s cubic-bezier(0.34,1.56,0.64,1) ${i * 0.05}s, background 0.2s` : 'none',
-                  }} />
-                  {/* Círculo */}
-                  <div style={{
-                    position: 'absolute',
-                    left: mounted ? `calc(${pct}% - 16px)` : '0%',
-                    width: hovered ? 16 : 12,
-                    height: hovered ? 16 : 12,
-                    borderRadius: '50%',
-                    background: color,
-                    border: `2.5px solid #fff`,
-                    boxShadow: hovered ? `0 0 0 3px ${color}33, 0 2px 8px ${color}66` : `0 1px 4px ${color}44`,
-                    transition: mounted
-                      ? `left 0.7s cubic-bezier(0.34,1.56,0.64,1) ${i * 0.05}s, width 0.2s, height 0.2s, box-shadow 0.2s`
-                      : 'none',
-                    transform: 'translateY(-50%)',
-                    top: '50%',
-                    zIndex: 2,
-                  }} />
-                </div>
+          return (
+            <div style={{ padding: '16px 20px 14px' }}>
+              {/* Grid */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(10, 1fr)', gap: 3, marginBottom: 16 }}>
+                {cells.map((cell, i) => (
+                  <div
+                    key={i}
+                    onMouseEnter={() => setHoveredIdx(i)}
+                    onMouseLeave={() => setHoveredIdx(null)}
+                    title={cell.groupDesc ? `${cell.groupDesc}\nR$ ${fmtFull(cell.groupValue)} (${Math.round((cell.groupValue / totalGeral) * 100)}%)` : ''}
+                    style={{
+                      aspectRatio: '1',
+                      borderRadius: 3,
+                      background: hoveredIdx !== null && cells[hoveredIdx].grupo === cell.grupo && cell.grupo
+                        ? cell.color
+                        : cell.grupo ? cell.color : '#f1f5f9',
+                      opacity: hoveredIdx !== null && cells[hoveredIdx].grupo !== cell.grupo && cell.grupo ? 0.35 : 1,
+                      transform: hoveredIdx !== null && cells[hoveredIdx].grupo === cell.grupo ? 'scale(1.15)' : 'scale(1)',
+                      boxShadow: hoveredIdx !== null && cells[hoveredIdx].grupo === cell.grupo
+                        ? `0 2px 6px ${cell.color}66`
+                        : 'none',
+                      transition: 'opacity 0.2s, transform 0.2s, box-shadow 0.2s',
+                      animation: `waffleIn 0.35s ease both`,
+                      animationDelay: `${i * 10}ms`,
+                      cursor: 'default',
+                    }}
+                  />
+                ))}
+              </div>
 
-                {/* Valor */}
-                <div style={{
-                  width: 110, flexShrink: 0, textAlign: 'right',
-                  fontSize: 11, fontWeight: 700,
-                  color: hovered ? color : '#1e293b',
-                  transition: 'color 0.15s',
-                  whiteSpace: 'nowrap',
-                }}>
-                  R$ {fmtFull(item.size)}
+              {/* Legenda */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {gruposOrdenados.filter(g => soma(g.meses) > 0).map((g, i) => {
+                  const val = soma(g.meses);
+                  const pct = totalGeral > 0 ? (val / totalGeral) * 100 : 0;
+                  const color = WAFFLE_COLORS[g.cod] ?? '#3b82f6';
+                  const label = g.desc.replace('RECEITAS CORRENTES','Correntes').replace('RECEITAS DE CAPITAL / EXTRA-ORÇ.','Capital').replace('TRANSFERÊNCIAS BANCÁRIAS','Transf. Bancárias');
+                  const isHov = hovered?.grupo === g.cod;
+                  return (
+                    <div key={g.cod} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', opacity: hovered && !isHov ? 0.4 : 1, transition: 'opacity 0.2s' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <div style={{ width: 12, height: 12, borderRadius: 3, background: color, flexShrink: 0, boxShadow: isHov ? `0 0 0 2px ${color}44` : 'none', transition: 'box-shadow 0.2s' }} />
+                        <span style={{ fontSize: 11, color: isHov ? '#0F2A4E' : '#475569', fontWeight: isHov ? 600 : 400, transition: 'color 0.2s' }}>{label}</span>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                        <span style={{ fontSize: 10, color: '#94a3b8', fontVariantNumeric: 'tabular-nums' }}>{pct.toFixed(1)}%</span>
+                        <span style={{ fontSize: 11, fontWeight: 700, color: isHov ? color : '#0F2A4E', fontVariantNumeric: 'tabular-nums', transition: 'color 0.2s' }}>R$ {fmtFull(val)}</span>
+                      </div>
+                    </div>
+                  );
+                })}
+                <div style={{ borderTop: '1px solid #f1f5f9', paddingTop: 8, display: 'flex', justifyContent: 'space-between' }}>
+                  <span style={{ fontSize: 11, color: '#94a3b8' }}>Total geral</span>
+                  <span style={{ fontSize: 12, fontWeight: 700, color: '#C9A84C' }}>R$ {fmtFull(totalGeral)}</span>
                 </div>
               </div>
-            );
-          })}
-        </div>
+            </div>
+          );
+        })()}
       </div>
 
       {/* ── 3. BarChart Trimestral — col-span-1 ── */}
