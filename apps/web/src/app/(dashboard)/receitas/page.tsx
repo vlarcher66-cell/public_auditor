@@ -707,6 +707,162 @@ function TabelaSintetica({ grupos, titulo, ano }: { grupos: Grupo[]; titulo: str
   );
 }
 
+// ─── Donut com Legenda (reutilizável) ────────────────────────────────────────
+
+function DonutLegendCard({
+  title, subtitle, info, items, totalLabel, gradPrefix,
+}: {
+  title: string;
+  subtitle: string;
+  info: React.ReactNode;
+  items: { label: string; value: number; color: string }[];
+  totalLabel: string;
+  gradPrefix: string;
+}) {
+  const [active, setActive] = React.useState<number | null>(null);
+  const total = items.reduce((s, f) => s + f.value, 0);
+  const maxVal = Math.max(...items.map(f => f.value), 1);
+
+  const cardStyle: React.CSSProperties = { background: '#fff', borderRadius: 16, border: '1px solid #e2e8f0', overflow: 'hidden' };
+  const headerStyle: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: 8, padding: '12px 20px', background: 'linear-gradient(135deg, #0F2A4E, #1e4d95)' };
+
+  return (
+    <div style={cardStyle}>
+      <div style={headerStyle}>
+        <PieChartIcon size={15} color="rgba(255,255,255,0.6)" />
+        <span style={{ fontSize: 13, fontWeight: 700, color: '#fff' }}>{title}</span>
+        <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', marginLeft: 'auto', fontFamily: 'monospace' }}>{subtitle}</span>
+        <InfoPopover insights={info} />
+      </div>
+      <div style={{ padding: '14px 16px', display: 'flex', gap: 8, alignItems: 'center', minHeight: 190 }}>
+        {/* Donut */}
+        <div style={{ width: '44%', flexShrink: 0, position: 'relative' }}>
+          <ResponsiveContainer width="100%" height={180}>
+            <PieChart>
+              <defs>
+                {items.map((f, i) => (
+                  <linearGradient key={i} id={`${gradPrefix}_g${i}`} x1="0" y1="0" x2="1" y2="1">
+                    <stop offset="0%" stopColor={f.color} stopOpacity={1} />
+                    <stop offset="100%" stopColor={f.color} stopOpacity={0.6} />
+                  </linearGradient>
+                ))}
+                <filter id={`${gradPrefix}_shadow`} x="-20%" y="-20%" width="140%" height="140%">
+                  <feDropShadow dx="0" dy="2" stdDeviation="3" floodColor="#0F2A4E" floodOpacity="0.18" />
+                </filter>
+              </defs>
+              <Pie
+                data={items}
+                dataKey="value"
+                nameKey="label"
+                cx="50%" cy="50%"
+                innerRadius={52} outerRadius={76}
+                paddingAngle={2}
+                isAnimationActive
+                animationBegin={100}
+                animationDuration={900}
+                animationEasing="ease-out"
+                activeIndex={active ?? undefined}
+                activeShape={(props: any) => {
+                  const { cx, cy, innerRadius, outerRadius, startAngle, endAngle, fill } = props;
+                  return (
+                    <Sector
+                      cx={cx} cy={cy}
+                      innerRadius={innerRadius - 3}
+                      outerRadius={outerRadius + 7}
+                      startAngle={startAngle}
+                      endAngle={endAngle}
+                      fill={fill}
+                      style={{ filter: `url(#${gradPrefix}_shadow)` }}
+                    />
+                  );
+                }}
+              >
+                {items.map((f, i) => (
+                  <Cell
+                    key={i}
+                    fill={`url(#${gradPrefix}_g${i})`}
+                    stroke="none"
+                    opacity={active !== null && active !== i ? 0.35 : 1}
+                    style={{ cursor: 'pointer', transition: 'opacity 0.2s' }}
+                    onMouseEnter={() => setActive(i)}
+                    onMouseLeave={() => setActive(null)}
+                  />
+                ))}
+              </Pie>
+              <Tooltip
+                wrapperStyle={{ zIndex: 50 }}
+                content={({ active: a, payload }) => {
+                  if (!a || !payload?.length) return null;
+                  const d = payload[0].payload;
+                  const p = total > 0 ? (d.value / total * 100).toFixed(1) : '0';
+                  return (
+                    <div style={{ background: '#0F2A4E', borderRadius: 8, padding: '8px 12px', boxShadow: '0 4px 16px rgba(0,0,0,0.25)' }}>
+                      <p style={{ margin: 0, fontSize: 11, color: 'rgba(255,255,255,0.7)', marginBottom: 2 }}>{d.label}</p>
+                      <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: '#fff' }}>R$ {fmtFull(d.value)}</p>
+                      <p style={{ margin: 0, fontSize: 10, color: '#C9A84C' }}>{p}% do total</p>
+                    </div>
+                  );
+                }}
+              />
+            </PieChart>
+          </ResponsiveContainer>
+          <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%,-50%)', textAlign: 'center', pointerEvents: 'none' }}>
+            <div style={{ fontSize: 9, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: 0.5 }}>{totalLabel}</div>
+            <div style={{ fontSize: 13, fontWeight: 800, color: '#0F2A4E', lineHeight: 1.2 }}>
+              {total >= 1e6 ? 'R$ ' + (total / 1e6).toFixed(1) + 'M' : total >= 1e3 ? 'R$ ' + (total / 1e3).toFixed(0) + 'K' : 'R$ ' + fmtFull(total)}
+            </div>
+          </div>
+        </div>
+
+        {/* Legenda com mini-barras */}
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 11, overflow: 'hidden' }}>
+          {items.map((f, i) => {
+            const barW = (f.value / maxVal) * 100;
+            const isActive = active === i;
+            const isDimmed = active !== null && !isActive;
+            const truncName = f.label.length > 22 ? f.label.slice(0, 21) + '…' : f.label;
+            return (
+              <div
+                key={i}
+                onMouseEnter={() => setActive(i)}
+                onMouseLeave={() => setActive(null)}
+                style={{ opacity: isDimmed ? 0.45 : 1, transition: 'opacity 0.2s', cursor: 'default' }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 3 }}>
+                  <div style={{
+                    width: 8, height: 8, borderRadius: '50%', background: f.color, flexShrink: 0,
+                    boxShadow: isActive ? `0 0 0 2px ${f.color}55` : 'none',
+                    transition: 'box-shadow 0.2s',
+                  }} />
+                  <span style={{
+                    fontSize: 11, color: isActive ? '#0F2A4E' : '#475569',
+                    fontWeight: isActive ? 600 : 400,
+                    flex: 1, overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis',
+                    transition: 'color 0.2s',
+                  }} title={f.label}>{truncName}</span>
+                  <span style={{
+                    fontSize: 11, fontWeight: 700,
+                    color: isActive ? f.color : '#0F2A4E',
+                    fontVariantNumeric: 'tabular-nums', flexShrink: 0,
+                    transition: 'color 0.2s',
+                  }}>R$ {fmtFull(f.value)}</span>
+                </div>
+                <div style={{ height: 3, background: '#f1f5f9', borderRadius: 99, overflow: 'hidden', marginLeft: 14 }}>
+                  <div style={{
+                    height: '100%', width: `${barW}%`,
+                    background: `linear-gradient(90deg, ${f.color}, ${f.color}99)`,
+                    borderRadius: 99, transition: 'width 0.6s ease',
+                  }} />
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── Aba Geral ────────────────────────────────────────────────────────────────
 
 function TabGeralReceita({
@@ -965,112 +1121,19 @@ function TabGeralReceita({
           </div>
         </motion.div>
 
-        {/* ── Composição da Receita — Donut esquerda + Legenda direita ── */}
+        {/* ── Composição da Receita ── */}
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
+          initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.25, ease: [0.22, 1, 0.36, 1] }}
-          style={cardStyle}
         >
-          <div style={headerStyle}>
-            <PieChartIcon size={15} color="rgba(255,255,255,0.6)" />
-            <span style={{ fontSize: 13, fontWeight: 700, color: '#fff' }}>Composição da Receita</span>
-            <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', marginLeft: 'auto', fontFamily: 'monospace' }}>por fonte</span>
-            <InfoPopover insights={<><strong>Composição da Receita</strong><br /><br />Divide o total arrecadado em três categorias:<br /><br />• <strong>Orçamentária</strong>: receitas previstas no orçamento (LOA)<br />• <strong>Transf. Bancárias</strong>: movimentações financeiras entre contas<br />• <strong>Extra-Orçamentária</strong>: retenções e depósitos fora do orçamento<br /><br />💡 Receita Extra-Orçamentária não é renda livre — são recursos de terceiros retidos temporariamente.</>} />
-          </div>
-          {(() => {
-            const maxFonte = Math.max(...fontes.map(f => f.value), 1);
-            const [activeComp, setActiveComp] = React.useState<number | null>(null);
-            return (
-              <div style={{ padding: '14px 16px', display: 'flex', gap: 8, alignItems: 'center', minHeight: 180 }}>
-                {/* Donut */}
-                <div style={{ width: '42%', flexShrink: 0, position: 'relative' }}>
-                  <ResponsiveContainer width="100%" height={170}>
-                    <PieChart>
-                      <defs>
-                        {fontes.map((f, i) => (
-                          <linearGradient key={i} id={`gComp2_${i}`} x1="0" y1="0" x2="1" y2="1">
-                            <stop offset="0%" stopColor={f.color} stopOpacity={1} />
-                            <stop offset="100%" stopColor={f.color} stopOpacity={0.65} />
-                          </linearGradient>
-                        ))}
-                        <filter id="compShadow" x="-20%" y="-20%" width="140%" height="140%">
-                          <feDropShadow dx="0" dy="2" stdDeviation="3" floodColor="#0F2A4E" floodOpacity="0.18" />
-                        </filter>
-                      </defs>
-                      <Pie
-                        data={fontes}
-                        dataKey="value"
-                        nameKey="label"
-                        cx="50%" cy="50%"
-                        innerRadius={50} outerRadius={74}
-                        paddingAngle={2}
-                        isAnimationActive animationBegin={100} animationDuration={900}
-                        activeIndex={activeComp ?? undefined}
-                        activeShape={(props: any) => {
-                          const { cx, cy, innerRadius, outerRadius, startAngle, endAngle, fill } = props;
-                          return <Sector cx={cx} cy={cy} innerRadius={innerRadius - 3} outerRadius={outerRadius + 6} startAngle={startAngle} endAngle={endAngle} fill={fill} style={{ filter: 'url(#compShadow)' }} />;
-                        }}
-                      >
-                        {fontes.map((f, i) => (
-                          <Cell key={i} fill={`url(#gComp2_${i})`} stroke="none"
-                            style={{ cursor: 'pointer', transition: 'opacity 0.2s' }}
-                            opacity={activeComp !== null && activeComp !== i ? 0.4 : 1}
-                            onMouseEnter={() => setActiveComp(i)}
-                            onMouseLeave={() => setActiveComp(null)}
-                          />
-                        ))}
-                      </Pie>
-                      <Tooltip wrapperStyle={{ zIndex: 50 }} content={({ active, payload }) => {
-                        if (!active || !payload?.length) return null;
-                        const d = payload[0].payload;
-                        const p = totalGeral > 0 ? (d.value / totalGeral * 100).toFixed(1) : '0';
-                        return (
-                          <div style={{ background: '#0F2A4E', borderRadius: 8, padding: '8px 12px', boxShadow: '0 4px 16px rgba(0,0,0,0.25)' }}>
-                            <p style={{ margin: 0, fontSize: 11, color: 'rgba(255,255,255,0.7)', marginBottom: 2 }}>{d.label}</p>
-                            <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: '#fff' }}>R$ {fmtFull(d.value)}</p>
-                            <p style={{ margin: 0, fontSize: 10, color: '#C9A84C' }}>{p}% do total</p>
-                          </div>
-                        );
-                      }} />
-                    </PieChart>
-                  </ResponsiveContainer>
-                  <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%,-50%)', textAlign: 'center', pointerEvents: 'none' }}>
-                    <div style={{ fontSize: 9, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: 0.5 }}>Total</div>
-                    <div style={{ fontSize: 13, fontWeight: 800, color: '#0F2A4E', lineHeight: 1.2 }}>{fmtK(totalGeral)}</div>
-                  </div>
-                </div>
-                {/* Legenda com mini-barras */}
-                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 10, overflow: 'hidden' }}>
-                  {fontes.map((f, i) => {
-                    const barW = maxFonte > 0 ? (f.value / maxFonte) * 100 : 0;
-                    const isActive = activeComp === i;
-                    const isDimmed = activeComp !== null && !isActive;
-                    return (
-                      <div key={i}
-                        onMouseEnter={() => setActiveComp(i)}
-                        onMouseLeave={() => setActiveComp(null)}
-                        style={{ opacity: isDimmed ? 0.5 : 1, transition: 'opacity 0.2s', cursor: 'default' }}
-                      >
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 3 }}>
-                          <div style={{ width: 8, height: 8, borderRadius: '50%', background: f.color, flexShrink: 0, boxShadow: isActive ? `0 0 0 2px ${f.color}55` : 'none', transition: 'box-shadow 0.2s' }} />
-                          <span style={{ fontSize: 11, color: isActive ? '#0F2A4E' : '#475569', fontWeight: isActive ? 600 : 400, flex: 1, overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis', transition: 'color 0.2s' }}>{f.label}</span>
-                          <span style={{ fontSize: 11, fontWeight: 700, color: isActive ? f.color : '#0F2A4E', fontVariantNumeric: 'tabular-nums', flexShrink: 0, transition: 'color 0.2s' }}>R$ {fmtFull(f.value)}</span>
-                        </div>
-                        <div style={{ height: 3, background: '#f1f5f9', borderRadius: 99, overflow: 'hidden', marginLeft: 14 }}>
-                          <div style={{ height: '100%', width: `${barW}%`, background: `linear-gradient(90deg, ${f.color}, ${f.color}99)`, borderRadius: 99, transition: 'width 0.6s ease' }} />
-                        </div>
-                      </div>
-                    );
-                  })}
-                  <div style={{ marginTop: 6, paddingTop: 8, borderTop: '1px solid #f1f5f9', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ fontSize: 10, color: '#94a3b8' }}>{summary?.total_registros ?? 0} registros</span>
-                    <span style={{ fontSize: 11, fontWeight: 800, color: '#0F2A4E', fontVariantNumeric: 'tabular-nums' }}>R$ {fmtFull(totalGeral)}</span>
-                  </div>
-                </div>
-              </div>
-            );
-          })()}
+          <DonutLegendCard
+            title="Composição da Receita"
+            subtitle="por fonte"
+            gradPrefix="comp"
+            totalLabel="Total"
+            items={fontes}
+            info={<><strong>Composição da Receita</strong><br /><br />Divide o total arrecadado em três categorias:<br /><br />• <strong>Orçamentária</strong>: receitas previstas no orçamento (LOA)<br />• <strong>Transf. Bancárias</strong>: movimentações financeiras entre contas<br />• <strong>Extra-Orçamentária</strong>: retenções e depósitos fora do orçamento<br /><br />💡 Receita Extra-Orçamentária não é renda livre — são recursos de terceiros retidos temporariamente.</>}
+          />
         </motion.div>
       </div>
 
@@ -1209,118 +1272,23 @@ function TabGeralReceita({
             </div>
           </motion.div>
 
-          {/* ── Participação por Fonte — Donut esquerda + Legenda direita ── */}
+          {/* ── Participação por Fonte ── */}
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
+            initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.45, delay: 0.42, ease: [0.22, 1, 0.36, 1] }}
-            style={cardStyle}
           >
-            <div style={headerStyle}>
-              <PieChartIcon size={15} color="rgba(255,255,255,0.6)" />
-              <span style={{ fontSize: 13, fontWeight: 700, color: '#fff' }}>Participação por Fonte</span>
-              <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', marginLeft: 'auto', fontFamily: 'monospace' }}>% do total</span>
-              <InfoPopover insights={<><strong>Participação por Fonte</strong><br /><br />Proporção visual de cada fonte no total arrecadado.<br /><br />💡 Municípios saudáveis têm a maior parte em Orçamentária (receitas próprias + transferências constitucionais).</>} />
-            </div>
-            {(() => {
-              const fontesPart = [
+            <DonutLegendCard
+              title="Participação por Fonte"
+              subtitle="% do total"
+              gradPrefix="part"
+              totalLabel="Total"
+              items={[
                 { label: 'Orçamentária', value: totalOrc, color: '#3b82f6' },
-                { label: 'Transf. Banc.', value: totalTransf, color: '#f59e0b' },
-                { label: 'Extra-Orc.', value: totalExtra, color: '#8b5cf6' },
-              ].filter(f => f.value > 0);
-              const totalPart = fontesPart.reduce((s, f) => s + f.value, 0);
-              const maxPart = Math.max(...fontesPart.map(f => f.value), 1);
-              const [activePart, setActivePart] = React.useState<number | null>(null);
-              return (
-                <div style={{ padding: '14px 16px', display: 'flex', gap: 8, alignItems: 'center', minHeight: 180 }}>
-                  {/* Donut */}
-                  <div style={{ width: '42%', flexShrink: 0, position: 'relative' }}>
-                    <ResponsiveContainer width="100%" height={170}>
-                      <PieChart>
-                        <defs>
-                          {fontesPart.map((f, i) => (
-                            <linearGradient key={i} id={`gPart2_${i}`} x1="0" y1="0" x2="1" y2="1">
-                              <stop offset="0%" stopColor={f.color} stopOpacity={1} />
-                              <stop offset="100%" stopColor={f.color} stopOpacity={0.65} />
-                            </linearGradient>
-                          ))}
-                          <filter id="partShadow" x="-20%" y="-20%" width="140%" height="140%">
-                            <feDropShadow dx="0" dy="2" stdDeviation="3" floodColor="#0F2A4E" floodOpacity="0.18" />
-                          </filter>
-                        </defs>
-                        <Pie
-                          data={fontesPart}
-                          dataKey="value"
-                          nameKey="label"
-                          cx="50%" cy="50%"
-                          innerRadius={50} outerRadius={74}
-                          paddingAngle={2}
-                          isAnimationActive animationBegin={100} animationDuration={900}
-                          activeIndex={activePart ?? undefined}
-                          activeShape={(props: any) => {
-                            const { cx, cy, innerRadius, outerRadius, startAngle, endAngle, fill } = props;
-                            return <Sector cx={cx} cy={cy} innerRadius={innerRadius - 3} outerRadius={outerRadius + 6} startAngle={startAngle} endAngle={endAngle} fill={fill} style={{ filter: 'url(#partShadow)' }} />;
-                          }}
-                        >
-                          {fontesPart.map((f, i) => (
-                            <Cell key={i} fill={`url(#gPart2_${i})`} stroke="none"
-                              style={{ cursor: 'pointer', transition: 'opacity 0.2s' }}
-                              opacity={activePart !== null && activePart !== i ? 0.4 : 1}
-                              onMouseEnter={() => setActivePart(i)}
-                              onMouseLeave={() => setActivePart(null)}
-                            />
-                          ))}
-                        </Pie>
-                        <Tooltip wrapperStyle={{ zIndex: 50 }} content={({ active, payload }) => {
-                          if (!active || !payload?.length) return null;
-                          const d = payload[0].payload;
-                          const p = totalPart > 0 ? (d.value / totalPart * 100).toFixed(1) : '0';
-                          return (
-                            <div style={{ background: '#0F2A4E', borderRadius: 8, padding: '8px 12px', boxShadow: '0 4px 16px rgba(0,0,0,0.25)' }}>
-                              <p style={{ margin: 0, fontSize: 11, color: 'rgba(255,255,255,0.7)', marginBottom: 2 }}>{d.label}</p>
-                              <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: '#fff' }}>R$ {fmtFull(d.value)}</p>
-                              <p style={{ margin: 0, fontSize: 10, color: '#C9A84C' }}>{p}% do total</p>
-                            </div>
-                          );
-                        }} />
-                      </PieChart>
-                    </ResponsiveContainer>
-                    <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%,-50%)', textAlign: 'center', pointerEvents: 'none' }}>
-                      <div style={{ fontSize: 9, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: 0.5 }}>Total</div>
-                      <div style={{ fontSize: 13, fontWeight: 800, color: '#0F2A4E', lineHeight: 1.2 }}>{fmtK(totalPart)}</div>
-                    </div>
-                  </div>
-                  {/* Legenda com mini-barras */}
-                  <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 10, overflow: 'hidden' }}>
-                    {fontesPart.map((f, i) => {
-                      const barW = maxPart > 0 ? (f.value / maxPart) * 100 : 0;
-                      const pct = totalPart > 0 ? (f.value / totalPart * 100) : 0;
-                      const isActive = activePart === i;
-                      const isDimmed = activePart !== null && !isActive;
-                      return (
-                        <div key={i}
-                          onMouseEnter={() => setActivePart(i)}
-                          onMouseLeave={() => setActivePart(null)}
-                          style={{ opacity: isDimmed ? 0.5 : 1, transition: 'opacity 0.2s', cursor: 'default' }}
-                        >
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 3 }}>
-                            <div style={{ width: 8, height: 8, borderRadius: '50%', background: f.color, flexShrink: 0, boxShadow: isActive ? `0 0 0 2px ${f.color}55` : 'none', transition: 'box-shadow 0.2s' }} />
-                            <span style={{ fontSize: 11, color: isActive ? '#0F2A4E' : '#475569', fontWeight: isActive ? 600 : 400, flex: 1, overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis', transition: 'color 0.2s' }}>{f.label}</span>
-                            <span style={{ fontSize: 11, fontWeight: 700, color: isActive ? f.color : '#0F2A4E', fontVariantNumeric: 'tabular-nums', flexShrink: 0, transition: 'color 0.2s' }}>R$ {fmtFull(f.value)}</span>
-                          </div>
-                          <div style={{ height: 3, background: '#f1f5f9', borderRadius: 99, overflow: 'hidden', marginLeft: 14 }}>
-                            <div style={{ height: '100%', width: `${barW}%`, background: `linear-gradient(90deg, ${f.color}, ${f.color}99)`, borderRadius: 99, transition: 'width 0.6s ease' }} />
-                          </div>
-                        </div>
-                      );
-                    })}
-                    <div style={{ marginTop: 6, paddingTop: 8, borderTop: '1px solid #f1f5f9' }}>
-                      <span style={{ fontSize: 10, color: '#94a3b8' }}>Orç.: {totalPart > 0 ? (totalOrc / totalPart * 100).toFixed(1) : '0'}% · Maior fonte de receita</span>
-                    </div>
-                  </div>
-                </div>
-              );
-            })()}
+                { label: 'Transf. Bancárias', value: totalTransf, color: '#f59e0b' },
+                { label: 'Extra-Orçamentária', value: totalExtra, color: '#8b5cf6' },
+              ].filter(f => f.value > 0)}
+              info={<><strong>Participação por Fonte</strong><br /><br />Proporção visual de cada fonte no total arrecadado.<br /><br />💡 Municípios saudáveis têm a maior parte em Orçamentária (receitas próprias + transferências constitucionais).</>}
+            />
           </motion.div>
 
           {/* ── Média Diária por Mês ── */}
