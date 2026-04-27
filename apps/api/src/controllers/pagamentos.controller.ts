@@ -462,7 +462,7 @@ function applyFiltrosSintetica(q: any, p: {
   if (p.secretariaId) q.where('st.fk_secretaria', p.secretariaId);
   if (p.setorId)      q.where('f.fk_setor_pag', p.setorId);
   if (p.blocoId)      q.where('st.fk_bloco', p.blocoId);
-  if (p.fonteRecurso) q.where('fr.codigo', p.fonteRecurso);
+  if (p.fonteRecurso) q.whereLike('fr.codigo', `${p.fonteRecurso}%`);
   if (p.grupoId)      q.where(db.raw('COALESCE(f.fk_grupo_pag, c.fk_grupo)') as any, p.grupoId);
   if (p.subgrupoId)   q.where(db.raw('COALESCE(f.fk_subgrupo_pag, c.fk_subgrupo)') as any, p.subgrupoId);
 }
@@ -957,16 +957,35 @@ export async function getSinteticaFiltros(req: Request, res: Response): Promise<
       .orderBy('fr.codigo')
       .select('fr.codigo'),
 
-    db('dim_grupo_despesa').select('id', 'nome').orderBy('nome'),
-    db('dim_subgrupo_despesa').select('id', 'nome', 'fk_grupo').orderBy('nome'),
+    base()
+      .leftJoin('dim_credor as c2', 'f.fk_credor', 'c2.id')
+      .join('dim_grupo_despesa as g', db.raw('COALESCE(f.fk_grupo_pag, c2.fk_grupo)'), 'g.id')
+      .distinct('g.id', 'g.nome')
+      .orderBy('g.nome')
+      .select('g.id', 'g.nome'),
+
+    base()
+      .leftJoin('dim_credor as c3', 'f.fk_credor', 'c3.id')
+      .join('dim_subgrupo_despesa as sg', db.raw('COALESCE(f.fk_subgrupo_pag, c3.fk_subgrupo)'), 'sg.id')
+      .distinct('sg.id', 'sg.nome', 'sg.fk_grupo')
+      .orderBy('sg.nome')
+      .select('sg.id', 'sg.nome', 'sg.fk_grupo'),
   ]);
+
+  // Agrupa fontes por prefixo de 2 dígitos
+  const prefixosSet = new Set<string>();
+  for (const f of fontes) {
+    const codigo: string = (f as any).codigo;
+    if (codigo && codigo.length >= 2) prefixosSet.add(codigo.slice(0, 2));
+  }
+  const fontesPrefixo = Array.from(prefixosSet).sort();
 
   res.json({
     entidades,
     secretarias,
     setores,
     blocos,
-    fontes: fontes.map((f: any) => f.codigo),
+    fontes: fontesPrefixo,
     grupos,
     subgrupos,
   });

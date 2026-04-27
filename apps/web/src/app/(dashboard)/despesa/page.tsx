@@ -450,7 +450,7 @@ function TabDespesaAnalitica({ token, entidadeId, municipioId }: { token: string
           { label: 'Grupo', val: fGrupo, set: (v: string) => { setFGrupo(v); setFSubgrupo(''); }, opts: (filtrosDisp?.grupos || []).map(g => ({ id: String(g.id), nome: g.nome })) },
           { label: 'Subgrupo', val: fSubgrupo, set: setFSubgrupo, opts: (filtrosDisp?.subgrupos || []).filter(s => !fGrupo || String(s.fk_grupo) === fGrupo).map(s => ({ id: String(s.id), nome: s.nome })) },
           { label: 'Bloco', val: fBloco, set: setFBloco, opts: (filtrosDisp?.blocos || []).map(b => ({ id: String(b.id), nome: b.descricao })) },
-          { label: 'Fonte', val: fFonte, set: setFFonte, opts: (filtrosDisp?.fontes || []).map(f => ({ id: f, nome: f })) },
+          { label: 'Fonte', val: fFonte, set: setFFonte, opts: (filtrosDisp?.fontes || []).map(f => ({ id: f, nome: `Fonte ${f}` })) },
         ].map(({ label, val, set, opts }) => (
           <div key={label} style={{ position: 'relative', flex: '1 1 0', minWidth: 0 }}>
             <select value={val} onChange={e => set(e.target.value)}
@@ -1297,7 +1297,7 @@ function TabOutrosExercicios({ token, entidadeId, municipioId }: { token: string
           { label: 'Secretaria', val: fSecretaria, set: (v: string) => { setFSecretaria(v); setFSetor(''); }, opts: (filtrosDisp?.secretarias || []).map(s => ({ id: String(s.id), nome: (s.sigla ? `${s.sigla} — ` : '') + s.nome })) },
           { label: 'Setor', val: fSetor, set: setFSetor, opts: (filtrosDisp?.setores || []).map(s => ({ id: String(s.id), nome: s.descricao })) },
           { label: 'Bloco', val: fBloco, set: setFBloco, opts: (filtrosDisp?.blocos || []).map(b => ({ id: String(b.id), nome: b.descricao })) },
-          { label: 'Fonte', val: fFonte, set: setFFonte, opts: (filtrosDisp?.fontes || []).map(f => ({ id: f, nome: f })) },
+          { label: 'Fonte', val: fFonte, set: setFFonte, opts: (filtrosDisp?.fontes || []).map(f => ({ id: f, nome: `Fonte ${f}` })) },
         ] as { label: string; val: string; set: (v: string) => void; opts: { id: string; nome: string }[] }[]).map(({ label, val, set, opts }) => (
           <div key={label} style={{ position: 'relative', flex: '1 1 0', minWidth: 0 }}>
             <select value={val} onChange={e => set(e.target.value)} style={{ appearance: 'none', width: '100%', padding: '6px 22px 6px 8px', fontSize: '12px', color: val ? '#0F2A4E' : '#94a3b8', background: '#fff', border: `1.5px solid ${val ? '#3b82f6' : '#e2e8f0'}`, borderRadius: '7px', cursor: 'pointer' }}>
@@ -1893,7 +1893,7 @@ function TabDespesaSintetica({ token, entidadeId, municipioId }: { token: string
           { label: 'Grupo', val: fGrupo, set: (v: string) => { setFGrupo(v); setFSubgrupo(''); }, opts: (filtrosDisp?.grupos || []).map(g => ({ id: String(g.id), nome: g.nome })) },
           { label: 'Subgrupo', val: fSubgrupo, set: setFSubgrupo, opts: (filtrosDisp?.subgrupos || []).filter(s => !fGrupo || String(s.fk_grupo) === fGrupo).map(s => ({ id: String(s.id), nome: s.nome })) },
           { label: 'Bloco', val: fBloco, set: setFBloco, opts: (filtrosDisp?.blocos || []).map(b => ({ id: String(b.id), nome: b.descricao })) },
-          { label: 'Fonte', val: fFonte, set: setFFonte, opts: (filtrosDisp?.fontes || []).map(f => ({ id: f, nome: f })) },
+          { label: 'Fonte', val: fFonte, set: setFFonte, opts: (filtrosDisp?.fontes || []).map(f => ({ id: f, nome: `Fonte ${f}` })) },
         ].map(({ label, val, set, opts }) => (
           <div key={label} style={{ position: 'relative', flex: '1 1 0', minWidth: 0 }}>
             <select value={val} onChange={e => set(e.target.value)}
@@ -3170,7 +3170,7 @@ function TabDespesaDiarias({ token, entidadeId, municipioId }: { token: string |
           { label: 'Secretaria', val: fSecretaria, set: (v: string) => { setFSecretaria(v); setFSetor(''); }, opts: (filtrosDisp?.secretarias || []).map(s => ({ id: String(s.id), nome: (s.sigla ? `${s.sigla} — ` : '') + s.nome })) },
           { label: 'Setor', val: fSetor, set: setFSetor, opts: (filtrosDisp?.setores || []).map(s => ({ id: String(s.id), nome: s.descricao })) },
           { label: 'Bloco', val: fBloco, set: setFBloco, opts: (filtrosDisp?.blocos || []).map(b => ({ id: String(b.id), nome: b.descricao })) },
-          { label: 'Fonte', val: fFonte, set: setFFonte, opts: (filtrosDisp?.fontes || []).map(f => ({ id: f, nome: f })) },
+          { label: 'Fonte', val: fFonte, set: setFFonte, opts: (filtrosDisp?.fontes || []).map(f => ({ id: f, nome: `Fonte ${f}` })) },
         ].map(({ label, val, set, opts }) => (
           <div key={label} style={{ position: 'relative', flex: '1 1 0', minWidth: 0 }}>
             <select value={val} onChange={e => set(e.target.value)}
