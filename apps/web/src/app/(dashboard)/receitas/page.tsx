@@ -965,14 +965,14 @@ function TabGeralReceita({
 
   // Fontes de recurso agrupadas por prefixo de 2 dígitos
   const FONTE_GRUPO_NOME: Record<string, string> = {
-    '10': 'Recursos Ordinários',
+    '10': 'Rec. Próprios (IPTU/ISS/Taxas)',
     '11': 'Rec. Vinculados Educação',
     '12': 'Rec. Vinculados Saúde',
     '13': 'Rec. Vinculados Assistência',
     '14': 'Rec. de Convênios',
-    '15': 'Recursos Próprios',
-    '16': 'Transf. da União (SUS/FUNDEB)',
-    '17': 'Rec. de Operações de Crédito',
+    '15': 'Recursos Próprios do Fundo',
+    '16': 'Transf. SUS (FNS/FES)',
+    '17': 'Convênios e Contratos',
     '18': 'Rec. de Alienação de Bens',
     '19': 'Outros Recursos Vinculados',
   };
@@ -1326,7 +1326,7 @@ function TabGeralReceita({
               gradPrefix="part"
               totalLabel="Total"
               items={fontesRecurso}
-              info={<><strong>Distribuição por Fonte de Recurso</strong><br /><br />Agrupa todas as receitas (orçamentárias + transferências bancárias) pelo prefixo da fonte de recurso:<br /><br />• <strong>16xx</strong>: Recursos Próprios<br />• <strong>15xx</strong>: Transf. da União (SUS/FUNDEB)<br />• <strong>12xx</strong>: Rec. Vinculados Saúde<br /><br />💡 Passe o mouse para destacar a fatia correspondente.</>}
+              info={<><strong>Distribuição por Fonte de Recurso</strong><br /><br />Agrupa receitas pelo prefixo da fonte de recurso:<br /><br />• <strong>10xx</strong>: Rec. Próprios (IPTU, ISS, Taxas)<br />• <strong>15xx</strong>: Recursos Próprios do Fundo (repasses + rendimentos)<br />• <strong>16xx</strong>: Transf. SUS (FNS/FES)<br />• <strong>17xx</strong>: Convênios e Contratos<br /><br />💡 Passe o mouse para destacar a fatia correspondente.</>}
             />
           </motion.div>
 
