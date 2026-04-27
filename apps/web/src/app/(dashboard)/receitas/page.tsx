@@ -2416,6 +2416,10 @@ export default function ReceitasPage() {
 
       {/* ── Conteúdo ── */}
       <div className="bg-slate-50 min-h-screen">
+        <div className="px-3 md:px-8 py-4 md:py-5">
+          <SummaryCards summary={summary} loading={loading} ano={ano} totalTransf={transfRows.reduce((s, r) => s + Number(r.total), 0)} />
+        </div>
+
         {/* ── Banner KPI compacto ── */}
         {!loading && !isEmpty && (() => {
           const orcR   = dreRows.filter(r => r.tipo_receita === 'ORC');
@@ -2501,10 +2505,6 @@ export default function ReceitasPage() {
             </motion.div>
           );
         })()}
-
-        <div className="px-3 md:px-8 py-4 md:py-5">
-          <SummaryCards summary={summary} loading={loading} ano={ano} totalTransf={transfRows.reduce((s, r) => s + Number(r.total), 0)} />
-        </div>
 
         <div className="px-3 md:px-6 pb-4 md:pb-6 space-y-5">
           {loading ? (
