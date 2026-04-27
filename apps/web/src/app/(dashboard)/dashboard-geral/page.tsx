@@ -124,6 +124,80 @@ function KpiCard({ label, value, sub, icon, color, bg, delay = 0, prefix = 'R$ '
   );
 }
 
+// ─── Gauge Arrecadação ────────────────────────────────────────────────────────
+
+function GaugeArrecadacao({ pct, acumulado, projecao, projecaoAnual }: {
+  pct: number; acumulado: number; projecao: number; projecaoAnual: number;
+}) {
+  const clamp = Math.min(pct, 100);
+  const color = pct >= 90 ? '#10b981' : pct >= 60 ? '#3b82f6' : pct >= 30 ? '#f59e0b' : '#ef4444';
+  const label = pct >= 90 ? 'No ritmo' : pct >= 60 ? 'Em curso' : pct >= 30 ? 'Atenção' : pct > 0 ? 'Abaixo' : 'Sem dados';
+
+  // SVG arc parameters
+  const cx = 100, cy = 88, r = 68;
+  const circumference = Math.PI * r; // semicircle
+  const dash = (clamp / 100) * circumference;
+  const gap = circumference - dash;
+
+  // Needle
+  const angle = (clamp / 100) * 180;
+  const rad = (angle - 180) * (Math.PI / 180);
+  const nx = cx + r * Math.cos(rad);
+  const ny = cy + r * Math.sin(rad);
+
+  return (
+    <div className="flex flex-col items-center">
+      <svg viewBox="0 0 200 108" className="w-full max-w-[190px] mx-auto">
+        <defs>
+          <linearGradient id="gaugeTrack" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" stopColor="#ef4444"/>
+            <stop offset="40%" stopColor="#f59e0b"/>
+            <stop offset="70%" stopColor="#3b82f6"/>
+            <stop offset="100%" stopColor="#10b981"/>
+          </linearGradient>
+          <filter id="needleGlow"><feGaussianBlur stdDeviation="1.5" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+        </defs>
+        {/* Trilha fundo */}
+        <path d={`M ${cx - r} ${cy} A ${r} ${r} 0 0 1 ${cx + r} ${cy}`}
+          fill="none" stroke="#e8edf5" strokeWidth="14" strokeLinecap="round"/>
+        {/* Trilha colorida animada */}
+        {pct > 0 && (
+          <path d={`M ${cx - r} ${cy} A ${r} ${r} 0 0 1 ${cx + r} ${cy}`}
+            fill="none" stroke="url(#gaugeTrack)" strokeWidth="12" strokeLinecap="round"
+            strokeDasharray={`${dash} ${gap}`}
+            style={{ transition: 'stroke-dasharray 1.2s cubic-bezier(.4,0,.2,1)' }}
+          />
+        )}
+        {/* Marcas 25/50/75% */}
+        {[25, 50, 75].map(tick => {
+          const a = ((tick / 100) * 180 - 180) * (Math.PI / 180);
+          const x1 = cx + (r - 8) * Math.cos(a), y1 = cy + (r - 8) * Math.sin(a);
+          const x2 = cx + (r + 2) * Math.cos(a), y2 = cy + (r + 2) * Math.sin(a);
+          return <line key={tick} x1={x1} y1={y1} x2={x2} y2={y2} stroke="#cbd5e1" strokeWidth="1.5" strokeLinecap="round"/>;
+        })}
+        {/* Agulha */}
+        {pct > 0 && (
+          <>
+            <line x1={cx} y1={cy} x2={nx} y2={ny} stroke={color} strokeWidth="2.5" strokeLinecap="round" filter="url(#needleGlow)"/>
+            <circle cx={cx} cy={cy} r="5.5" fill={color} filter="url(#needleGlow)"/>
+            <circle cx={cx} cy={cy} r="2.5" fill="#fff"/>
+          </>
+        )}
+        {/* % no centro */}
+        <text x="100" y="74" textAnchor="middle" fontSize="20" fontWeight="800" fill={pct > 0 ? color : '#cbd5e1'}>
+          {pct > 0 ? clamp.toFixed(1) + '%' : '—'}
+        </text>
+        <text x="100" y="88" textAnchor="middle" fontSize="7.5" fill="#94a3b8" fontWeight="700" letterSpacing="0.08em">
+          {label.toUpperCase()} DO ANO
+        </text>
+        {/* Labels 0% / 100% */}
+        <text x="28" y="100" textAnchor="middle" fontSize="8" fill="#94a3b8">0%</text>
+        <text x="172" y="100" textAnchor="middle" fontSize="8" fill="#94a3b8">100%</text>
+      </svg>
+    </div>
+  );
+}
+
 // ─── Mini Gauge ───────────────────────────────────────────────────────────────
 
 function MiniGauge({ pct }: { pct: number }) {
@@ -300,6 +374,12 @@ export default function DashboardGeralPage() {
   });
   // Para compatibilidade com o resto do código
   const topCredores = curvaABC.slice(0, 5).map(c => ({ nome: c.nome.slice(0, 22), valor: c.valor }));
+
+  // Ritmo de Arrecadação
+  const mesesComReceita = ultimoMesFechado > 0 ? ultimoMesFechado : (new Date().getMonth() + 1);
+  const ritmoMensal = mesesComReceita > 0 ? totalReceita / mesesComReceita : 0;
+  const projecaoAnual = ritmoMensal * 12;
+  const pctRitmo = projecaoAnual > 0 ? Math.min((totalReceita / projecaoAnual) * 100, 100) : 0;
 
   // Meses do índice de saúde para status
   const mesesSaude = indice?.matrix ?? [];
@@ -717,8 +797,8 @@ export default function DashboardGeralPage() {
               </div>
             </motion.div>
 
-            {/* ── BLOCO 3 — Saúde + Metas + Contas ── */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {/* ── BLOCO 3 — Saúde + Ritmo + Metas + Contas ── */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
 
               {/* Saúde 15% */}
               <motion.div {...stagger(5)} className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
@@ -768,6 +848,59 @@ export default function DashboardGeralPage() {
                     </span>
                   </div>
                 </div>
+                </div>
+              </motion.div>
+
+              {/* Ritmo de Arrecadação */}
+              <motion.div {...stagger(5.5)} className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+                <div className="flex items-center justify-between px-5 py-3"
+                  style={{ background: 'linear-gradient(90deg, #0F2A4E, #1e4d95)' }}>
+                  <div>
+                    <h3 className="text-sm font-bold text-white">Ritmo de Arrecadação</h3>
+                    <p className="text-[11px] text-blue-200">Execução vs projeção — {ano}</p>
+                  </div>
+                  <TrendingUp size={16} className="text-blue-300"/>
+                </div>
+                <div className="p-5">
+                  {totalReceita > 0 ? (
+                    <>
+                      <GaugeArrecadacao
+                        pct={pctRitmo}
+                        acumulado={totalReceita}
+                        projecao={projecaoAnual}
+                        projecaoAnual={projecaoAnual}
+                      />
+                      <div className="mt-2 space-y-1.5 text-[11px]">
+                        <div className="flex justify-between">
+                          <span className="text-gray-400">Arrecadado</span>
+                          <span className="font-bold text-emerald-600">
+                            R$ {(totalReceita / 1e6).toFixed(2).replace('.', ',')}M
+                          </span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-gray-400">Projeção anual</span>
+                          <span className="font-semibold text-[#0F2A4E]">
+                            R$ {(projecaoAnual / 1e6).toFixed(2).replace('.', ',')}M
+                          </span>
+                        </div>
+                        <div className="border-t pt-1.5 flex justify-between items-start">
+                          <span className="text-gray-400 leading-snug">No ritmo atual,<br/>encerrará em</span>
+                          <span className="font-bold text-[#0F2A4E] text-right">
+                            R$ {(projecaoAnual / 1e6).toFixed(1).replace('.', ',')}M
+                          </span>
+                        </div>
+                      </div>
+                      <div className="mt-3 pt-2 border-t text-[10px] text-gray-400 text-center">
+                        Baseado em {mesesComReceita} {mesesComReceita === 1 ? 'mês' : 'meses'} com dados ·{' '}
+                        Média R$ {fmtK(ritmoMensal)}/mês
+                      </div>
+                    </>
+                  ) : (
+                    <div className="flex flex-col items-center justify-center h-44 text-gray-400 gap-2">
+                      <TrendingUp size={28} className="opacity-20"/>
+                      <p className="text-xs text-center">Importe receitas para visualizar o ritmo</p>
+                    </div>
+                  )}
                 </div>
               </motion.div>
 
