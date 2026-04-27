@@ -2238,156 +2238,9 @@ export default function ReceitasPage() {
   const analiticaGrupos = [...orcGrupos, ...transfGrupos];
   const isEmpty      = !loading && dreRows.length === 0 && transfRows.length === 0;
 
-  // ── dados para o hero banner ──
-  const orcRows   = dreRows.filter(r => r.tipo_receita === 'ORC');
-  const mensalHero = MESES.map((_, i) => {
-    const orc   = orcRows.filter(r => r.mes === i + 1).reduce((s, r) => s + Number(r.total), 0);
-    const transf = transfRows.filter(r => r.mes === i + 1).reduce((s, r) => s + Number(r.total), 0);
-    return orc + transf;
-  });
-  const ultimoMesHeroIdx = mensalHero.map((v, i) => v > 0 ? i : -1).filter(i => i >= 0).pop() ?? -1;
-  const mesesAtivosHero  = ultimoMesHeroIdx >= 0 ? ultimoMesHeroIdx + 1 : 0;
-  const totalGeralHero   = (summary ? Number(summary.valor_orc) + Number(summary.valor_extra) : 0) + transfRows.reduce((s, r) => s + Number(r.total), 0);
-
   return (
     <div>
       <TopBar title="Receita Arrecadada" subtitle="Demonstrativo de Execução da Receita Orçamentária" />
-
-      {/* ══ HERO BANNER — igual ao padrão Despesa ══ */}
-      <div style={{
-        background: 'linear-gradient(135deg, #0F2A4E 0%, #1a3a6e 55%, #1e4d95 100%)',
-        padding: '20px 32px 22px',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        gap: 24,
-        flexWrap: 'wrap',
-        boxShadow: '0 4px 24px rgba(15,42,78,0.35)',
-      }}>
-        {/* Esquerda: título */}
-        <motion.div
-          initial={{ opacity: 0, x: -16 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-        >
-          <h1 style={{ fontSize: 22, fontWeight: 900, color: '#fff', margin: 0, letterSpacing: '-0.02em', lineHeight: 1.2 }}>
-            Receita Municipal
-          </h1>
-          <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.45)', margin: '4px 0 0', fontWeight: 500 }}>
-            Exercício {ano} — Demonstrativo de Arrecadação
-            {loading && <span style={{ marginLeft: 10, color: 'rgba(255,255,255,0.3)', fontStyle: 'italic' }}>carregando...</span>}
-          </p>
-        </motion.div>
-
-        {/* Centro: barra dos 12 meses */}
-        <motion.div
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.1, ease: [0.22, 1, 0.36, 1] }}
-          style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}
-        >
-          <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 600 }}>
-            {loading ? 'Aguardando dados lançados' : mesesAtivosHero === 0 ? 'Nenhum mês com dados' : `${mesesAtivosHero} mês${mesesAtivosHero > 1 ? 'es' : ''} com dados`}
-          </span>
-          <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
-            {MESES.map((mes, i) => {
-              const temDado  = mensalHero[i] > 0;
-              const isAtual  = i === ultimoMesHeroIdx;
-              const isFuturo = !loading && mesesAtivosHero > 0 && i > ultimoMesHeroIdx;
-              return (
-                <div key={mes} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}>
-                  <motion.div
-                    initial={{ scaleY: 0 }}
-                    animate={{ scaleY: 1 }}
-                    transition={{ duration: 0.4, delay: 0.15 + i * 0.04, ease: [0.22, 1, 0.36, 1] }}
-                    style={{
-                      width: isAtual ? 22 : 16,
-                      height: isAtual ? 10 : 7,
-                      borderRadius: 4,
-                      transformOrigin: 'bottom',
-                      background: loading
-                        ? 'rgba(255,255,255,0.1)'
-                        : isAtual
-                          ? '#C9A84C'
-                          : temDado
-                            ? 'rgba(255,255,255,0.55)'
-                            : isFuturo
-                              ? 'rgba(255,255,255,0.1)'
-                              : 'rgba(255,255,255,0.18)',
-                      boxShadow: isAtual ? '0 0 8px rgba(201,168,76,0.7)' : 'none',
-                      transition: 'background 0.3s',
-                    }}
-                  />
-                  <span style={{
-                    fontSize: 9,
-                    color: isAtual ? '#C9A84C' : temDado ? 'rgba(255,255,255,0.55)' : 'rgba(255,255,255,0.25)',
-                    fontWeight: isAtual ? 800 : 500,
-                    letterSpacing: '0.01em',
-                  }}>{mes}</span>
-                </div>
-              );
-            })}
-          </div>
-        </motion.div>
-
-        {/* Direita: badge ano + ações */}
-        <motion.div
-          initial={{ opacity: 0, x: 16 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.5, delay: 0.15, ease: [0.22, 1, 0.36, 1] }}
-          style={{ display: 'flex', alignItems: 'center', gap: 12 }}
-        >
-          {/* Ações */}
-          <select
-            value={ano}
-            onChange={e => setAno(e.target.value)}
-            style={{
-              fontSize: 12, fontWeight: 600,
-              background: 'rgba(255,255,255,0.1)',
-              border: '1px solid rgba(255,255,255,0.15)',
-              borderRadius: 10,
-              padding: '7px 12px',
-              color: '#fff',
-              cursor: 'pointer',
-              outline: 'none',
-            }}
-          >
-            {['2024','2025','2026','2027'].map(y => <option key={y} style={{ background: '#0F2A4E' }}>{y}</option>)}
-          </select>
-          <Link
-            href="/importacao-receita"
-            style={{
-              display: 'flex', alignItems: 'center', gap: 7,
-              padding: '7px 16px',
-              background: '#C9A84C',
-              border: 'none',
-              borderRadius: 10,
-              color: '#fff',
-              fontSize: 12,
-              fontWeight: 700,
-              textDecoration: 'none',
-              cursor: 'pointer',
-              boxShadow: '0 2px 10px rgba(201,168,76,0.4)',
-              transition: 'background 0.2s',
-            }}
-          >
-            <Upload size={13} />
-            Importar
-          </Link>
-
-          {/* Badge exercício */}
-          <div style={{
-            background: 'rgba(201,168,76,0.15)',
-            border: '1px solid rgba(201,168,76,0.4)',
-            borderRadius: 10,
-            padding: '6px 14px',
-            textAlign: 'center',
-          }}>
-            <div style={{ fontSize: 9, color: 'rgba(201,168,76,0.7)', textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 700 }}>Exercício</div>
-            <div style={{ fontSize: 18, fontWeight: 900, color: '#C9A84C', lineHeight: 1.1 }}>{ano}</div>
-          </div>
-        </motion.div>
-      </div>
 
       {/* ── Barra de Abas ── */}
       <div className="bg-white border-b border-slate-200 px-3 md:px-8 py-3 overflow-x-auto">
@@ -2416,95 +2269,110 @@ export default function ReceitasPage() {
 
       {/* ── Conteúdo ── */}
       <div className="bg-slate-50 min-h-screen">
-        <div className="px-3 md:px-8 py-4 md:py-5">
+        <div className="px-3 md:px-8 py-4 md:py-5 space-y-4">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+            <div>
+              <h1 className="text-lg md:text-xl font-bold text-[#0F2A4E]">Receita Arrecadada</h1>
+              <p className="text-sm text-gray-400 mt-0.5">Demonstrativo de Execução da Receita Orçamentária</p>
+            </div>
+            <div className="flex items-center gap-2 flex-wrap">
+              <select
+                value={ano}
+                onChange={e => setAno(e.target.value)}
+                className="text-sm border border-gray-200 bg-white rounded-xl px-3 py-2 text-gray-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                {['2024','2025','2026','2027'].map(y => <option key={y}>{y}</option>)}
+              </select>
+              <Link
+                href="/importacao-receita"
+                className="flex items-center gap-2 px-4 py-2 bg-[#C9A84C] hover:bg-[#b8953d] text-white text-sm font-semibold rounded-xl shadow-sm transition-colors"
+              >
+                <Upload size={15} />
+                Importar
+              </Link>
+              <button className="flex items-center gap-2 px-4 py-2 border border-gray-200 bg-white hover:bg-gray-50 text-gray-600 text-sm font-medium rounded-xl shadow-sm transition-colors">
+                <Download size={15} />
+                Exportar
+              </button>
+            </div>
+          </div>
+
+          {/* Barra KPI — acima dos cards */}
+          {!loading && !isEmpty && (() => {
+            const orcR = dreRows.filter(r => r.tipo_receita === 'ORC');
+            const mens = MESES.map((_, i) => {
+              const o = orcR.filter(r => r.mes === i+1).reduce((s,r) => s+Number(r.total), 0);
+              const t = transfRows.filter(r => r.mes === i+1).reduce((s,r) => s+Number(r.total), 0);
+              return o + t;
+            });
+            const ultIdx = mens.map((v,i) => v>0?i:-1).filter(i=>i>=0).pop() ?? -1;
+            if (ultIdx < 0) return null;
+            const mAtivos  = ultIdx + 1;
+            const pctAno   = Math.round((mAtivos/12)*100);
+            const ativos   = mens.filter(v=>v>0);
+            const media    = ativos.reduce((a,v)=>a+v,0) / ativos.length;
+            const projecao = media * 12;
+            const melhorIdx = mens.indexOf(Math.max(...mens));
+            const melhorVal = mens[melhorIdx] ?? 0;
+            return (
+              <motion.div
+                initial={{ opacity: 0, y: -8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
+                style={{
+                  background: 'linear-gradient(135deg, #0F2A4E 0%, #1a3a6e 55%, #1e4d95 100%)',
+                  borderRadius: 12,
+                  padding: '12px 24px',
+                  display: 'grid',
+                  gridTemplateColumns: '1.4fr auto 1fr auto 1fr auto 1fr',
+                  alignItems: 'center',
+                  boxShadow: '0 4px 20px rgba(15,42,78,0.3)',
+                  border: '1px solid rgba(255,255,255,0.06)',
+                }}
+              >
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+                    <span style={{ fontSize: 9, color: 'rgba(255,255,255,0.5)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em' }}>Progresso {ano}</span>
+                    <span style={{ fontSize: 10, fontWeight: 800, color: '#C9A84C' }}>{pctAno}%</span>
+                  </div>
+                  <div style={{ height: 5, background: 'rgba(255,255,255,0.1)', borderRadius: 99, overflow: 'hidden', marginBottom: 5 }}>
+                    <motion.div
+                      initial={{ scaleX: 0 }}
+                      animate={{ scaleX: 1 }}
+                      transition={{ duration: 1.2, delay: 0.3, ease: [0.22, 1, 0.36, 1] }}
+                      style={{ height: '100%', width: `${pctAno}%`, background: 'linear-gradient(90deg,#C9A84C,#f59e0b)', borderRadius: 99, transformOrigin: 'left', boxShadow: '0 0 8px rgba(201,168,76,0.5)' }}
+                    />
+                  </div>
+                  <span style={{ fontSize: 9, color: 'rgba(255,255,255,0.35)' }}>{mAtivos} de 12 meses</span>
+                </div>
+                <div style={{ width: 1, height: 36, background: 'rgba(255,255,255,0.12)', margin: '0 24px' }} />
+                <div>
+                  <p style={{ fontSize: 9, color: 'rgba(255,255,255,0.45)', margin: '0 0 2px', textTransform: 'uppercase', letterSpacing: '0.07em', fontWeight: 700 }}>Projeção Anual</p>
+                  <p style={{ fontSize: 15, fontWeight: 900, color: '#fff', margin: 0, fontVariantNumeric: 'tabular-nums', lineHeight: 1.1 }}>
+                    R$ <CountUp end={projecao} duration={1.8} delay={0.4} decimals={2} decimal="," separator="." />
+                  </p>
+                  <p style={{ fontSize: 9, color: 'rgba(255,255,255,0.3)', margin: '2px 0 0' }}>baseado na média mensal</p>
+                </div>
+                <div style={{ width: 1, height: 36, background: 'rgba(255,255,255,0.12)', margin: '0 24px' }} />
+                <div>
+                  <p style={{ fontSize: 9, color: 'rgba(255,255,255,0.45)', margin: '0 0 2px', textTransform: 'uppercase', letterSpacing: '0.07em', fontWeight: 700 }}>Melhor Mês</p>
+                  <p style={{ fontSize: 13, fontWeight: 800, color: '#C9A84C', margin: 0 }}>{MESES[melhorIdx]}</p>
+                  <p style={{ fontSize: 9, color: 'rgba(255,255,255,0.5)', margin: '2px 0 0', fontVariantNumeric: 'tabular-nums' }}>R$ {fmtFull(melhorVal)}</p>
+                </div>
+                <div style={{ width: 1, height: 36, background: 'rgba(255,255,255,0.12)', margin: '0 24px' }} />
+                <div>
+                  <p style={{ fontSize: 9, color: 'rgba(255,255,255,0.45)', margin: '0 0 2px', textTransform: 'uppercase', letterSpacing: '0.07em', fontWeight: 700 }}>Média Mensal</p>
+                  <p style={{ fontSize: 13, fontWeight: 800, color: '#fff', margin: 0, fontVariantNumeric: 'tabular-nums' }}>
+                    R$ <CountUp end={media} duration={1.6} delay={0.5} decimals={2} decimal="," separator="." />
+                  </p>
+                  <p style={{ fontSize: 9, color: 'rgba(255,255,255,0.3)', margin: '2px 0 0' }}>arrecadação mensal média</p>
+                </div>
+              </motion.div>
+            );
+          })()}
+
           <SummaryCards summary={summary} loading={loading} ano={ano} totalTransf={transfRows.reduce((s, r) => s + Number(r.total), 0)} />
         </div>
-
-        {/* ── Banner KPI compacto ── */}
-        {!loading && !isEmpty && (() => {
-          const orcR   = dreRows.filter(r => r.tipo_receita === 'ORC');
-          const mens   = MESES.map((_, i) => {
-            const o = orcR.filter(r => r.mes === i+1).reduce((s,r) => s+Number(r.total), 0);
-            const t = transfRows.filter(r => r.mes === i+1).reduce((s,r) => s+Number(r.total), 0);
-            return o + t;
-          });
-          const ultIdx = mens.map((v,i) => v>0?i:-1).filter(i=>i>=0).pop() ?? -1;
-          if (ultIdx < 0) return null;
-          const mAtivos   = ultIdx + 1;
-          const pctAno    = Math.round((mAtivos/12)*100);
-          const ativos    = mens.filter(v=>v>0);
-          const media     = ativos.reduce((a,v)=>a+v,0) / ativos.length;
-          const projecao  = media * 12;
-          const melhorIdx = mens.indexOf(Math.max(...mens));
-          const melhorVal = mens[melhorIdx] ?? 0;
-
-          return (
-            <motion.div
-              initial={{ opacity: 0, y: -8 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
-              style={{
-                margin: '0 24px 0',
-                background: 'linear-gradient(135deg, #0F2A4E 0%, #1a3a6e 55%, #1e4d95 100%)',
-                borderRadius: 12,
-                padding: '12px 24px',
-                display: 'grid',
-                gridTemplateColumns: '1.4fr auto 1fr auto 1fr auto 1fr',
-                alignItems: 'center',
-                boxShadow: '0 4px 20px rgba(15,42,78,0.3)',
-                border: '1px solid rgba(255,255,255,0.06)',
-              }}
-            >
-              {/* Progresso */}
-              <div>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
-                  <span style={{ fontSize: 9, color: 'rgba(255,255,255,0.5)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em' }}>Progresso {ano}</span>
-                  <span style={{ fontSize: 10, fontWeight: 800, color: '#C9A84C' }}>{pctAno}%</span>
-                </div>
-                <div style={{ height: 5, background: 'rgba(255,255,255,0.1)', borderRadius: 99, overflow: 'hidden', marginBottom: 5 }}>
-                  <motion.div
-                    initial={{ scaleX: 0 }}
-                    animate={{ scaleX: 1 }}
-                    transition={{ duration: 1.2, delay: 0.3, ease: [0.22, 1, 0.36, 1] }}
-                    style={{ height: '100%', width: `${pctAno}%`, background: 'linear-gradient(90deg,#C9A84C,#f59e0b)', borderRadius: 99, transformOrigin: 'left', boxShadow: '0 0 8px rgba(201,168,76,0.5)' }}
-                  />
-                </div>
-                <span style={{ fontSize: 9, color: 'rgba(255,255,255,0.35)' }}>{mAtivos} de 12 meses</span>
-              </div>
-
-              <div style={{ width: 1, height: 36, background: 'rgba(255,255,255,0.12)', margin: '0 24px' }} />
-
-              {/* Projeção anual */}
-              <div>
-                <p style={{ fontSize: 9, color: 'rgba(255,255,255,0.45)', margin: '0 0 2px', textTransform: 'uppercase', letterSpacing: '0.07em', fontWeight: 700 }}>Projeção Anual</p>
-                <p style={{ fontSize: 15, fontWeight: 900, color: '#fff', margin: 0, fontVariantNumeric: 'tabular-nums', lineHeight: 1.1 }}>
-                  R$ <CountUp end={projecao} duration={1.8} delay={0.4} decimals={2} decimal="," separator="." />
-                </p>
-                <p style={{ fontSize: 9, color: 'rgba(255,255,255,0.3)', margin: '2px 0 0' }}>baseado na média mensal</p>
-              </div>
-
-              <div style={{ width: 1, height: 36, background: 'rgba(255,255,255,0.12)', margin: '0 24px' }} />
-
-              {/* Melhor mês */}
-              <div>
-                <p style={{ fontSize: 9, color: 'rgba(255,255,255,0.45)', margin: '0 0 2px', textTransform: 'uppercase', letterSpacing: '0.07em', fontWeight: 700 }}>Melhor Mês</p>
-                <p style={{ fontSize: 13, fontWeight: 800, color: '#C9A84C', margin: 0 }}>{MESES[melhorIdx]}</p>
-                <p style={{ fontSize: 9, color: 'rgba(255,255,255,0.5)', margin: '2px 0 0', fontVariantNumeric: 'tabular-nums' }}>R$ {fmtFull(melhorVal)}</p>
-              </div>
-
-              <div style={{ width: 1, height: 36, background: 'rgba(255,255,255,0.12)', margin: '0 24px' }} />
-
-              {/* Média mensal */}
-              <div>
-                <p style={{ fontSize: 9, color: 'rgba(255,255,255,0.45)', margin: '0 0 2px', textTransform: 'uppercase', letterSpacing: '0.07em', fontWeight: 700 }}>Média Mensal</p>
-                <p style={{ fontSize: 13, fontWeight: 800, color: '#fff', margin: 0, fontVariantNumeric: 'tabular-nums' }}>
-                  R$ <CountUp end={media} duration={1.6} delay={0.5} decimals={2} decimal="," separator="." />
-                </p>
-                <p style={{ fontSize: 9, color: 'rgba(255,255,255,0.3)', margin: '2px 0 0' }}>arrecadação mensal média</p>
-              </div>
-            </motion.div>
-          );
-        })()}
 
         <div className="px-3 md:px-6 pb-4 md:pb-6 space-y-5">
           {loading ? (
