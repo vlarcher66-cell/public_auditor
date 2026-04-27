@@ -959,14 +959,18 @@ export async function getSinteticaFiltros(req: Request, res: Response): Promise<
 
     base()
       .leftJoin('dim_credor as c2', 'f.fk_credor', 'c2.id')
-      .join('dim_grupo_despesa as g', db.raw('COALESCE(f.fk_grupo_pag, c2.fk_grupo)'), 'g.id')
+      .join('dim_grupo_despesa as g', function () {
+        this.on(db.raw('g.id = COALESCE(f.fk_grupo_pag, c2.fk_grupo)') as any);
+      })
       .distinct('g.id', 'g.nome')
       .orderBy('g.nome')
       .select('g.id', 'g.nome'),
 
     base()
       .leftJoin('dim_credor as c3', 'f.fk_credor', 'c3.id')
-      .join('dim_subgrupo_despesa as sg', db.raw('COALESCE(f.fk_subgrupo_pag, c3.fk_subgrupo)'), 'sg.id')
+      .join('dim_subgrupo_despesa as sg', function () {
+        this.on(db.raw('sg.id = COALESCE(f.fk_subgrupo_pag, c3.fk_subgrupo)') as any);
+      })
       .distinct('sg.id', 'sg.nome', 'sg.fk_grupo')
       .orderBy('sg.nome')
       .select('sg.id', 'sg.nome', 'sg.fk_grupo'),
