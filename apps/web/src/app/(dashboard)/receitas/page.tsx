@@ -734,10 +734,10 @@ function DonutLegendCard({
         <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', marginLeft: 'auto', fontFamily: 'monospace' }}>{subtitle}</span>
         <InfoPopover insights={info} />
       </div>
-      <div style={{ padding: '14px 16px', display: 'flex', gap: 8, alignItems: 'center', minHeight: 190 }}>
+      <div style={{ padding: '14px 16px', display: 'flex', gap: 8, alignItems: 'center', minHeight: 210 }}>
         {/* Donut */}
         <div style={{ width: '44%', flexShrink: 0, position: 'relative' }}>
-          <ResponsiveContainer width="100%" height={180}>
+          <ResponsiveContainer width="100%" height={200}>
             <PieChart>
               <defs>
                 {items.map((f, i) => (
@@ -755,7 +755,7 @@ function DonutLegendCard({
                 dataKey="value"
                 nameKey="label"
                 cx="50%" cy="50%"
-                innerRadius={52} outerRadius={76}
+                innerRadius={58} outerRadius={84}
                 paddingAngle={2}
                 isAnimationActive
                 animationBegin={100}
@@ -806,16 +806,16 @@ function DonutLegendCard({
               />
             </PieChart>
           </ResponsiveContainer>
-          <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%,-50%)', textAlign: 'center', pointerEvents: 'none' }}>
+          <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%,-50%)', textAlign: 'center', pointerEvents: 'none', width: '90%' }}>
             <div style={{ fontSize: 9, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: 0.5 }}>{totalLabel}</div>
-            <div style={{ fontSize: 13, fontWeight: 800, color: '#0F2A4E', lineHeight: 1.2 }}>
+            <div style={{ fontSize: 14, fontWeight: 900, color: '#0F2A4E', lineHeight: 1.2, whiteSpace: 'nowrap' }}>
               {total >= 1e6 ? 'R$ ' + (total / 1e6).toFixed(1) + 'M' : total >= 1e3 ? 'R$ ' + (total / 1e3).toFixed(0) + 'K' : 'R$ ' + fmtFull(total)}
             </div>
           </div>
         </div>
 
         {/* Legenda com mini-barras */}
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 11, overflow: 'hidden' }}>
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 11, overflow: 'hidden', justifyContent: 'center' }}>
           {items.map((f, i) => {
             const barW = (f.value / maxVal) * 100;
             const pct = total > 0 ? (f.value / total * 100).toFixed(1) : '0';
