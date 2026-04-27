@@ -723,8 +723,8 @@ function DonutLegendCard({
   const total = items.reduce((s, f) => s + f.value, 0);
   const maxVal = Math.max(...items.map(f => f.value), 1);
 
-  const cardStyle: React.CSSProperties = { background: '#fff', borderRadius: 16, border: '1px solid #e2e8f0', overflow: 'hidden' };
-  const headerStyle: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: 8, padding: '12px 20px', background: 'linear-gradient(135deg, #0F2A4E, #1e4d95)' };
+  const cardStyle: React.CSSProperties = { background: '#fff', borderRadius: 16, border: '1px solid #e2e8f0', overflow: 'hidden', height: '100%', display: 'flex', flexDirection: 'column' };
+  const headerStyle: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: 8, padding: '12px 20px', background: 'linear-gradient(135deg, #0F2A4E, #1e4d95)', flexShrink: 0 };
 
   return (
     <div style={cardStyle}>
@@ -734,7 +734,7 @@ function DonutLegendCard({
         <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', marginLeft: 'auto', fontFamily: 'monospace' }}>{subtitle}</span>
         <InfoPopover insights={info} />
       </div>
-      <div style={{ padding: '14px 16px', display: 'flex', gap: 8, alignItems: 'center', minHeight: 180 }}>
+      <div style={{ padding: '14px 16px', display: 'flex', gap: 8, alignItems: 'center', flex: 1 }}>
         {/* Donut */}
         <div style={{ width: '44%', flexShrink: 0, position: 'relative' }}>
           <ResponsiveContainer width="100%" height={160}>
@@ -1014,7 +1014,7 @@ function TabGeralReceita({
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginTop: 4 }}>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '3fr 2fr', gap: 16, alignItems: 'start' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '3fr 2fr', gap: 16, alignItems: 'stretch' }}>
 
         {/* ── Evolução Mensal — BarChart Recharts ── */}
         <motion.div
