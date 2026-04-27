@@ -818,6 +818,7 @@ function DonutLegendCard({
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 11, overflow: 'hidden' }}>
           {items.map((f, i) => {
             const barW = (f.value / maxVal) * 100;
+            const pct = total > 0 ? (f.value / total * 100).toFixed(1) : '0';
             const isActive = active === i;
             const isDimmed = active !== null && !isActive;
             const truncName = f.label.length > 22 ? f.label.slice(0, 21) + '…' : f.label;
@@ -840,6 +841,11 @@ function DonutLegendCard({
                     flex: 1, overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis',
                     transition: 'color 0.2s',
                   }} title={f.label}>{truncName}</span>
+                  <span style={{
+                    fontSize: 10, fontWeight: 700, color: f.color,
+                    fontVariantNumeric: 'tabular-nums', flexShrink: 0,
+                    background: `${f.color}15`, borderRadius: 4, padding: '1px 5px',
+                  }}>{pct}%</span>
                   <span style={{
                     fontSize: 11, fontWeight: 700,
                     color: isActive ? f.color : '#0F2A4E',
@@ -945,12 +951,24 @@ function TabGeralReceita({
   const maxDiario = Math.max(...diario.map(d => d.valor), 1);
   const melhorDiario = diario.length > 0 ? diario.reduce((a,b) => b.valor > a.valor ? b : a) : null;
 
-  // Fontes para donut
+  // Fontes para donut "Composição" (por tipo de receita)
   const fontes = [
     { label: 'Orçamentária', value: totalOrc, color: '#3b82f6' },
     { label: 'Transf. Bancárias', value: totalTransf, color: '#f59e0b' },
     { label: 'Extra-Orçamentária', value: totalExtra, color: '#8b5cf6' },
   ].filter(f => f.value > 0);
+
+  // Fontes de recurso para donut "Participação por Fonte" (top 8 por fonte_recurso)
+  const FONTE_PALETTE = ['#0F2A4E','#1e4d95','#2563b0','#3b82f6','#60a5fa','#93c5fd','#bfdbfe','#dbeafe'];
+  const fonteRecursoMap = new Map<string, number>();
+  for (const r of dreRows) {
+    const key = (r.fonte_recurso || 'Não informada').trim();
+    fonteRecursoMap.set(key, (fonteRecursoMap.get(key) ?? 0) + Number(r.total));
+  }
+  const fontesRecurso = Array.from(fonteRecursoMap.entries())
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 8)
+    .map(([label, value], i) => ({ label, value, color: FONTE_PALETTE[i % FONTE_PALETTE.length] }));
 
   // Tooltip padrão dark reutilizável
   const DarkTooltip = ({ active, payload, label }: any) => {
@@ -1272,22 +1290,18 @@ function TabGeralReceita({
             </div>
           </motion.div>
 
-          {/* ── Participação por Fonte ── */}
+          {/* ── Distribuição por Fonte de Recurso ── */}
           <motion.div
             initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.45, delay: 0.42, ease: [0.22, 1, 0.36, 1] }}
           >
             <DonutLegendCard
-              title="Participação por Fonte"
-              subtitle="% do total"
+              title="Distribuição por Fonte de Recurso"
+              subtitle="top 8 por arrecadação"
               gradPrefix="part"
               totalLabel="Total"
-              items={[
-                { label: 'Orçamentária', value: totalOrc, color: '#3b82f6' },
-                { label: 'Transf. Bancárias', value: totalTransf, color: '#f59e0b' },
-                { label: 'Extra-Orçamentária', value: totalExtra, color: '#8b5cf6' },
-              ].filter(f => f.value > 0)}
-              info={<><strong>Participação por Fonte</strong><br /><br />Proporção visual de cada fonte no total arrecadado.<br /><br />💡 Municípios saudáveis têm a maior parte em Orçamentária (receitas próprias + transferências constitucionais).</>}
+              items={fontesRecurso}
+              info={<><strong>Distribuição por Fonte de Recurso</strong><br /><br />Mostra as 8 fontes de recurso com maior arrecadação no período.<br /><br />• <strong>Donut</strong>: proporção visual de cada fonte<br />• <strong>Mini-barras</strong>: comparação proporcional entre as fontes<br /><br />💡 Passe o mouse sobre os itens para destacar a fatia correspondente.</>}
             />
           </motion.div>
 
