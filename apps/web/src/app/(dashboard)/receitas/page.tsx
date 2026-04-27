@@ -815,101 +815,6 @@ function TabGeralReceita({
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginTop: 4 }}>
 
-      {/* ══ BANNER KPIs ══ */}
-      {mesesAtivos > 0 && (
-        <motion.div
-          initial={{ opacity: 0, y: -16 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
-          style={{
-            background: 'linear-gradient(135deg, #0F2A4E 0%, #1a3a6e 50%, #1e4d95 100%)',
-            borderRadius: 16,
-            padding: '20px 28px',
-            display: 'grid',
-            gridTemplateColumns: '1fr auto 1fr auto 1fr auto 1fr',
-            alignItems: 'center',
-            gap: 0,
-            boxShadow: '0 8px 32px rgba(15,42,78,0.4)',
-            border: '1px solid rgba(255,255,255,0.06)',
-          }}
-        >
-          {/* Progresso do ano */}
-          <motion.div
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.5, delay: 0.1 }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-              <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.5)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Progresso {ano}</span>
-              <span style={{ fontSize: 11, fontWeight: 800, color: '#C9A84C' }}>{pctAno}%</span>
-            </div>
-            <div style={{ height: 7, background: 'rgba(255,255,255,0.1)', borderRadius: 99, overflow: 'hidden', marginBottom: 8 }}>
-              <motion.div
-                initial={{ scaleX: 0 }}
-                animate={{ scaleX: 1 }}
-                transition={{ duration: 1.4, delay: 0.4, ease: [0.22, 1, 0.36, 1] }}
-                style={{
-                  height: '100%',
-                  width: `${pctAno}%`,
-                  background: 'linear-gradient(90deg, #C9A84C, #f59e0b)',
-                  borderRadius: 99,
-                  transformOrigin: 'left',
-                  boxShadow: '0 0 12px rgba(201,168,76,0.5)',
-                }}
-              />
-            </div>
-            <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.4)' }}>{mesesAtivos} de 12 meses</span>
-          </motion.div>
-
-          <div style={{ width: 1, height: 48, background: 'rgba(255,255,255,0.1)', margin: '0 28px' }} />
-
-          {/* Projeção anual */}
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.45, delay: 0.2 }}
-          >
-            <p style={{ fontSize: 10, color: 'rgba(255,255,255,0.45)', margin: '0 0 4px', textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: 600 }}>Projeção Anual</p>
-            <p style={{ fontSize: 20, fontWeight: 900, color: '#fff', margin: 0, fontVariantNumeric: 'tabular-nums', lineHeight: 1 }}>
-              R$ <CountUp end={projecaoAnual} duration={2} delay={0.5} decimals={2} decimal="," separator="." />
-            </p>
-            <p style={{ fontSize: 10, color: 'rgba(255,255,255,0.35)', margin: '4px 0 0' }}>baseado na média mensal</p>
-          </motion.div>
-
-          <div style={{ width: 1, height: 48, background: 'rgba(255,255,255,0.1)', margin: '0 28px' }} />
-
-          {/* Melhor mês */}
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.45, delay: 0.3 }}
-          >
-            <p style={{ fontSize: 10, color: 'rgba(255,255,255,0.45)', margin: '0 0 4px', textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: 600 }}>Melhor Mês</p>
-            {melhorMesVal > 0 ? (
-              <>
-                <p style={{ fontSize: 16, fontWeight: 800, color: '#C9A84C', margin: 0 }}>{MESES[melhorMesIdx]}</p>
-                <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.65)', margin: '3px 0 0', fontVariantNumeric: 'tabular-nums' }}>R$ {fmtFull(melhorMesVal)}</p>
-              </>
-            ) : <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.3)', margin: 0 }}>—</p>}
-          </motion.div>
-
-          <div style={{ width: 1, height: 48, background: 'rgba(255,255,255,0.1)', margin: '0 28px' }} />
-
-          {/* Média mensal */}
-          <motion.div
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.5, delay: 0.35 }}
-          >
-            <p style={{ fontSize: 10, color: 'rgba(255,255,255,0.45)', margin: '0 0 4px', textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: 600 }}>Média Mensal</p>
-            <p style={{ fontSize: 16, fontWeight: 800, color: '#fff', margin: 0, fontVariantNumeric: 'tabular-nums' }}>
-              R$ <CountUp end={mediaMensal} duration={1.8} delay={0.6} decimals={2} decimal="," separator="." />
-            </p>
-            <p style={{ fontSize: 10, color: 'rgba(255,255,255,0.35)', margin: '4px 0 0' }}>arrecadação mensal média</p>
-          </motion.div>
-        </motion.div>
-      )}
-
       <div style={{ display: 'grid', gridTemplateColumns: '3fr 2fr', gap: 16, alignItems: 'start' }}>
 
         {/* ── Evolução Mensal — BarChart Recharts ── */}
@@ -2511,6 +2416,92 @@ export default function ReceitasPage() {
 
       {/* ── Conteúdo ── */}
       <div className="bg-slate-50 min-h-screen">
+        {/* ── Banner KPI compacto ── */}
+        {!loading && !isEmpty && (() => {
+          const orcR   = dreRows.filter(r => r.tipo_receita === 'ORC');
+          const mens   = MESES.map((_, i) => {
+            const o = orcR.filter(r => r.mes === i+1).reduce((s,r) => s+Number(r.total), 0);
+            const t = transfRows.filter(r => r.mes === i+1).reduce((s,r) => s+Number(r.total), 0);
+            return o + t;
+          });
+          const ultIdx = mens.map((v,i) => v>0?i:-1).filter(i=>i>=0).pop() ?? -1;
+          if (ultIdx < 0) return null;
+          const mAtivos   = ultIdx + 1;
+          const pctAno    = Math.round((mAtivos/12)*100);
+          const ativos    = mens.filter(v=>v>0);
+          const media     = ativos.reduce((a,v)=>a+v,0) / ativos.length;
+          const projecao  = media * 12;
+          const melhorIdx = mens.indexOf(Math.max(...mens));
+          const melhorVal = mens[melhorIdx] ?? 0;
+
+          return (
+            <motion.div
+              initial={{ opacity: 0, y: -8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
+              style={{
+                margin: '0 24px 0',
+                background: 'linear-gradient(135deg, #0F2A4E 0%, #1a3a6e 55%, #1e4d95 100%)',
+                borderRadius: 12,
+                padding: '12px 24px',
+                display: 'grid',
+                gridTemplateColumns: '1.4fr auto 1fr auto 1fr auto 1fr',
+                alignItems: 'center',
+                boxShadow: '0 4px 20px rgba(15,42,78,0.3)',
+                border: '1px solid rgba(255,255,255,0.06)',
+              }}
+            >
+              {/* Progresso */}
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+                  <span style={{ fontSize: 9, color: 'rgba(255,255,255,0.5)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em' }}>Progresso {ano}</span>
+                  <span style={{ fontSize: 10, fontWeight: 800, color: '#C9A84C' }}>{pctAno}%</span>
+                </div>
+                <div style={{ height: 5, background: 'rgba(255,255,255,0.1)', borderRadius: 99, overflow: 'hidden', marginBottom: 5 }}>
+                  <motion.div
+                    initial={{ scaleX: 0 }}
+                    animate={{ scaleX: 1 }}
+                    transition={{ duration: 1.2, delay: 0.3, ease: [0.22, 1, 0.36, 1] }}
+                    style={{ height: '100%', width: `${pctAno}%`, background: 'linear-gradient(90deg,#C9A84C,#f59e0b)', borderRadius: 99, transformOrigin: 'left', boxShadow: '0 0 8px rgba(201,168,76,0.5)' }}
+                  />
+                </div>
+                <span style={{ fontSize: 9, color: 'rgba(255,255,255,0.35)' }}>{mAtivos} de 12 meses</span>
+              </div>
+
+              <div style={{ width: 1, height: 36, background: 'rgba(255,255,255,0.12)', margin: '0 24px' }} />
+
+              {/* Projeção anual */}
+              <div>
+                <p style={{ fontSize: 9, color: 'rgba(255,255,255,0.45)', margin: '0 0 2px', textTransform: 'uppercase', letterSpacing: '0.07em', fontWeight: 700 }}>Projeção Anual</p>
+                <p style={{ fontSize: 15, fontWeight: 900, color: '#fff', margin: 0, fontVariantNumeric: 'tabular-nums', lineHeight: 1.1 }}>
+                  R$ <CountUp end={projecao} duration={1.8} delay={0.4} decimals={2} decimal="," separator="." />
+                </p>
+                <p style={{ fontSize: 9, color: 'rgba(255,255,255,0.3)', margin: '2px 0 0' }}>baseado na média mensal</p>
+              </div>
+
+              <div style={{ width: 1, height: 36, background: 'rgba(255,255,255,0.12)', margin: '0 24px' }} />
+
+              {/* Melhor mês */}
+              <div>
+                <p style={{ fontSize: 9, color: 'rgba(255,255,255,0.45)', margin: '0 0 2px', textTransform: 'uppercase', letterSpacing: '0.07em', fontWeight: 700 }}>Melhor Mês</p>
+                <p style={{ fontSize: 13, fontWeight: 800, color: '#C9A84C', margin: 0 }}>{MESES[melhorIdx]}</p>
+                <p style={{ fontSize: 9, color: 'rgba(255,255,255,0.5)', margin: '2px 0 0', fontVariantNumeric: 'tabular-nums' }}>R$ {fmtFull(melhorVal)}</p>
+              </div>
+
+              <div style={{ width: 1, height: 36, background: 'rgba(255,255,255,0.12)', margin: '0 24px' }} />
+
+              {/* Média mensal */}
+              <div>
+                <p style={{ fontSize: 9, color: 'rgba(255,255,255,0.45)', margin: '0 0 2px', textTransform: 'uppercase', letterSpacing: '0.07em', fontWeight: 700 }}>Média Mensal</p>
+                <p style={{ fontSize: 13, fontWeight: 800, color: '#fff', margin: 0, fontVariantNumeric: 'tabular-nums' }}>
+                  R$ <CountUp end={media} duration={1.6} delay={0.5} decimals={2} decimal="," separator="." />
+                </p>
+                <p style={{ fontSize: 9, color: 'rgba(255,255,255,0.3)', margin: '2px 0 0' }}>arrecadação mensal média</p>
+              </div>
+            </motion.div>
+          );
+        })()}
+
         <div className="px-3 md:px-8 py-4 md:py-5">
           <SummaryCards summary={summary} loading={loading} ano={ano} totalTransf={transfRows.reduce((s, r) => s + Number(r.total), 0)} />
         </div>
