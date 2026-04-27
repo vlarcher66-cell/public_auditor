@@ -859,6 +859,7 @@ function TabGeralReceita({
                   />
                 )}
                 <Tooltip
+                  wrapperStyle={{ zIndex: 50 }}
                   cursor={{ fill: 'rgba(15,42,78,0.05)', radius: 6 }}
                   content={({ active, payload }) => {
                     if (!active || !payload?.length) return null;
@@ -1010,6 +1011,7 @@ function TabGeralReceita({
                       {fontes.map((f, i) => <Cell key={i} fill={`url(#gComp${i})`} stroke="none" />)}
                     </Pie>
                     <Tooltip
+                      wrapperStyle={{ zIndex: 50 }}
                       content={({ active, payload }) => {
                         if (!active || !payload?.length) return null;
                         const d = payload[0].payload;
@@ -1263,6 +1265,7 @@ function TabGeralReceita({
                             {fontesPart.map((f, i) => <Cell key={i} fill={`url(#gPart${i})`} stroke="none" />)}
                           </Pie>
                           <Tooltip
+                            wrapperStyle={{ zIndex: 50 }}
                             content={({ active, payload }) => {
                               if (!active || !payload?.length) return null;
                               const d = payload[0].payload;
@@ -1548,7 +1551,7 @@ function PainelAnalitica({ grupos }: { grupos: Grupo[] }) {
                   <feDropShadow dx="2" dy="0" stdDeviation="4" floodColor="#3b82f6" floodOpacity="0.35" />
                 </filter>
               </defs>
-              <Tooltip content={<CustomBarTooltip />} cursor={{ fill: 'rgba(59,130,246,0.06)' }} />
+              <Tooltip wrapperStyle={{ zIndex: 50 }} content={<CustomBarTooltip />} cursor={{ fill: 'rgba(59,130,246,0.06)' }} />
               <Bar dataKey="value" fill="url(#barGrad)" radius={[0, 8, 8, 0]} maxBarSize={28} isAnimationActive style={{ filter: 'url(#barShadow)' }}>
                 <LabelList
                   dataKey="value"
@@ -1599,7 +1602,7 @@ function PainelAnalitica({ grupos }: { grupos: Grupo[] }) {
                     <Cell key={entry.cod} fill={`url(#pieGrad${index})`} stroke="none" />
                   ))}
                 </Pie>
-                <Tooltip content={<CustomPieTooltip />} />
+                <Tooltip wrapperStyle={{ zIndex: 50 }} content={<CustomPieTooltip />} />
               </PieChart>
             </ResponsiveContainer>
             {/* Texto central */}
@@ -1667,7 +1670,7 @@ function PainelAnalitica({ grupos }: { grupos: Grupo[] }) {
               <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
               <XAxis dataKey="mes" tick={{ fontSize: 10, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
               <YAxis tickFormatter={fmtK} tick={{ fontSize: 9, fill: '#94a3b8' }} axisLine={false} tickLine={false} width={58} />
-              <Tooltip content={<CustomAreaTooltip />} />
+              <Tooltip wrapperStyle={{ zIndex: 50 }} content={<CustomAreaTooltip />} />
               <Legend
                 iconType="circle"
                 iconSize={8}
@@ -1810,6 +1813,7 @@ function PainelSintetica({ grupos }: { grupos: Grupo[] }) {
                 {radialData.map((entry, i) => <Cell key={i} fill={entry.fill} />)}
               </RadialBar>
               <Tooltip
+                wrapperStyle={{ zIndex: 50 }}
                 content={({ active, payload }) => {
                   if (!active || !payload?.length) return null;
                   const d = payload[0].payload;
@@ -1940,6 +1944,7 @@ function PainelSintetica({ grupos }: { grupos: Grupo[] }) {
                       ))}
                     </Pie>
                     <Tooltip
+                      wrapperStyle={{ zIndex: 50 }}
                       content={({ active, payload }) => {
                         if (!active || !payload?.length) return null;
                         const d = payload[0].payload;
@@ -2035,7 +2040,7 @@ function PainelSintetica({ grupos }: { grupos: Grupo[] }) {
               <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
               <XAxis dataKey="trim" tick={{ fontSize: 10, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
               <YAxis tickFormatter={fmtK} tick={{ fontSize: 9, fill: '#94a3b8' }} axisLine={false} tickLine={false} width={55} />
-              <Tooltip content={<CustomTooltipDark />} />
+              <Tooltip wrapperStyle={{ zIndex: 50 }} content={<CustomTooltipDark />} />
               <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 11, color: '#64748b', paddingTop: 8 }} />
               {trimLabels.map((label, i) => (
                 <Bar key={label} dataKey={label} name={label} fill={`url(#trimGrad${i})`} radius={[4, 4, 0, 0]} maxBarSize={32} isAnimationActive />
@@ -2112,6 +2117,7 @@ function PainelSintetica({ grupos }: { grupos: Grupo[] }) {
                     />
                   )}
                   <Tooltip
+                    wrapperStyle={{ zIndex: 50 }}
                     content={({ active, payload, label }) => {
                       if (!active || !payload?.length) return null;
                       const total = (payload as any[]).reduce((s, p) => s + (p.value ?? 0), 0);
