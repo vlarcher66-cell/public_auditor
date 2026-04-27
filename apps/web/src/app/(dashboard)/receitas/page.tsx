@@ -958,16 +958,36 @@ function TabGeralReceita({
     { label: 'Extra-Orçamentária', value: totalExtra, color: '#8b5cf6' },
   ].filter(f => f.value > 0);
 
-  // Fontes de recurso para donut "Participação por Fonte" (top 8 por fonte_recurso)
-  const FONTE_PALETTE = ['#0F2A4E','#1e4d95','#2563b0','#3b82f6','#60a5fa','#93c5fd','#bfdbfe','#dbeafe'];
-  const fonteRecursoMap = new Map<string, number>();
+  // Fontes de recurso agrupadas por prefixo de 2 dígitos
+  const FONTE_GRUPO_NOME: Record<string, string> = {
+    '10': 'Recursos Ordinários',
+    '11': 'Rec. Vinculados Educação',
+    '12': 'Rec. Vinculados Saúde',
+    '13': 'Rec. Vinculados Assistência',
+    '14': 'Rec. de Convênios',
+    '15': 'Transf. da União (SUS/FUNDEB)',
+    '16': 'Recursos Próprios',
+    '17': 'Rec. de Operações de Crédito',
+    '18': 'Rec. de Alienação de Bens',
+    '19': 'Outros Recursos Vinculados',
+  };
+  const FONTE_PALETTE = ['#0F2A4E','#1e4d95','#2563b0','#3b82f6','#60a5fa','#10b981','#f59e0b','#8b5cf6','#ef4444','#06b6d4'];
+
+  const fonteGrupoMap = new Map<string, number>();
+  const prefixoLabel = (cod: string) => {
+    const prefix = String(cod).trim().slice(0, 2);
+    return FONTE_GRUPO_NOME[prefix] ?? `Fonte ${prefix}xx`;
+  };
   for (const r of dreRows) {
-    const key = (r.fonte_recurso || 'Não informada').trim();
-    fonteRecursoMap.set(key, (fonteRecursoMap.get(key) ?? 0) + Number(r.total));
+    const key = prefixoLabel(r.fonte_recurso || '??');
+    fonteGrupoMap.set(key, (fonteGrupoMap.get(key) ?? 0) + Number(r.total));
   }
-  const fontesRecurso = Array.from(fonteRecursoMap.entries())
+  for (const r of transfRows) {
+    const key = prefixoLabel(r.fonte_origem || '??');
+    fonteGrupoMap.set(key, (fonteGrupoMap.get(key) ?? 0) + Number(r.total));
+  }
+  const fontesRecurso = Array.from(fonteGrupoMap.entries())
     .sort((a, b) => b[1] - a[1])
-    .slice(0, 8)
     .map(([label, value], i) => ({ label, value, color: FONTE_PALETTE[i % FONTE_PALETTE.length] }));
 
   // Tooltip padrão dark reutilizável
@@ -1297,11 +1317,11 @@ function TabGeralReceita({
           >
             <DonutLegendCard
               title="Distribuição por Fonte de Recurso"
-              subtitle="top 8 por arrecadação"
+              subtitle="agrupado por prefixo"
               gradPrefix="part"
               totalLabel="Total"
               items={fontesRecurso}
-              info={<><strong>Distribuição por Fonte de Recurso</strong><br /><br />Mostra as 8 fontes de recurso com maior arrecadação no período.<br /><br />• <strong>Donut</strong>: proporção visual de cada fonte<br />• <strong>Mini-barras</strong>: comparação proporcional entre as fontes<br /><br />💡 Passe o mouse sobre os itens para destacar a fatia correspondente.</>}
+              info={<><strong>Distribuição por Fonte de Recurso</strong><br /><br />Agrupa todas as receitas (orçamentárias + transferências bancárias) pelo prefixo da fonte de recurso:<br /><br />• <strong>16xx</strong>: Recursos Próprios<br />• <strong>15xx</strong>: Transf. da União (SUS/FUNDEB)<br />• <strong>12xx</strong>: Rec. Vinculados Saúde<br /><br />💡 Passe o mouse para destacar a fatia correspondente.</>}
             />
           </motion.div>
 
