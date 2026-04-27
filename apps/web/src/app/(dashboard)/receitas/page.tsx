@@ -2210,31 +2210,32 @@ export default function ReceitasPage() {
   const [transfRows, setTransfRows] = useState<TransfDRERow[]>([]);
   const [summary, setSummary] = useState<Summary | null>(null);
 
-  const load = useCallback(async () => {
+  useEffect(() => {
     if (!token) return;
+    let cancelled = false;
     setLoading(true);
-    try {
-      const params: Record<string, string> = { ano };
-      if (entidadeSelecionada?.id) params.entidadeId = String(entidadeSelecionada.id);
-      else if (municipioSelecionado?.id) params.municipioId = String(municipioSelecionado.id);
-      const [dreData, sumData, transfData] = await Promise.all([
-        apiRequest<{ rows: DRERow[] }>('/receitas/dre', { token, params }),
-        apiRequest<{ totais: Summary }>('/receitas/summary', { token, params }),
-        apiRequest<{ rows: TransfDRERow[] }>('/transferencias-bancarias/dre', { token, params }).catch(() => ({ rows: [] })),
-      ]);
+    const params: Record<string, string> = { ano };
+    if (entidadeSelecionada?.id) params.entidadeId = String(entidadeSelecionada.id);
+    else if (municipioSelecionado?.id) params.municipioId = String(municipioSelecionado.id);
+    Promise.all([
+      apiRequest<{ rows: DRERow[] }>('/receitas/dre', { token, params }),
+      apiRequest<{ totais: Summary }>('/receitas/summary', { token, params }),
+      apiRequest<{ rows: TransfDRERow[] }>('/transferencias-bancarias/dre', { token, params }).catch(() => ({ rows: [] })),
+    ]).then(([dreData, sumData, transfData]) => {
+      if (cancelled) return;
       setDreRows(dreData.rows);
       setSummary(sumData.totais);
       setTransfRows(transfData.rows);
-    } catch {
+    }).catch(() => {
+      if (cancelled) return;
       setDreRows([]);
       setTransfRows([]);
       setSummary(null);
-    } finally {
-      setLoading(false);
-    }
+    }).finally(() => {
+      if (!cancelled) setLoading(false);
+    });
+    return () => { cancelled = true; };
   }, [token, ano, entidadeSelecionada, municipioSelecionado]);
-
-  useEffect(() => { load(); }, [load]);
 
   // Grupos por tipo
   const orcGrupos    = agrupar(dreRows.filter(r => r.tipo_receita === 'ORC'));
