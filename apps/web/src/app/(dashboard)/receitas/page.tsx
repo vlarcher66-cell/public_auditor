@@ -734,10 +734,10 @@ function DonutLegendCard({
         <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', marginLeft: 'auto', fontFamily: 'monospace' }}>{subtitle}</span>
         <InfoPopover insights={info} />
       </div>
-      <div style={{ padding: '14px 16px', display: 'flex', gap: 8, alignItems: 'center', minHeight: 210 }}>
+      <div style={{ padding: '14px 16px', display: 'flex', gap: 8, alignItems: 'center', minHeight: 180 }}>
         {/* Donut */}
         <div style={{ width: '44%', flexShrink: 0, position: 'relative' }}>
-          <ResponsiveContainer width="100%" height={200}>
+          <ResponsiveContainer width="100%" height={160}>
             <PieChart>
               <defs>
                 {items.map((f, i) => (
@@ -755,7 +755,7 @@ function DonutLegendCard({
                 dataKey="value"
                 nameKey="label"
                 cx="50%" cy="50%"
-                innerRadius={58} outerRadius={84}
+                innerRadius={44} outerRadius={66}
                 paddingAngle={2}
                 isAnimationActive
                 animationBegin={100}
@@ -815,13 +815,12 @@ function DonutLegendCard({
         </div>
 
         {/* Legenda com mini-barras */}
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 11, overflow: 'hidden', justifyContent: 'center' }}>
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 8, overflow: 'hidden', justifyContent: 'center' }}>
           {items.map((f, i) => {
             const barW = (f.value / maxVal) * 100;
             const pct = total > 0 ? (f.value / total * 100).toFixed(1) : '0';
             const isActive = active === i;
             const isDimmed = active !== null && !isActive;
-            const truncName = f.label.length > 22 ? f.label.slice(0, 21) + '…' : f.label;
             return (
               <div
                 key={i}
@@ -829,36 +828,42 @@ function DonutLegendCard({
                 onMouseLeave={() => setActive(null)}
                 style={{ opacity: isDimmed ? 0.45 : 1, transition: 'opacity 0.2s', cursor: 'default' }}
               >
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 3 }}>
+                {/* Linha 1: ponto + nome */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 2 }}>
                   <div style={{
-                    width: 8, height: 8, borderRadius: '50%', background: f.color, flexShrink: 0,
-                    boxShadow: isActive ? `0 0 0 2px ${f.color}55` : 'none',
+                    width: 7, height: 7, borderRadius: '50%', background: f.color, flexShrink: 0,
+                    boxShadow: isActive ? `0 0 0 2px ${f.color}44` : 'none',
                     transition: 'box-shadow 0.2s',
                   }} />
                   <span style={{
-                    fontSize: 11, color: isActive ? '#0F2A4E' : '#475569',
-                    fontWeight: isActive ? 600 : 400,
+                    fontSize: 11, color: isActive ? '#0F2A4E' : '#374151',
+                    fontWeight: isActive ? 600 : 500,
                     flex: 1, overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis',
                     transition: 'color 0.2s',
-                  }} title={f.label}>{truncName}</span>
+                  }} title={f.label}>{f.label}</span>
+                </div>
+                {/* Linha 2: barra + % + valor */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginLeft: 12 }}>
+                  <div style={{ flex: 1, height: 4, background: '#f1f5f9', borderRadius: 99, overflow: 'hidden' }}>
+                    <div style={{
+                      height: '100%', width: `${barW}%`,
+                      background: `linear-gradient(90deg, ${f.color}, ${f.color}99)`,
+                      borderRadius: 99, transition: 'width 0.7s ease',
+                    }} />
+                  </div>
                   <span style={{
                     fontSize: 10, fontWeight: 700, color: f.color,
                     fontVariantNumeric: 'tabular-nums', flexShrink: 0,
-                    background: `${f.color}15`, borderRadius: 4, padding: '1px 5px',
+                    background: `${f.color}18`, borderRadius: 4, padding: '1px 4px',
+                    minWidth: 38, textAlign: 'center',
                   }}>{pct}%</span>
                   <span style={{
-                    fontSize: 11, fontWeight: 700,
+                    fontSize: 11, fontWeight: 700, flexShrink: 0,
                     color: isActive ? f.color : '#0F2A4E',
-                    fontVariantNumeric: 'tabular-nums', flexShrink: 0,
+                    fontVariantNumeric: 'tabular-nums',
                     transition: 'color 0.2s',
+                    minWidth: 90, textAlign: 'right',
                   }}>R$ {fmtFull(f.value)}</span>
-                </div>
-                <div style={{ height: 3, background: '#f1f5f9', borderRadius: 99, overflow: 'hidden', marginLeft: 14 }}>
-                  <div style={{
-                    height: '100%', width: `${barW}%`,
-                    background: `linear-gradient(90deg, ${f.color}, ${f.color}99)`,
-                    borderRadius: 99, transition: 'width 0.6s ease',
-                  }} />
                 </div>
               </div>
             );
